@@ -1,14 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-import '../../Home/Screen/HomeScreenPage.dart';
 import '../../Startup/MainControllere.dart';
-import '../../ReUsable/registration_progress.dart';
-import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 
@@ -19,106 +16,84 @@ class IDVerificationScreen extends StatefulWidget {
   State<IDVerificationScreen> createState() => _IDVerificationScreenState();
 }
 
-class _IDVerificationScreenState extends State<IDVerificationScreen> with SingleTickerProviderStateMixin {
+class _IDVerificationScreenState extends State<IDVerificationScreen>
+    with TickerProviderStateMixin {
+  static const Duration _autoRefreshInterval = Duration(seconds: 30);
+  static const double _kPulseScaleMin = 0.94;
+  static const double _kPulseScaleMax = 1.06;
+
   final ImagePicker _picker = ImagePicker();
   String? _selectedDocumentType;
-  final TextEditingController _documentNumberController = TextEditingController();
+  final TextEditingController _documentNumberController =
+      TextEditingController();
   XFile? _selectedImage;
 
-  // Document status variables
-  String _documentStatus = 'not_uploaded'; // 'not_uploaded', 'pending', 'approved', 'rejected'
+  String _documentStatus = 'not_uploaded';
   String _rejectReason = '';
   bool _isLoading = true;
   bool _isCheckingStatus = false;
   bool _isUploading = false;
-
-  // Privacy consent
   bool _hasConsented = false;
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+  Timer? _refreshTimer;
 
-  final List<String> _documentTypes = [
-    'Passport',
-    'Driver\'s License',
-    'National ID Card',
-    'State ID',
-    'PAN Card',
-    'Aadhaar Card'
+  late AnimationController _fadeController;
+  late AnimationController _pulseController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _pulseAnimation;
+
+  final List<Map<String, dynamic>> _documentTypes = [
+    {'label': 'Passport', 'icon': Icons.book_outlined},
+    {'label': "Driver's License", 'icon': Icons.drive_eta_outlined},
+    {'label': 'National ID Card', 'icon': Icons.badge_outlined},
+    {'label': 'State ID', 'icon': Icons.perm_identity_outlined},
+    {'label': 'PAN Card', 'icon': Icons.credit_card_outlined},
+    {'label': 'Aadhaar Card', 'icon': Icons.fingerprint},
   ];
 
   @override
   void initState() {
     super.initState();
-    _checkDocumentStatus();
-    fetchMaritalStatus();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1100),
+      vsync: this,
+    )..repeat(reverse: true);
+    _fadeAnimation =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _pulseAnimation = Tween<double>(begin: _kPulseScaleMin, end: _kPulseScaleMax).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    _animationController.forward();
+    _checkDocumentStatus();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _fadeController.dispose();
+    _pulseController.dispose();
+    _refreshTimer?.cancel();
     _documentNumberController.dispose();
     super.dispose();
   }
 
-  String? mName;
-
-  Future<void> fetchMaritalStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString == null) {
-      _handleNoUserData();
-      return;
-    }
-
-    final userData = jsonDecode(userDataString);
-    final userId = int.tryParse(userData["id"].toString());
-
-    if (userId == null) {
-      _handleNoUserId();
-      return;
-    }
-    try {
-      final response = await http.get(
-        Uri.parse(
-          "https://digitallami.com/api19/get_marital_status.php?userid=$userId",
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['status'] == true) {
-          mName = data['data']['maritalStatusName'];
-        } else {
-          mName = null;
-          debugPrint(data['message']);
-        }
-      } else {
-        debugPrint("Server error: ${response.statusCode}");
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      if (_documentStatus == 'pending' && mounted) {
+        _checkDocumentStatus();
       }
-    } catch (e) {
-      debugPrint("API error: $e");
-    }
+    });
   }
 
-  // Function to check document status
   Future<void> _checkDocumentStatus() async {
     if (_isCheckingStatus) return;
-
     setState(() {
       _isCheckingStatus = true;
       _isLoading = true;
     });
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
@@ -126,277 +101,193 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
         _handleNoUserData();
         return;
       }
-
       final userData = jsonDecode(userDataString);
-      final userId = int.tryParse(userData["id"].toString());
-
+      final userId = int.tryParse(userData['id'].toString());
       if (userId == null) {
         _handleNoUserId();
         return;
       }
-
-      print("Checking document status for user ID: $userId");
-
       final response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
+        Uri.parse('https://digitallami.com/Api2/check_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
-
-      print("Status check response: ${response.statusCode}");
-      print("Response body: ${response.body}");
-
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-
         if (result['success'] == true) {
+          final newStatus = result['status'] ?? 'not_uploaded';
           setState(() {
-            _documentStatus = result['status'] ?? 'not_uploaded';
+            _documentStatus = newStatus;
             _rejectReason = result['reject_reason'] ?? '';
           });
-          print("Document status: $_documentStatus");
-          print("Reject reason: $_rejectReason");
-        } else {
-          print("API returned success: false");
-          print("Message: ${result['message']}");
+          if (newStatus == 'pending') {
+            _startAutoRefresh();
+          } else {
+            _refreshTimer?.cancel();
+          }
         }
-      } else {
-        print("HTTP error: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error checking document status: $e");
-      // Show error snackbar
-      _showError("Failed to check document status: $e");
+      _showError('Failed to check status. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
         _isCheckingStatus = false;
       });
+      _fadeController.forward(from: 0);
     }
   }
 
   void _handleNoUserData() {
-    print("No user data found in SharedPreferences");
     setState(() {
       _isLoading = false;
       _isCheckingStatus = false;
     });
-    _showError("User data not found. Please login again.");
+    _showError('User data not found. Please login again.');
   }
 
   void _handleNoUserId() {
-    print("User ID is null");
     setState(() {
       _isLoading = false;
       _isCheckingStatus = false;
     });
   }
 
-  // Function to refresh status
-  Future<void> _refreshStatus() async {
-    await _checkDocumentStatus();
-  }
-
-  // Upload document function
   Future<void> _uploadDocument() async {
-    // If document was rejected, show rejection reason first
-    if (_documentStatus == 'rejected' && _rejectReason.isNotEmpty) {
-      _showRejectionDialog();
-      return;
-    }
-
-    setState(() {
-      _isUploading = true;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    final userData = jsonDecode(userDataString!);
-    final userId = int.tryParse(userData["id"].toString());
-
+    setState(() => _isUploading = true);
     try {
-      final uri = Uri.parse("https://digitallami.com/Api2/upload_document.php");
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      final userData = jsonDecode(userDataString!);
+      final userId = int.tryParse(userData['id'].toString());
 
-      var request = http.MultipartRequest("POST", uri);
-
+      final uri =
+          Uri.parse('https://digitallami.com/Api2/upload_document.php');
+      final request = http.MultipartRequest('POST', uri);
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;
       request.fields['documentidnumber'] = _documentNumberController.text;
-
-      // Add Image
-      var imageFile = await http.MultipartFile.fromPath(
-        'photo',
-        _selectedImage!.path,
-      );
+      final imageFile =
+          await http.MultipartFile.fromPath('photo', _selectedImage!.path);
       request.files.add(imageFile);
 
-      // Send request
-      var response = await request.send();
-      var responseBody = await response.stream.bytesToString();
-
-      print("Upload response: $responseBody");
-
+      final response = await request.send();
       if (response.statusCode == 200) {
-        // Update local status to pending
         setState(() {
           _documentStatus = 'pending';
           _rejectReason = '';
         });
-
-        _showSuccess("Document uploaded successfully! Waiting for approval.");
+        _startAutoRefresh();
+        _fadeController.forward(from: 0);
+        _showSuccess("Document submitted! We'll notify you once it's verified.");
       } else {
-        _showError("Upload failed with status: ${response.statusCode}");
+        _showError('Upload failed. Please try again.');
       }
     } catch (e) {
-      _showError("Error uploading: $e");
+      _showError('Error uploading document. Check your connection.');
     } finally {
-      setState(() {
-        _isUploading = false;
-      });
+      setState(() => _isUploading = false);
     }
-  }
-
-  void _showRejectionDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_rounded, color: AppColors.error, size: 28),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                "Document Rejected",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Your previous document was rejected. Please review the reason below and upload again:",
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.error.withOpacity(0.3)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.info_outline, color: AppColors.error, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _rejectReason,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.error,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Clear form for re-upload
-              setState(() {
-                _selectedDocumentType = null;
-                _documentNumberController.clear();
-                _selectedImage = null;
-                _hasConsented = false;
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text("Upload New", style: TextStyle(color: AppColors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: _buildContent(),
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: _isLoading
+          ? _buildLoadingScreen()
+          : FadeTransition(opacity: _fadeAnimation, child: _buildContent()),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            SizedBox(height: 20),
+            Text(
+              'Checking your verification status...',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildContent() {
-    if (_isLoading) {
-      return _buildLoadingState();
-    }
-
     switch (_documentStatus) {
       case 'pending':
-        return _buildPendingStatus();
+        return _buildPendingScreen();
       case 'approved':
-        return _buildApprovedStatus();
+        return _buildApprovedScreen();
       case 'rejected':
-        return _buildRejectedStatus();
+        return _buildRejectedScreen();
       default:
-        return _buildUploadForm();
+        return _buildUploadScreen();
     }
   }
 
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  // ─── UPLOAD SCREEN ────────────────────────────────────────────────────────
+
+  Widget _buildUploadScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppColors.primary),
-              strokeWidth: 3,
-            ),
+          _buildHeroHeader(
+            title: 'Verify Your Identity',
+            subtitle: 'Complete verification to unlock all features',
+            icon: Icons.verified_user_rounded,
           ),
-          const SizedBox(height: 24),
-          const Text(
-            "Checking verification status...",
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStepIndicator(currentStep: 0),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Choose Document Type'),
+                  const SizedBox(height: 12),
+                  _buildDocumentTypeGrid(),
+                  const SizedBox(height: 24),
+                  if (_selectedDocumentType != null) ...[
+                    _buildSectionTitle('Document Number'),
+                    const SizedBox(height: 12),
+                    _buildDocumentNumberField(),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Upload Document Photo'),
+                    const SizedBox(height: 12),
+                    _buildPhotoUploadArea(),
+                    const SizedBox(height: 24),
+                    _buildGuidelinesCard(),
+                    const SizedBox(height: 20),
+                    _buildConsentCard(),
+                    const SizedBox(height: 24),
+                    _buildSubmitButton(),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    _buildInfoBanner(),
+                    const SizedBox(height: 24),
+                  ],
+                  _buildSkipButton(),
+                  const SizedBox(height: 28),
+                ],
+              ),
             ),
           ),
         ],
@@ -404,516 +295,333 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
     );
   }
 
-  Widget _buildUploadForm() {
-    return RegistrationStepContainer(
-      onBack: () => Navigator.pop(context),
-      onContinue: _canContinue() ? _validateAndSubmit : null,
-      continueText: _isUploading ? 'Uploading...' : 'Submit Document',
-      isLoading: _isUploading,
-      canContinue: _canContinue() && !_isUploading,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            RegistrationStepHeader(
-              title: 'ID Verification',
-              subtitle: 'Upload your identification document for verification',
-              currentStep: 11,
-              totalSteps: 11,
-              onBack: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: 32),
-
-            // Skip Button
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: _isUploading ? null : _skipVerification,
-                icon: const Icon(Icons.skip_next, size: 18),
-                label: const Text('Skip for now'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Privacy & Security Notice Card
-            _buildPrivacyNoticeCard(),
-            const SizedBox(height: 32),
-
-            // Document Type Section
-            const SectionHeader(
-              title: 'Document Type',
-              subtitle: 'Select your identification document',
-              icon: Icons.badge_outlined,
-            ),
-            const SizedBox(height: 20),
-
-            EnhancedDropdown<String>(
-              label: 'Type of Document',
-              value: _selectedDocumentType,
-              items: _documentTypes,
-              itemLabel: (item) => item,
-              hint: 'Select document type',
-              onChanged: (value) {
-                setState(() {
-                  _selectedDocumentType = value;
-                });
-              },
-              isRequired: true,
-              prefixIcon: Icons.description_outlined,
-            ),
-            const SizedBox(height: 32),
-
-            // Document Number Section
-            const SectionHeader(
-              title: 'Document Details',
-              subtitle: 'Enter your document identification number',
-              icon: Icons.numbers_outlined,
-            ),
-            const SizedBox(height: 20),
-
-            EnhancedTextField(
-              label: 'Document ID Number',
-              controller: _documentNumberController,
-              hint: 'Enter ID number',
-              prefixIcon: Icons.credit_card_outlined,
-              keyboardType: TextInputType.text,
-              onChanged: (value) => setState(() {}),
-              validator: (value) => '',
-            ),
-            const SizedBox(height: 32),
-
-            // Document Upload Section
-            const SectionHeader(
-              title: 'Upload Document',
-              subtitle: 'Take a clear photo or choose from gallery',
-              icon: Icons.cloud_upload_outlined,
-            ),
-            const SizedBox(height: 20),
-
-            // Image Preview or Upload Button
-            if (_selectedImage != null) ...[
-              _buildImagePreview(),
-              const SizedBox(height: 16),
+  Widget _buildHeroHeader({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _showImageSourceSelector,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Change Photo'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AppColors.border, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back_ios_new,
+                        color: Colors.white, size: 20),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _removeImage,
-                      icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                      label: const Text('Remove', style: TextStyle(color: AppColors.error)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: AppColors.error.withOpacity(0.5), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: _skipVerification,
+                    icon: const Icon(Icons.skip_next_rounded,
+                        color: Colors.white70, size: 18),
+                    label: const Text('Skip',
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 13)),
                   ),
                 ],
               ),
-            ] else ...[
-              _buildUploadButton(),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: Colors.white, size: 36),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 13, height: 1.4),
+              ),
             ],
-
-            const SizedBox(height: 32),
-
-            // Guidelines Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: AppColors.primary, size: 22),
-                      SizedBox(width: 12),
-                      Text(
-                        'Photo Guidelines',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildGuidelineItem(Icons.check_circle_outline, 'Ensure text is clearly visible'),
-                  _buildGuidelineItem(Icons.check_circle_outline, 'Avoid glare and shadows'),
-                  _buildGuidelineItem(Icons.check_circle_outline, 'Capture all four corners'),
-                  _buildGuidelineItem(Icons.check_circle_outline, 'Use good lighting'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Consent Checkbox Card
-            _buildConsentCard(),
-
-            const SizedBox(height: 32),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPrivacyNoticeCard() {
+  Widget _buildStepIndicator({required int currentStep}) {
+    final steps = ['Select', 'Upload', 'Verified'];
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1565C0).withOpacity(0.07),
-            blurRadius: 12,
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Row(
+        children: List.generate(steps.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            final stepIdx = i ~/ 2;
+            return Expanded(
+              child: Container(
+                height: 2,
+                color: stepIdx <= currentStep
+                    ? AppColors.primary
+                    : const Color(0xFFE0E0E0),
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.shield_rounded,
-                    color: AppColors.white,
-                    size: 22,
-                  ),
+            );
+          }
+          final stepIdx = i ~/ 2;
+          final isActive = stepIdx <= currentStep;
+          final isCompleted = stepIdx < currentStep;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isActive
+                      ? AppColors.primary
+                      : const Color(0xFFE0E0E0),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Document Privacy & Security',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.white,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Your data is protected under our privacy policy',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.white,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Body
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'How your document is used:',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildPrivacyPoint(
-                  Icons.verified_user_outlined,
-                  'Verification Only',
-                  'Your document is used exclusively to verify your identity. It is not used for any other purpose.',
-                  const Color(0xFF1565C0),
-                ),
-                _buildPrivacyPoint(
-                  Icons.no_photography_outlined,
-                  'No Third-Party Sharing',
-                  'Your document will never be shared with third parties, advertisers, or external organizations.',
-                  AppColors.success,
-                ),
-                _buildPrivacyPoint(
-                  Icons.lock_outline_rounded,
-                  'Encrypted Storage',
-                  'All uploaded documents are encrypted using industry-standard security protocols.',
-                  AppColors.warning,
-                ),
-                _buildPrivacyPoint(
-                  Icons.delete_sweep_outlined,
-                  'Deletion on Request',
-                  'You may request deletion of your document at any time by contacting our support team.',
-                  AppColors.primary,
-                ),
-
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1565C0).withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: const Color(0xFF1565C0).withOpacity(0.15),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Color(0xFF1565C0),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'The document you upload is strictly for identity verification. '
-                          'It will not be used for any commercial, marketing, or other purpose.',
+                child: Center(
+                  child: isCompleted
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
+                      : Text(
+                          '${stepIdx + 1}',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            height: 1.5,
+                            color: isActive ? Colors.white : Colors.grey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                steps[stepIdx],
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isActive ? AppColors.primary : Colors.grey,
+                  fontWeight:
+                      isActive ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildPrivacyPoint(IconData icon, String title, String description, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF212121),
+      ),
+    );
+  }
+
+  Widget _buildDocumentTypeGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 0.95,
+      children: _documentTypes.map((doc) {
+        final isSelected = _selectedDocumentType == doc['label'];
+        return GestureDetector(
+          onTap: () =>
+              setState(() => _selectedDocumentType = doc['label'] as String),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: isSelected
+                  ? AppColors.primary.withOpacity(0.08)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected
+                    ? AppColors.primary
+                    : const Color(0xFFE0E0E0),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? AppColors.primary.withOpacity(0.18)
+                      : Colors.black.withOpacity(0.04),
+                  blurRadius: isSelected ? 8 : 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  doc['icon'] as IconData,
+                  color: isSelected ? AppColors.primary : Colors.grey,
+                  size: 28,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  doc['label'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFF616161),
+                    height: 1.2,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(height: 5),
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check,
+                        color: Colors.white, size: 11),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDocumentNumberField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _documentNumberController,
+        onChanged: (_) => setState(() {}),
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: 'Enter document number',
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: color),
+            child: const Icon(Icons.numbers_rounded,
+                color: AppColors.primary, size: 18),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
-        ],
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
 
-  Widget _buildConsentCard() {
+  Widget _buildPhotoUploadArea() {
+    if (_selectedImage != null) return _buildImagePreview();
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _hasConsented = !_hasConsented;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _hasConsented
-              ? AppColors.success.withOpacity(0.06)
-              : AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _hasConsented
-                ? AppColors.success.withOpacity(0.5)
-                : AppColors.border,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: _hasConsented ? AppColors.success : AppColors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: _hasConsented ? AppColors.success : AppColors.border,
-                  width: 2,
-                ),
-              ),
-              child: _hasConsented
-                  ? const Icon(Icons.check, size: 16, color: AppColors.white)
-                  : null,
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Text(
-                'I understand that the document I am uploading is used solely for identity verification. '
-                'It will not be used for any commercial, marketing, or other purpose, '
-                'and will be kept strictly confidential.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGuidelineItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.success),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUploadButton() {
-    return InkWell(
       onTap: _showImageSourceSelector,
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 200,
+        height: 170,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColors.border,
-            width: 2,
-            style: BorderStyle.solid,
-          ),
+              color: AppColors.primary.withOpacity(0.35), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.add_photo_alternate_outlined,
-                size: 40,
-                color: AppColors.white,
-              ),
+              child: const Icon(Icons.add_a_photo_rounded,
+                  color: Colors.white, size: 30),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             const Text(
-              'Upload Document Photo',
+              'Tap to Upload Photo',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF212121)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap to take photo or choose from gallery',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary.withOpacity(0.7),
-              ),
-            ),
+            const SizedBox(height: 4),
+            const Text('Camera or Gallery',
+                style: TextStyle(fontSize: 13, color: Colors.grey)),
           ],
         ),
       ),
@@ -921,475 +629,1021 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
   }
 
   Widget _buildImagePreview() {
+    return Column(
+      children: [
+        Container(
+          height: 220,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.success, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.success.withOpacity(0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                FutureBuilder(
+                  future: _selectedImage!.readAsBytes(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return Image.memory(
+                        snapshot.data!,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation(AppColors.primary),
+                      ),
+                    );
+                  },
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle,
+                            color: Colors.white, size: 14),
+                        SizedBox(width: 4),
+                        Text('Photo Ready',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _showImageSourceSelector,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Change'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _removeImage,
+                icon: const Icon(Icons.delete_outline_rounded,
+                    size: 18, color: Colors.red),
+                label: const Text('Remove',
+                    style: TextStyle(color: Colors.red)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGuidelinesCard() {
+    final guidelines = [
+      {'icon': Icons.wb_sunny_outlined, 'text': 'Use good, even lighting'},
+      {
+        'icon': Icons.center_focus_strong_outlined,
+        'text': 'All four corners must be visible'
+      },
+      {
+        'icon': Icons.text_fields_rounded,
+        'text': 'All text must be clearly readable'
+      },
+      {
+        'icon': Icons.block_rounded,
+        'text': 'No glare, blur, or obstruction'
+      },
+    ];
     return Container(
-      height: 250,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.success.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+        color: const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBBDEFB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded,
+                  color: Color(0xFF1565C0), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Photo Tips',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1565C0)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...guidelines.map((g) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(g['icon'] as IconData,
+                        size: 16, color: const Color(0xFF1976D2)),
+                    const SizedBox(width: 10),
+                    Text(
+                      g['text'] as String,
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF424242)),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConsentCard() {
+    return GestureDetector(
+      onTap: () => setState(() => _hasConsented = !_hasConsented),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _hasConsented ? const Color(0xFFF1F8E9) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hasConsented
+                ? AppColors.success
+                : const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: _hasConsented ? AppColors.success : Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _hasConsented
+                      ? AppColors.success
+                      : const Color(0xFFBDBDBD),
+                  width: 2,
+                ),
+              ),
+              child: _hasConsented
+                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'I consent to use of this document solely for identity verification. It will remain confidential and will not be shared with third parties.',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF616161),
+                    height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withOpacity(0.08),
+            AppColors.primary.withOpacity(0.03)
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline_rounded,
+              color: AppColors.primary, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Select a document type above to continue with your verification.',
+              style: TextStyle(
+                  fontSize: 13, color: AppColors.primary, height: 1.4),
+            ),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            FutureBuilder(
-              future: _selectedImage!.readAsBytes(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                  return Image.memory(
-                    snapshot.data!,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                  );
-                } else {
-                  return const Center(
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    final canSubmit = _canContinue() && !_isUploading;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: canSubmit ? _validateAndSubmit : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+          elevation: canSubmit ? 4 : 0,
+          shadowColor: AppColors.primary.withOpacity(0.4),
+        ),
+        child: _isUploading
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  );
-                }
-              },
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, size: 16, color: AppColors.white),
-                    SizedBox(width: 6),
-                    Text(
-                      'Photo Selected',
+                        color: Colors.white, strokeWidth: 2.5),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Uploading...',
                       style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ],
+              )
+            : const Text(
+                'Submit for Verification',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
-            ),
-          ],
+      ),
+    );
+  }
+
+  Widget _buildSkipButton() {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _skipVerification,
+        icon: const Icon(Icons.arrow_forward_ios_rounded,
+            size: 13, color: Colors.grey),
+        label: const Text(
+          'Skip for now — verify later',
+          style: TextStyle(fontSize: 13, color: Colors.grey),
         ),
       ),
     );
   }
 
-  Widget _buildPendingStatus() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    AppColors.primary.withOpacity(0.05),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.hourglass_bottom_rounded,
-                size: 80,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Under Review',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your document is being verified by our team',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary.withOpacity(0.8),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 40),
-            Container(
+  // ─── PENDING SCREEN ───────────────────────────────────────────────────────
+
+  Widget _buildPendingScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Column(
+        children: [
+          _buildStatusHeroHeader(
+            title: 'Under Review',
+            subtitle: 'Our team is verifying your document',
+            icon: Icons.hourglass_top_rounded,
+            color: const Color(0xFFF57C00),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(Icons.schedule, color: AppColors.primary, size: 32),
-                  SizedBox(height: 12),
-                  Text(
-                    'Estimated Time',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
+                  _buildStepIndicator(currentStep: 1),
+                  const SizedBox(height: 24),
+                  _buildVerificationTimeline(),
+                  const SizedBox(height: 16),
+                  _buildEstimatedTimeCard(),
+                  const SizedBox(height: 16),
+                  _buildAutoRefreshNote(),
+                  const SizedBox(height: 24),
+                  _buildRefreshButton(),
+                  const SizedBox(height: 12),
+                  _buildGoHomeButton(),
+                  const SizedBox(height: 28),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusHeroHeader({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      color: color,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.arrow_back_ios_new,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(height: 14),
+              ScaleTransition(
+                scale: _pulseAnimation,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    '24-48 hours',
-                    style: TextStyle(
-                      fontSize: 20,
+                  child: Icon(icon, color: Colors.white, size: 48),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(subtitle,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 14)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationTimeline() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildTimelineItem(
+            icon: Icons.cloud_upload_outlined,
+            title: 'Document Submitted',
+            subtitle: 'Your document has been received',
+            isCompleted: true,
+            isActive: false,
+          ),
+          _buildTimelineDivider(filled: true),
+          _buildTimelineItem(
+            icon: Icons.manage_search_rounded,
+            title: 'Under Review',
+            subtitle: 'Admin is verifying your document',
+            isCompleted: false,
+            isActive: true,
+          ),
+          _buildTimelineDivider(filled: false),
+          _buildTimelineItem(
+            icon: Icons.verified_rounded,
+            title: 'Verification Complete',
+            subtitle: "You'll be notified when done",
+            isCompleted: false,
+            isActive: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isCompleted,
+    required bool isActive,
+  }) {
+    final color = isCompleted
+        ? AppColors.success
+        : isActive
+            ? const Color(0xFFF57C00)
+            : const Color(0xFFBDBDBD);
+
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          ),
+          child: Center(
+            child: isCompleted
+                ? Icon(Icons.check_rounded, color: color, size: 22)
+                : isActive
+                    ? ScaleTransition(
+                        scale: _pulseAnimation,
+                        child: Icon(icon, color: color, size: 22),
+                      )
+                    : Icon(icon, color: color, size: 22),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isActive
+                      ? const Color(0xFFF57C00)
+                      : const Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(subtitle,
+                  style:
+                      const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+        if (isActive)
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3E0),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'In Progress',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFF57C00)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineDivider({required bool filled}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 21),
+      child: Container(
+        width: 2,
+        height: 22,
+        color: filled
+            ? AppColors.success.withOpacity(0.4)
+            : Colors.grey.withOpacity(0.3),
+      ),
+    );
+  }
+
+  Widget _buildEstimatedTimeCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: const Color(0xFFFFCC02).withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF57C00).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.schedule_rounded,
+                color: Color(0xFFF57C00), size: 22),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estimated Verification Time',
+                  style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _goToHome,
-                icon: const Icon(Icons.home_rounded),
-                label: const Text('Go to Home'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      color: Color(0xFF424242)),
                 ),
-              ),
+                SizedBox(height: 3),
+                Text(
+                  '24-48 hours on business days',
+                  style:
+                      TextStyle(fontSize: 12, color: Color(0xFF757575)),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _refreshStatus,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh Status'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoRefreshNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.sync_rounded, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Status refreshes automatically every ${_autoRefreshInterval.inSeconds} seconds.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _isCheckingStatus ? null : _checkDocumentStatus,
+        icon: _isCheckingStatus
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation(AppColors.primary)),
+              )
+            : const Icon(Icons.refresh_rounded, size: 20),
+        label: const Text('Check Status Now'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: const BorderSide(color: AppColors.primary),
+          foregroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
   }
 
-  Widget _buildApprovedStatus() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.success.withOpacity(0.2),
-                    AppColors.success.withOpacity(0.1),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.verified_user_rounded,
-                size: 80,
-                color: AppColors.success,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Verification Complete!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your identity has been successfully verified',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary.withOpacity(0.8),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 40),
-            Container(
+  Widget _buildGoHomeButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _goToHome,
+        icon: const Icon(Icons.home_rounded, size: 20),
+        label: const Text('Go to Home'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+          elevation: 3,
+          shadowColor: AppColors.primary.withOpacity(0.4),
+        ),
+      ),
+    );
+  }
+
+  // ─── APPROVED SCREEN ──────────────────────────────────────────────────────
+
+  Widget _buildApprovedScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Column(
+        children: [
+          _buildStatusHeroHeader(
+            title: 'Verified! 🎉',
+            subtitle: 'Your identity has been confirmed',
+            icon: Icons.verified_rounded,
+            color: const Color(0xFF2E7D32),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.success.withOpacity(0.3)),
-              ),
-              child: const Row(
+              child: Column(
                 children: [
-                  Icon(Icons.check_circle, color: AppColors.success, size: 28),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Verified Account',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Your profile is now fully verified',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _completeRegistration,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Continue to App'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: AppColors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRejectedStatus() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.error.withOpacity(0.2),
-                    AppColors.error.withOpacity(0.1),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.error_outline_rounded,
-                size: 80,
-                color: AppColors.error,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Document Rejected',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Please review the issue and upload again',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary.withOpacity(0.8),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 32),
-            if (_rejectReason.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.info_outline, color: AppColors.error, size: 22),
-                        SizedBox(width: 12),
-                        Text(
-                          'Reason for Rejection',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _rejectReason,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
+                  _buildStepIndicator(currentStep: 2),
+                  const SizedBox(height: 24),
+                  _buildApprovedCard(),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _completeRegistration,
+                      icon: const Icon(Icons.arrow_forward_rounded,
+                          size: 20),
+                      label: const Text('Continue to App'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        elevation: 4,
+                        shadowColor:
+                            const Color(0xFF2E7D32).withOpacity(0.4),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _documentStatus = 'not_uploaded';
-                    _selectedDocumentType = null;
-                    _documentNumberController.clear();
-                    _selectedImage = null;
-                    _hasConsented = false;
-                  });
-                },
-                icon: const Icon(Icons.upload),
-                label: const Text('Upload New Document'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
+                  const SizedBox(height: 28),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _skipVerification,
-              icon: const Icon(Icons.skip_next),
-              label: const Text('Skip for Now'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildApprovedCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F5E9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.verified_user_rounded,
+                color: Color(0xFF2E7D32), size: 52),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Identity Verified',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF212121)),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'You now have full access to all features including chatting and connecting with your matches.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 14, color: Color(0xFF757575), height: 1.5),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF2E7D32), size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Your profile is now fully verified',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2E7D32)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── REJECTED SCREEN ──────────────────────────────────────────────────────
+
+  Widget _buildRejectedScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Column(
+        children: [
+          _buildStatusHeroHeader(
+            title: 'Document Rejected',
+            subtitle: 'Please upload a new valid document',
+            icon: Icons.cancel_rounded,
+            color: const Color(0xFFC62828),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildStepIndicator(currentStep: 0),
+                  const SizedBox(height: 24),
+                  if (_rejectReason.isNotEmpty) ...[
+                    _buildRejectionReasonCard(),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildRejectionTipsCard(),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _documentStatus = 'not_uploaded';
+                          _selectedDocumentType = null;
+                          _documentNumberController.clear();
+                          _selectedImage = null;
+                          _hasConsented = false;
+                          _rejectReason = '';
+                        });
+                        _fadeController.forward(from: 0);
+                      },
+                      icon: const Icon(Icons.upload_rounded, size: 20),
+                      label: const Text('Upload New Document'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        elevation: 4,
+                        shadowColor: AppColors.primary.withOpacity(0.4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSkipButton(),
+                  const SizedBox(height: 28),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectionReasonCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5F5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFCDD2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.info_rounded,
+                  color: Color(0xFFC62828), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Rejection Reason',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC62828)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _rejectReason,
+            style: const TextStyle(
+                fontSize: 14, color: Color(0xFF424242), height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectionTipsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBBDEFB)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tips_and_updates_rounded,
+                  color: Color(0xFF1565C0), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'How to Fix',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1565C0)),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          Text(
+            '- Make sure the document is not expired\n'
+            '- All text and details must be clearly readable\n'
+            '- Photo must show all four corners of the document\n'
+            '- Avoid dark, blurry, or glare-affected photos',
+            style: TextStyle(
+                fontSize: 13, color: Color(0xFF424242), height: 1.7),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── SHARED HELPERS ───────────────────────────────────────────────────────
 
   void _showImageSourceSelector() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Select Image Source',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Choose Photo Source',
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      subtitle: 'Take a new photo',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _takePhoto();
+                      },
                     ),
-                    child: const Icon(Icons.camera_alt, color: AppColors.white),
                   ),
-                  title: const Text('Take Photo'),
-                  subtitle: const Text('Use camera to take a photo'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _takePhoto();
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      subtitle: 'Choose existing',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _selectFromGallery();
+                      },
                     ),
-                    child: const Icon(Icons.photo_library, color: AppColors.white),
                   ),
-                  title: const Text('Choose from Gallery'),
-                  subtitle: const Text('Select from your photos'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _selectFromGallery();
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSourceOption({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(subtitle,
+                style:
+                    const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1401,14 +1655,9 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
         maxHeight: 1200,
         imageQuality: 90,
       );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = image;
-        });
-      }
+      if (image != null) setState(() => _selectedImage = image);
     } catch (e) {
-      _showError("Failed to take photo: $e");
+      _showError('Failed to take photo: $e');
     }
   }
 
@@ -1420,137 +1669,82 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
         maxHeight: 1200,
         imageQuality: 90,
       );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = image;
-        });
-      }
+      if (image != null) setState(() => _selectedImage = image);
     } catch (e) {
-      _showError("Failed to select image: $e");
+      _showError('Failed to select image: $e');
     }
   }
 
-  void _removeImage() {
-    setState(() {
-      _selectedImage = null;
-    });
-  }
+  void _removeImage() => setState(() => _selectedImage = null);
 
-  bool _canContinue() {
-    return _selectedDocumentType != null &&
-        _documentNumberController.text.isNotEmpty &&
-        _selectedImage != null &&
-        _hasConsented;
-  }
+  bool _canContinue() =>
+      _selectedDocumentType != null &&
+      _documentNumberController.text.isNotEmpty &&
+      _selectedImage != null &&
+      _hasConsented;
 
   void _validateAndSubmit() {
     if (_selectedDocumentType == null) {
-      _showError("Please select document type");
+      _showError('Please select a document type');
       return;
     }
-
     if (_documentNumberController.text.isEmpty) {
-      _showError("Please enter document number");
+      _showError('Please enter your document number');
       return;
     }
-
     if (_selectedImage == null) {
-      _showError("Please upload ID photo");
+      _showError('Please upload a photo of your document');
       return;
     }
-
     if (!_hasConsented) {
-      _showConsentReminder();
+      _showError('Please accept the consent checkbox to continue');
       return;
     }
-
     _uploadDocument();
   }
 
-  void _showConsentReminder() {
+  void _skipVerification() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.privacy_tip_outlined, color: Color(0xFF1565C0), size: 28),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Privacy Consent Required',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Skip Verification?',
+            style:
+                TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         content: const Text(
-          'Please check the consent checkbox below the photo guidelines before submitting your document.',
+          'You can verify your identity later from your profile. Some features may be limited until verified.',
           style: TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _goToHome();
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1565C0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Understood', style: TextStyle(color: AppColors.white)),
+            child: const Text('Skip',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  void _skipVerification() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.primary),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  "Skip ID Verification?",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: const Text(
-            "You can verify your identity later from your profile settings.",
-            style: TextStyle(fontSize: 15),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _goToHome();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text("Skip", style: TextStyle(color: AppColors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _goToHome() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const MainControllerScreen()),
+      MaterialPageRoute(
+          builder: (context) => const MainControllerScreen()),
       (route) => false,
     );
   }
@@ -1560,50 +1754,46 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
     final userDataString = prefs.getString('user_data');
     if (userDataString != null) {
       final userData = jsonDecode(userDataString);
-      final userId = int.tryParse(userData["id"].toString());
+      final userId = int.tryParse(userData['id'].toString());
       if (userId != null) {
         await UpdateService.updatePageNumber(
-          userId: userId.toString(),
-          pageNo: 10,
-        );
+            userId: userId.toString(), pageNo: 10);
       }
     }
     _goToHome();
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
       ),
-    );
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10)),
+    ));
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline, color: AppColors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
       ),
-    );
+      backgroundColor: AppColors.success,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10)),
+    ));
   }
 }

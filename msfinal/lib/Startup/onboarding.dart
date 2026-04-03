@@ -151,17 +151,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardPageOne extends StatelessWidget {
   const OnboardPageOne({super.key});
 
-  // placeholder profile images (picsum)
-  static const String img1 =
-      'https://picsum.photos/seed/p1/200'; // top-left small
-  static const String img2 = 'https://picsum.photos/seed/p2/200'; // mid small
-  static const String img3 = 'https://picsum.photos/seed/p3/200'; // other
-
   @override
   Widget build(BuildContext context) {
-    // main gradient
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topCenter,
@@ -170,72 +163,35 @@ class OnboardPageOne extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Top-left arc
+          // Subtle top-left arc background decoration
           const Positioned(
             left: -140,
             top: -220,
             child: ArcBigCircle(),
           ),
 
-          // dotted arc (small white dash path) - mimic screenshot with custom painter
+          // Subtle bottom-right arc for balance
           const Positioned(
-            left: -20,
-            top: 40,
-            child: DottedArc(
-              size: 420,
-            ),
+            right: -160,
+            bottom: 160,
+            child: ArcBigCircle(),
           ),
 
-          // floating icons & small avatars
-          // top-left small avatar
-          Positioned(
-            left: 28,
-            top: 100,
-            child: CircleAvatarWithBorder(
-              imageUrl: img1,
-              size: 70,
-            ),
-          ),
-
-          // top-right small chat icon bubble
-          Positioned(
-            right: 90,
-            top: 132,
-            child: const FloatingIcon(icon: Icons.chat_bubble_outline),
-          ),
-
-          // mid floating avatar (toward center-right)
-          Positioned(
-            left: 220,
-            top: 260,
-            child: CircleAvatarWithBorder(
-              imageUrl: img2,
-              size: 62,
-            ),
-          ),
-
-          // heart icon near center-right
+          // Clean, centered couple illustration
           const Positioned(
-            right: 140,
-            top: 300,
-            child: FloatingIcon(icon: Icons.favorite_border),
+            top: 72,
+            left: 0,
+            right: 0,
+            child: _CoupleIllustration(),
           ),
 
-          // folder icon near lower-left
-          const Positioned(
-            left: 110,
-            top: 360,
-            child: FloatingIcon(icon: Icons.folder_outlined),
-          ),
-
-          // Main textual content anchored bottom-left
+          // Main textual content anchored at bottom
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
                 children: [
                   const Spacer(),
-                  // Title
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -264,6 +220,109 @@ class OnboardPageOne extends StatelessWidget {
                   const SizedBox(height: 160),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Clean couple illustration: two profile cards with a connecting heart
+class _CoupleIllustration extends StatelessWidget {
+  const _CoupleIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Left profile card
+          const _ProfileCard(icon: Icons.woman, label: 'Bride'),
+
+          // Heart connector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.favorite,
+                color: AppColors.primary,
+                size: 26,
+              ),
+            ),
+          ),
+
+          // Right profile card
+          const _ProfileCard(icon: Icons.man, label: 'Groom'),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual frosted-glass profile card used in the couple illustration
+class _ProfileCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ProfileCard({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 120,
+      height: 152,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.45),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 34),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -536,44 +595,4 @@ class _ArcPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// dotted arc path painter to mimic dashed curve in the screenshot
-class DottedArc extends StatelessWidget {
-  final double size;
-  const DottedArc({super.key, required this.size});
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _DottedArcPainter(),
-      ),
-    );
-  }
-}
-
-class _DottedArcPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
-      ..strokeWidth = 1.9
-      ..style = PaintingStyle.stroke;
-
-    // approximate arc path by drawing many small arcs/dashes
-    const int segments = 40;
-    final Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final double startAngle = -3.14 / 1.9;
-    final double sweep = 3.14 / 2.1;
-
-    for (int i = 0; i < segments; i++) {
-      final double dashStart = startAngle + (sweep / segments) * i + 0.01;
-      final double dashSweep = (sweep / segments) * 0.6;
-      canvas.drawArc(rect, dashStart, dashSweep, false, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
