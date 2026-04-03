@@ -116,7 +116,7 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       _isRetrying = false;
       _isBannerVisible = true;
       _wasConnected = true;
-      _bannerColor = AppColors.success;
+      _bannerColor = Colors.black;
       _bannerIcon = Icons.wifi_rounded;
       _bannerMessage = 'Back online';
     });
@@ -230,23 +230,23 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
                     elevation: 6,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
+                        horizontal: 18,
+                        vertical: 16,
                       ),
                       child: Row(
                         children: [
                           Icon(
                             _bannerIcon,
                             color: Colors.white,
-                            size: 20,
+                            size: 26,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _bannerMessage,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 14,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
