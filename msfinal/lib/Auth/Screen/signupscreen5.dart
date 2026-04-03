@@ -586,7 +586,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                         gradient: LinearGradient(
                           colors: [
                             AppColors.primary.withOpacity(0.03),
-                            AppColors.accent.withOpacity(0.03),
+                            AppColors.secondary.withOpacity(0.03),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,

@@ -249,7 +249,7 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primary.withOpacity(0.05),
-                      AppColors.accent.withOpacity(0.05),
+                      AppColors.secondary.withOpacity(0.05),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
