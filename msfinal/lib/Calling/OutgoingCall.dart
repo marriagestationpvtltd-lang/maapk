@@ -407,96 +407,104 @@ class _CallScreenState extends State<CallScreen> {
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16, bottom: 24),
-                  child: IconButton(
-                    onPressed: _minimizeCall,
-                    icon: const Icon(Icons.minimize, color: Colors.white, size: 28),
-                    tooltip: 'Minimize call',
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // When back button is pressed, minimize the call instead of closing
+        await _minimizeCall();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16, bottom: 24),
+                    child: IconButton(
+                      onPressed: _minimizeCall,
+                      icon: const Icon(Icons.minimize, color: Colors.white, size: 32),
+                      tooltip: 'Minimize call',
+                    ),
                   ),
                 ),
-              ),
-              // Ringing animation when call is ringing
-              if (_isCallRinging && widget.isOutgoingCall)
-                _buildRingingAnimation(),
+                // Ringing animation when call is ringing
+                if (_isCallRinging && widget.isOutgoingCall)
+                  _buildRingingAnimation(),
 
-              Icon(
-                _callActive
-                    ? Icons.phone_in_talk
-                    : (_isCallRinging ? Icons.phone_forwarded : Icons.phone),
-                color: Colors.white,
-                size: 80,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _callActive
-                    ? 'Connected with ${widget.otherUserName}'
-                    : (_isCallRinging
-                    ? 'Calling ${widget.otherUserName}...'
-                    : 'Connecting...'),
-                style: const TextStyle(color: Colors.white, fontSize: 22),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _callActive
-                    ? _format(_duration)
-                    : (_isCallRinging ? 'Ringing...' : 'Connecting...'),
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-              const SizedBox(height: 40),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Mute button (only enabled when call is active)
-                  IconButton(
-                    icon: Icon(
-                      _micMuted ? Icons.mic_off : Icons.mic,
-                      color: _callActive ? Colors.white : Colors.white30,
-                      size: 36,
-                    ),
-                    onPressed: _callActive ? () {
-                      setState(() => _micMuted = !_micMuted);
-                      _engine.muteLocalAudioStream(_micMuted);
-                    } : null,
-                  ),
-                  // End call button
-                  IconButton(
-                    icon: const Icon(Icons.call_end,
-                        color: Colors.red, size: 56),
-                    onPressed: _endCall,
-                  ),
-                  // Speaker button
-                  IconButton(
-                    icon: Icon(
-                      _speakerOn
-                          ? Icons.volume_up
-                          : Icons.volume_off,
-                      color: _callActive || _isCallRinging ? Colors.white : Colors.white30,
-                      size: 36,
-                    ),
-                    onPressed: (_callActive || _isCallRinging) ? _toggleSpeaker : null,
-                  ),
-                ],
-              ),
-              // Ringtone status indicator (optional)
-              if (_isPlayingRingtone && widget.isOutgoingCall)
-                Padding(
-                  padding: const EdgeInsets.only(top: 20),
-                  child: Text(
-                    'Playing ringtone ${_speakerOn ? '(Speaker)' : '(Earpiece)'}',
-                    style: const TextStyle(color: Colors.green, fontSize: 12),
-                  ),
+                Icon(
+                  _callActive
+                      ? Icons.phone_in_talk
+                      : (_isCallRinging ? Icons.phone_forwarded : Icons.phone),
+                  color: Colors.white,
+                  size: 80,
                 ),
-            ],
+                const SizedBox(height: 20),
+                Text(
+                  _callActive
+                      ? 'Connected with ${widget.otherUserName}'
+                      : (_isCallRinging
+                      ? 'Calling ${widget.otherUserName}...'
+                      : 'Connecting...'),
+                  style: const TextStyle(color: Colors.white, fontSize: 22),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _callActive
+                      ? _format(_duration)
+                      : (_isCallRinging ? 'Ringing...' : 'Connecting...'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 40),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Mute button (only enabled when call is active)
+                    IconButton(
+                      icon: Icon(
+                        _micMuted ? Icons.mic_off : Icons.mic,
+                        color: _callActive ? Colors.white : Colors.white30,
+                        size: 36,
+                      ),
+                      onPressed: _callActive ? () {
+                        setState(() => _micMuted = !_micMuted);
+                        _engine.muteLocalAudioStream(_micMuted);
+                      } : null,
+                    ),
+                    // End call button
+                    IconButton(
+                      icon: const Icon(Icons.call_end,
+                          color: Colors.red, size: 56),
+                      onPressed: _endCall,
+                    ),
+                    // Speaker button
+                    IconButton(
+                      icon: Icon(
+                        _speakerOn
+                            ? Icons.volume_up
+                            : Icons.volume_off,
+                        color: _callActive || _isCallRinging ? Colors.white : Colors.white30,
+                        size: 36,
+                      ),
+                      onPressed: (_callActive || _isCallRinging) ? _toggleSpeaker : null,
+                    ),
+                  ],
+                ),
+                // Ringtone status indicator (optional)
+                if (_isPlayingRingtone && widget.isOutgoingCall)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20),
+                    child: Text(
+                      'Playing ringtone ${_speakerOn ? '(Speaker)' : '(Earpiece)'}',
+                      style: const TextStyle(color: Colors.green, fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

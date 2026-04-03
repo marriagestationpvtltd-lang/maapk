@@ -376,10 +376,24 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // When back button is pressed during incoming video call
+        if (_callActive) {
+          // If call is active, minimize it
+          await _minimizeCall();
+        } else {
+          // If call is not yet accepted, reject it
+          await _rejectCall();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
+        ),
       ),
     );
   }
@@ -582,7 +596,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
             ),
             child: IconButton(
               onPressed: _minimizeCall,
-              icon: const Icon(Icons.minimize, color: Colors.white),
+              icon: const Icon(Icons.minimize, color: Colors.white, size: 24),
               tooltip: 'Minimize call',
             ),
           ),

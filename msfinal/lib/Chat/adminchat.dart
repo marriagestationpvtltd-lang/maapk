@@ -431,7 +431,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                       child: Text(
                         senderName,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: _lightTextColor,
                           fontWeight: FontWeight.w600,
                          ),
@@ -450,7 +450,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                           Text(
                             formattedTime,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: _lightTextColor,
                             ),
                           ),
@@ -501,7 +501,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                             data['message'],
                             style: TextStyle(
                               color: isMe ? Colors.white : _textColor,
-                              fontSize: 16,
+                              fontSize: 17,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
@@ -519,7 +519,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                             Text(
                               formattedTime,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: isMe ? Colors.white70 : _lightTextColor,
                               ),
                             ),
