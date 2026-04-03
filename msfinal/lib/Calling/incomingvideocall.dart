@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class IncomingVideoCallScreen extends StatefulWidget {
   final Map<String, dynamic> callData;
@@ -40,6 +43,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   bool _cameraOn = true;
   bool _frontCamera = true;
   bool _processing = false;
+  bool _foregroundServiceStarted = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -60,6 +64,22 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
+
+    // Cancel the call notification once the screen is mounted and visible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cancelCallNotification();
+    });
+  }
+
+  void _cancelCallNotification() {
+    try {
+      // Cancel the video call notification (ID: 1002)
+      final plugin = FlutterLocalNotificationsPlugin();
+      plugin.cancel(1002);
+      debugPrint('✅ Cancelled video call notification after screen mounted');
+    } catch (e) {
+      debugPrint('Error cancelling video call notification: $e');
+    }
   }
 
   void _listenForCallCancelled() {
@@ -161,16 +181,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       _ringTimer?.cancel();
 
       // Permissions
-      if (!(await Permission.microphone.request()).isGranted) {
-        print('❌ Microphone permission denied');
-        _end();
-        return;
-      }
-      if (_isVideoCall && !(await Permission.camera.request()).isGranted) {
-        print('❌ Camera permission denied');
-        _end();
-        return;
-      }
+        if (!(await Permission.microphone.request()).isGranted) {
+          print('❌ Microphone permission denied');
+          await _end();
+          return;
+        }
+        if (_isVideoCall && !(await Permission.camera.request()).isGranted) {
+          print('❌ Camera permission denied');
+          await _end();
+          return;
+        }
 
       print('✅ Permissions granted');
 
@@ -206,6 +226,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           onJoinChannelSuccess: (connection, elapsed) {
             print('✅ Joined channel successfully');
             setState(() => _joined = true);
+            unawaited(_startForegroundService());
           },
           onUserJoined: (connection, remoteUid, elapsed) {
             print('👤 Remote user joined: $remoteUid');
@@ -243,6 +264,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
 
       await _engine.enableAudio();
+      await _engine.setEnableSpeakerphone(_speakerOn);
       if (_isVideoCall) {
         print('📹 Enabling video...');
         await _engine.enableVideo();
@@ -276,7 +298,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     } catch (e) {
       print('❌ Accept error: $e');
       debugPrint('Accept error $e');
-      _end();
+      await _end();
     } finally {
       _processing = false;
     }
@@ -300,7 +322,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       recipientUid: '0',
       channelName: _channel,
     );
-    _end();
+    await _end();
   }
 
   // ================= MISSED =================
@@ -319,7 +341,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= DECLINE CALL =================
@@ -335,7 +357,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= END =================
@@ -361,17 +383,19 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
+    if (_joined) {
+      await _engine.leaveChannel();
+    }
     if (_engineInitialized) {
-      if (_joined) {
-        await _engine.leaveChannel();
-      }
       await _engine.release();
     }
+    await _stopForegroundService();
 
-    _end();
+    await _end();
   }
 
-  void _end() {
+  Future<void> _end() async {
+    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -735,5 +759,26 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: _isVideoCall ? 'video' : 'audio',
+      otherUserName: _callerName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 }

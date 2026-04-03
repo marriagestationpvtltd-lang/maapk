@@ -69,4 +69,22 @@ class CallForegroundServiceManager {
       return false;
     }
   }
+
+  static Future<void> startOngoingCall({
+    required String callType,
+    required String otherUserName,
+    required String callId,
+  }) async {
+    await startCallService(
+      callType: callType,
+      callerName: otherUserName,
+      callId: callId,
+      isIncoming: false,
+    );
+    await updateCallNotification(
+      callType: callType,
+      callerName: otherUserName,
+      isOngoing: true,
+    );
+  }
 }

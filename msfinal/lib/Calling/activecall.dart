@@ -5,6 +5,7 @@ import 'tokengenerator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
+import 'call_foreground_service.dart';
 
 class ActiveCallScreen extends StatefulWidget {
   final String channel;
@@ -36,6 +37,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   bool _joined = false;
   bool _micMuted = false;
   bool _speakerOn = false;
+  bool _foregroundServiceStarted = false;
   Timer? _callTimer;
   Duration _duration = Duration.zero;
   int _callStartTime = 0;
@@ -112,6 +114,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           print('✅ Active call joined');
           setState(() => _joined = true);
           _syncOverlayState();
+          unawaited(_startForegroundService());
         },
         onUserOffline: (conn, remoteUid, reason) {
           print('👋 Remote user left');
@@ -164,10 +167,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     final wasMinimized = CallOverlayManager().isMinimized;
 
     _callTimer?.cancel();
-    if (_engineInitialized) {
-      if (_joined) await _engine.leaveChannel();
-      await _engine.release();
-    }
+    if (_joined) await _engine.leaveChannel();
+    if (_engineInitialized) await _engine.release();
+    await _stopForegroundService();
 
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -183,7 +185,29 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   void dispose() {
     _callTimer?.cancel();
+    unawaited(_stopForegroundService());
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (widget.channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'audio',
+      otherUserName: widget.recipientName,
+      callId: widget.channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 
   @override
