@@ -779,9 +779,10 @@ String usertye = '';
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '💍',
-                style: TextStyle(fontSize: 28),
+              const Icon(
+                Icons.diamond_outlined,
+                color: Colors.white70,
+                size: 28,
               ),
             ],
           ),
@@ -1358,7 +1359,8 @@ String usertye = '';
             onTap: () async {
               final prefs = await SharedPreferences.getInstance();
               final userDataString = prefs.getString('user_data');
-              final userData = jsonDecode(userDataString!);
+              if (userDataString == null) return;
+              final userData = jsonDecode(userDataString);
               final myUserId = int.tryParse(userData['id'].toString());
               if (docstatus == 'approved') {
                 Navigator.push(context, MaterialPageRoute(
@@ -1547,7 +1549,8 @@ String usertye = '';
                                     await SharedPreferences.getInstance();
                                 final userDataString =
                                     prefs.getString('user_data');
-                                final userData = jsonDecode(userDataString!);
+                                if (userDataString == null) return;
+                                final userData = jsonDecode(userDataString);
                                 final myUserId = int.tryParse(
                                     userData['id'].toString());
                                 if (docstatus == 'approved') {
