@@ -31,7 +31,7 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
   bool _wasConnected = true;
   bool _isRefreshScheduled = false;
   String _bannerMessage = '';
-  Color _bannerColor = AppColors.error;
+  Color _bannerColor = AppColors.textSecondary;
   IconData _bannerIcon = Icons.wifi_off_rounded;
 
   @override

@@ -87,7 +87,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
     try {
       if (widget.onRetry != null) {
-        await Future.sync(widget.onRetry!);
+        await widget.onRetry!();
       } else if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
