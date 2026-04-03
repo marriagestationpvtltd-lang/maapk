@@ -503,7 +503,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           onPressed: _debugFirebaseData,
           child: const Icon(Icons.bug_report),
         ),
-      ),
     );
   }
 
