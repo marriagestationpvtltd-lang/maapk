@@ -178,7 +178,7 @@ class ProfileService {
         },
       );
 
-       if (response.statusCode == 200) {
+      if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(json.decode(response.body));
         if (result['status'] == 'success') {
           final senderName = await NotificationInboxService.getCurrentUserDisplayName();

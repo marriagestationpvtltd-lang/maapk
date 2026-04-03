@@ -47,7 +47,8 @@ class _MatrimonyNotificationPageState
       return;
     }
 
-    final userData = jsonDecode(userDataString);
+    final safeUserDataString = userDataString!;
+    final userData = jsonDecode(safeUserDataString);
     final userId = userData["id"].toString();
 
     try {
@@ -287,8 +288,7 @@ class _MatrimonyNotificationPageState
   }
 
   Future<void> _sendReminder(Map<String, dynamic> notification) async {
-    final requestRecipientId = notification['recipient_id']?.toString() ??
-        notification['related_user_id']?.toString();
+    final requestRecipientId = _notificationUserId(notification);
     if (requestRecipientId == null || requestRecipientId.isEmpty) {
       return;
     }
@@ -457,6 +457,12 @@ class _MatrimonyNotificationPageState
       displayName: item['sender_name']?.toString(),
       fallbackId: item['sender_id']?.toString(),
     );
+  }
+
+  String? _notificationUserId(Map<String, dynamic> notification) {
+    return notification['recipient_id']?.toString() ??
+        notification['related_user_id']?.toString() ??
+        notification['sender_id']?.toString();
   }
 
   String _cleanName(String? value, {String? fallbackId}) {
@@ -633,8 +639,7 @@ class _MatrimonyNotificationPageState
                                           await _markAsRead(notif['id']);
                                         }
 
-                                        final userId = notif['related_user_id']?.toString() ??
-                                            notif['sender_id']?.toString();
+                                        final userId = _notificationUserId(notif);
                                         if (userId == null || userId.isEmpty) {
                                           return;
                                         }
