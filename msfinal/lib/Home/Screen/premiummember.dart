@@ -8,6 +8,7 @@ import 'package:ms2026/otherprofile/otherprofileview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Models/masterdata.dart';
 import '../../main.dart';
+import '../../ReUsable/loading_widgets.dart';
 
 class PaidUsersListPage extends StatefulWidget {
   final int userId;
@@ -20,6 +21,7 @@ class PaidUsersListPage extends StatefulWidget {
 class _PaidUsersListPageState extends State<PaidUsersListPage> {
   List<dynamic> _users = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String _errorMessage = '';
   bool _hasMore = true;
   int _currentPage = 1;
@@ -1587,11 +1589,16 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
       body: RefreshIndicator(
         color: Color(0xFFEA4935),
         onRefresh: () async {
+          setState(() => _isRefreshing = true);
           await _fetchUsers(reset: true);
+          if (mounted) setState(() => _isRefreshing = false);
         },
-        child: _isDesktop
-            ? _buildDesktopLayout(filteredUsers, hasUsers)
-            : _buildMobileLayout(filteredUsers, hasUsers),
+        child: ShimmerLoading(
+          isLoading: _isRefreshing,
+          child: _isDesktop
+              ? _buildDesktopLayout(filteredUsers, hasUsers)
+              : _buildMobileLayout(filteredUsers, hasUsers),
+        ),
       ),
       floatingActionButton: _isDesktop
           ? null

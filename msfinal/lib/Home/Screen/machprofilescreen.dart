@@ -8,6 +8,7 @@ import '../../Auth/Screen/signupscreen10.dart';
 import '../../main.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../pushnotification/pushservice.dart';
+import '../../ReUsable/loading_widgets.dart';
 
 class MatchedProfilesPagee extends StatefulWidget {
   final int currentUserId;
@@ -26,6 +27,7 @@ class MatchedProfilesPagee extends StatefulWidget {
 class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
   List<dynamic> _matchedProfiles = [];
   bool _isLoading = false;
+  bool _isRefreshing = false;
   String _errorMessage = '';
   bool _isBlurred = true;
   final String _apiUrl = 'https://digitallami.com/Api2/match.php';
@@ -59,11 +61,15 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
     }
   }
 
-  Future<void> _fetchMatchedProfiles() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+  Future<void> _fetchMatchedProfiles({bool isRefresh = false}) async {
+    if (!isRefresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    } else {
+      setState(() => _errorMessage = '');
+    }
 
     try {
       final response = await http.post(
@@ -786,9 +792,15 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
               : _matchedProfiles.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
-            onRefresh: _fetchMatchedProfiles,
+            onRefresh: () async {
+              setState(() => _isRefreshing = true);
+              await _fetchMatchedProfiles(isRefresh: true);
+              if (mounted) setState(() => _isRefreshing = false);
+            },
             color: Color(0xFFEA4935),
-            child: SingleChildScrollView(
+            child: ShimmerLoading(
+              isLoading: _isRefreshing,
+              child: SingleChildScrollView(
               child: Column(
                 children: [
                   // Header with stats
@@ -915,6 +927,7 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
                 ],
               ),
             ),
+          ),
           ),
 
           // Popup message

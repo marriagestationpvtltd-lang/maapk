@@ -716,7 +716,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         child: Container(
                           padding: EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: Color(0xFFD32F2F),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.verified, color: Colors.white, size: 20),

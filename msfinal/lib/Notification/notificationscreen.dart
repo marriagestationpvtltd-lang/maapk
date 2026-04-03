@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../otherenew/othernew.dart';
 import '../pushnotification/pushservice.dart';
+import '../ReUsable/loading_widgets.dart';
 import 'notification_inbox_service.dart';
 
 class MatrimonyNotificationPage extends StatefulWidget {
@@ -25,6 +26,7 @@ class _MatrimonyNotificationPageState
 
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
   final String _baseUrl = "https://digitallami.com/Api2";
   final String _requestUrl = "https://digitallami.com/request/request_list.php";
 
@@ -521,8 +523,14 @@ class _MatrimonyNotificationPageState
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _fetchNotifications,
-              child: Padding(
+              onRefresh: () async {
+                setState(() => _isRefreshing = true);
+                await _fetchNotifications();
+                if (mounted) setState(() => _isRefreshing = false);
+              },
+              child: ShimmerLoading(
+                isLoading: _isRefreshing,
+                child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
@@ -765,6 +773,7 @@ class _MatrimonyNotificationPageState
                   ],
                 ),
               ),
+            ),
             ),
     );
   }

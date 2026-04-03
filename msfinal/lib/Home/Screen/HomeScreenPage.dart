@@ -19,6 +19,7 @@ import '../../Models/masterdata.dart';
 import 'package:http/http.dart' as http;
 
 import '../../Notification/notificationscreen.dart';
+import '../../Notification/notification_inbox_service.dart';
 import '../../Package/PackageScreen.dart';
 import '../../Search/SearchPage.dart';
 import '../../main.dart';
@@ -30,6 +31,7 @@ import '../../purposal/purposalScreen.dart';
 import '../../purposal/purposalservice.dart';
 import '../../purposal/requestcard.dart' show showUpgradeDialog;
 import '../../service/Service_chat.dart';
+import '../../ReUsable/loading_widgets.dart';
 import 'machprofilescreen.dart';
 
 // Cache data structure for better performance
@@ -83,6 +85,12 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   // Lazy loading flags
   bool _premiumMembersLoaded = false;
   bool _otherServicesLoaded = false;
+
+  // Notification count
+  int _unreadNotificationCount = 0;
+
+  // Pull-to-refresh shimmer flag
+  bool _isRefreshing = false;
 
 
   Future<void> _checkDocumentStatus() async {
@@ -151,14 +159,35 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     }
   }
 
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      final notifications = await NotificationInboxService.loadNotifications();
+      final count = notifications.where((n) {
+        final isRead = n['is_read'];
+        return isRead == null || isRead == 0 || isRead == false;
+      }).length;
+      if (mounted) {
+        setState(() => _unreadNotificationCount = count);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _refreshAllData() async {
-    await Future.wait([
-      fetchMatchedProfiles(),
-      _checkDocumentStatus(),
-      _fetchPremiumMembers(),
-      _fetchOtherServices(),
-      _fetchShortlistedProfiles(),
-    ]);
+    setState(() => _isRefreshing = true);
+    // Clear cache so fresh data is fetched
+    _cache.clear();
+    try {
+      await Future.wait([
+        fetchMatchedProfiles(),
+        _checkDocumentStatus(),
+        _fetchPremiumMembers(),
+        _fetchOtherServices(),
+        _fetchShortlistedProfiles(),
+        _loadUnreadNotificationCount(),
+      ]);
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
   }
 
   Future<void> fetchMatchedProfiles() async {
@@ -560,6 +589,7 @@ String usertye = '';
     fetchMatchedProfiles();
     _checkDocumentStatus();
     _fetchShortlistedProfiles();
+    _loadUnreadNotificationCount();
     OnlineStatusService().start();
     // Removed auto-refresh timer for better performance
     // User can manually refresh using pull-to-refresh
@@ -582,7 +612,9 @@ String usertye = '';
           body: RefreshIndicator(
             color: const Color(0xFFF90E18),
             onRefresh: _refreshAllData,
-            child: SingleChildScrollView(
+            child: ShimmerLoading(
+              isLoading: _isRefreshing,
+              child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,6 +744,7 @@ String usertye = '';
                 ],
               ),
             ),
+          ),
           ),
         );
       },
@@ -871,11 +904,7 @@ String usertye = '';
           },
         ),
         const SizedBox(width: 6),
-        _buildAppBarIcon(
-          icon: Icons.notifications_rounded,
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => MatrimonyNotificationPage())),
-        ),
+        _buildNotificationBell(),
         const SizedBox(width: 16),
       ],
     );
@@ -894,6 +923,45 @@ String usertye = '';
         icon: Icon(icon, color: const Color(0xFFF90E18), size: 20),
         onPressed: onPressed,
       ),
+    );
+  }
+
+  Widget _buildNotificationBell() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _buildAppBarIcon(
+          icon: Icons.notifications_rounded,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MatrimonyNotificationPage()),
+          ).then((_) => _loadUnreadNotificationCount()),
+        ),
+        if (_unreadNotificationCount > 0)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF90E18),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                _unreadNotificationCount > 99
+                    ? '99+'
+                    : '$_unreadNotificationCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 

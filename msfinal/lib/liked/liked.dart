@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
+import 'package:ms2026/ReUsable/loading_widgets.dart';
 import '../Models/masterdata.dart';
 import '../main.dart';
 import '../pushnotification/pushservice.dart';
@@ -22,6 +23,7 @@ class FavoritePeoplePage extends StatefulWidget {
 class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
   List<dynamic> favoritePeople = [];
   bool isLoading = true;
+  bool _isRefreshing = false;
   String errorMessage = '';
   String? token;
   int? userId;
@@ -93,7 +95,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     }
   }
 
-  Future<void> _fetchFavoritePeople() async {
+  Future<void> _fetchFavoritePeople({bool isRefresh = false}) async {
     if (userId == null) {
       setState(() {
         isLoading = false;
@@ -102,10 +104,14 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
       return;
     }
 
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
-    });
+    if (!isRefresh) {
+      setState(() {
+        isLoading = true;
+        errorMessage = '';
+      });
+    } else {
+      setState(() => errorMessage = '');
+    }
 
     try {
       final url = Uri.parse(
@@ -579,7 +585,11 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
       body: Stack(
         children: [
           RefreshIndicator(
-            onRefresh: _fetchFavoritePeople,
+            onRefresh: () async {
+              setState(() => _isRefreshing = true);
+              await _fetchFavoritePeople(isRefresh: true);
+              if (mounted) setState(() => _isRefreshing = false);
+            },
             child: isLoading
                 ? const Center(
               child: CircularProgressIndicator(
@@ -610,7 +620,9 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                 ],
               ),
             )
-                : favoritePeople.isEmpty
+                : ShimmerLoading(
+                  isLoading: _isRefreshing,
+                  child: favoritePeople.isEmpty
                 ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -640,6 +652,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                     context, favoritePeople[index], index);
               },
             ),
+                ),
           ),
           if (_showPopup)
             Positioned(
