@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:ms2026/constant/app_colors.dart';
+import 'package:ms2026/constant/app_dimensions.dart';
+import 'package:ms2026/constant/app_text_styles.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({Key? key}) : super(key: key);
@@ -106,20 +109,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         break;
     }
 
-    // Check if field has error and should show it
     if (_hasError(fieldName) && _shouldShowError(fieldName)) {
-      return Colors.red;
+      return AppColors.error;
     }
 
-    // Return green if has data, black if empty
-    return value.isNotEmpty ? const Color(0xFF48A54C) : Colors.black;
+    return value.isNotEmpty ? AppColors.success : AppColors.borderDark;
   }
 
   void showMessage(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : const Color(0xFFE64B37),
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -229,14 +230,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     bool obscureText = false,
     Widget? suffixIcon,
   }) {
+    final bool hasError = _hasError(fieldName) && _shouldShowError(fieldName);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          height: 55,
-          padding: const EdgeInsets.symmetric(horizontal: 15),
+          height: AppDimensions.buttonHeightMD,
+          padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingMD),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: AppDimensions.borderRadiusMD,
             border: Border.all(
               color: _getBorderColor(fieldName),
               width: 1.6,
@@ -244,49 +246,44 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           child: Row(
             children: [
-              // Add appropriate icon based on field type
               if (fieldName == 'email')
                 Icon(
                   Icons.email,
-                  color: (_hasError(fieldName) && _shouldShowError(fieldName))
-                      ? Colors.red
-                      : Colors.black,
+                  color: hasError ? AppColors.error : AppColors.textPrimary,
+                  size: AppDimensions.iconSizeSM,
                 )
               else if (fieldName == 'otp')
                 Icon(
                   Icons.lock_clock,
-                  color: (_hasError(fieldName) && _shouldShowError(fieldName))
-                      ? Colors.red
-                      : Colors.black,
+                  color: hasError ? AppColors.error : AppColors.textPrimary,
+                  size: AppDimensions.iconSizeSM,
                 )
               else if (fieldName == 'password')
                   Icon(
                     Icons.lock,
-                    color: (_hasError(fieldName) && _shouldShowError(fieldName))
-                        ? Colors.red
-                        : Colors.black,
+                    color: hasError ? AppColors.error : AppColors.textPrimary,
+                    size: AppDimensions.iconSizeSM,
                   ),
               if (fieldName == 'email' || fieldName == 'otp' || fieldName == 'password')
-                const SizedBox(width: 10),
+                const SizedBox(width: AppDimensions.spacingSM),
               Expanded(
                 child: TextField(
                   focusNode: _focusNodes[fieldName],
                   controller: controller,
                   keyboardType: keyboardType,
                   obscureText: obscureText,
+                  style: AppTextStyles.bodyLarge,
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     hintText: labelText,
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      color: (_hasError(fieldName) && _shouldShowError(fieldName))
-                          ? Colors.red.withOpacity(0.7)
-                          : Colors.black54,
+                    hintStyle: AppTextStyles.bodyMedium.copyWith(
+                      color: hasError
+                          ? AppColors.error.withOpacity(0.7)
+                          : AppColors.textHint,
                     ),
                     suffixIcon: suffixIcon,
                   ),
                   onChanged: (value) {
-                    // Clear error when user starts typing
                     if (value.isNotEmpty && _hasError(fieldName)) {
                       setState(() {
                         _fieldErrors[fieldName] = false;
@@ -298,16 +295,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ],
           ),
         ),
-        // Show error text below the field
-        if (_hasError(fieldName) && _shouldShowError(fieldName))
+        if (hasError)
           Padding(
-            padding: const EdgeInsets.only(left: 15, top: 4),
+            padding: const EdgeInsets.only(left: AppDimensions.spacingMD, top: AppDimensions.spacingXS),
             child: Text(
               _getErrorMessage(fieldName),
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-              ),
+              style: AppTextStyles.caption.copyWith(color: AppColors.error),
             ),
           ),
       ],
@@ -318,27 +311,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 40),
-        const Text(
+        const SizedBox(height: AppDimensions.spacingXXL),
+        Text(
           "Forgot Password",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFE64B37),
-          ),
+          style: AppTextStyles.heading1.copyWith(color: AppColors.primary),
         ),
-        const SizedBox(height: 10),
-        const Text(
+        const SizedBox(height: AppDimensions.spacingSM),
+        Text(
           "Enter your email address to receive OTP",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: AppDimensions.spacingXXL),
 
-        // Email field
         _buildTextField(
           fieldName: 'email',
           controller: emailController,
@@ -346,59 +331,46 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           keyboardType: TextInputType.emailAddress,
         ),
 
-        const SizedBox(height: 30),
+        const SizedBox(height: AppDimensions.spacingXL),
 
         // Send OTP button
-        Container(
+        SizedBox(
           width: double.infinity,
-          height: 55,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE64B37), Color(0xFFE62255)],
+          height: AppDimensions.buttonHeightMD,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: AppDimensions.borderRadiusMD,
             ),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: ElevatedButton(
-            onPressed: loading ? null : sendOtp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+            child: ElevatedButton(
+              onPressed: loading ? null : sendOtp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppDimensions.borderRadiusMD,
+                ),
               ),
-            ),
-            child: loading
-                ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-                : const Text(
-              "Send OTP",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
+              child: loading
+                  ? const SizedBox(
+                height: AppDimensions.iconSizeMD,
+                width: AppDimensions.iconSizeMD,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.white,
+                ),
+              )
+                  : Text("Send OTP", style: AppTextStyles.whiteLabel),
             ),
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: AppDimensions.spacingMD),
 
-        // Back to login
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
-            "Back to Login",
-            style: TextStyle(
-              color: Color(0xFFE64B37),
-              fontSize: 14,
-            ),
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          child: Text("Back to Login", style: AppTextStyles.primaryLabel),
         ),
       ],
     );
@@ -408,27 +380,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 40),
-        const Text(
+        const SizedBox(height: AppDimensions.spacingXXL),
+        Text(
           "Verify OTP",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFE64B37),
-          ),
+          style: AppTextStyles.heading1.copyWith(color: AppColors.primary),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppDimensions.spacingSM),
         Text(
           "OTP sent to ${emailController.text}",
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: AppDimensions.spacingXXL),
 
-        // OTP field
         _buildTextField(
           fieldName: 'otp',
           controller: otpController,
@@ -436,62 +400,51 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           keyboardType: TextInputType.number,
         ),
 
-        const SizedBox(height: 30),
+        const SizedBox(height: AppDimensions.spacingXL),
 
         // Verify OTP button
-        Container(
+        SizedBox(
           width: double.infinity,
-          height: 55,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE64B37), Color(0xFFE62255)],
+          height: AppDimensions.buttonHeightMD,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: AppDimensions.borderRadiusMD,
             ),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: ElevatedButton(
-            onPressed: loading ? null : verifyOtp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+            child: ElevatedButton(
+              onPressed: loading ? null : verifyOtp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppDimensions.borderRadiusMD,
+                ),
               ),
-            ),
-            child: loading
-                ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-                : const Text(
-              "Verify OTP",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
+              child: loading
+                  ? const SizedBox(
+                height: AppDimensions.iconSizeMD,
+                width: AppDimensions.iconSizeMD,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.white,
+                ),
+              )
+                  : Text("Verify OTP", style: AppTextStyles.whiteLabel),
             ),
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: AppDimensions.spacingMD),
 
-        // Resend OTP
         TextButton(
           onPressed: loading ? null : sendOtp,
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
           child: Text(
             loading ? "Resending..." : "Resend OTP",
-            style: const TextStyle(
-              color: Color(0xFFE64B37),
-              fontSize: 14,
-            ),
+            style: AppTextStyles.primaryLabel,
           ),
         ),
 
-        // Back to email
         TextButton(
           onPressed: () {
             setState(() {
@@ -501,13 +454,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               _fieldTouched['otp'] = false;
             });
           },
-          child: const Text(
-            "Change Email",
-            style: TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-            ),
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+          child: Text("Change Email", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
         ),
       ],
     );
@@ -519,27 +467,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 40),
-        const Text(
+        const SizedBox(height: AppDimensions.spacingXXL),
+        Text(
           "Reset Password",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFE64B37),
-          ),
+          style: AppTextStyles.heading1.copyWith(color: AppColors.primary),
         ),
-        const SizedBox(height: 10),
-        const Text(
+        const SizedBox(height: AppDimensions.spacingSM),
+        Text(
           "Create a new password for your account",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: AppDimensions.spacingXXL),
 
-        // New Password field
         _buildTextField(
           fieldName: 'password',
           controller: passwordController,
@@ -549,8 +489,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             icon: Icon(
               _passwordVisible ? Icons.visibility : Icons.visibility_off,
               color: (_hasError('password') && _shouldShowError('password'))
-                  ? Colors.red
-                  : Colors.black54,
+                  ? AppColors.error
+                  : AppColors.textSecondary,
+              size: AppDimensions.iconSizeSM,
             ),
             onPressed: () {
               setState(() {
@@ -560,62 +501,51 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
 
-        const SizedBox(height: 10),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
+        const SizedBox(height: AppDimensions.spacingSM),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingMD),
           child: Text(
             "Password must be at least 6 characters",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
+            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
         ),
 
-        const SizedBox(height: 30),
+        const SizedBox(height: AppDimensions.spacingXL),
 
         // Reset Password button
-        Container(
+        SizedBox(
           width: double.infinity,
-          height: 55,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE64B37), Color(0xFFE62255)],
+          height: AppDimensions.buttonHeightMD,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: AppDimensions.borderRadiusMD,
             ),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: ElevatedButton(
-            onPressed: loading ? null : resetPassword,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+            child: ElevatedButton(
+              onPressed: loading ? null : resetPassword,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppDimensions.borderRadiusMD,
+                ),
               ),
-            ),
-            child: loading
-                ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-                : const Text(
-              "Reset Password",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
+              child: loading
+                  ? const SizedBox(
+                height: AppDimensions.iconSizeMD,
+                width: AppDimensions.iconSizeMD,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.white,
+                ),
+              )
+                  : Text("Reset Password", style: AppTextStyles.whiteLabel),
             ),
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: AppDimensions.spacingMD),
 
-        // Back to OTP
         TextButton(
           onPressed: () {
             setState(() {
@@ -625,13 +555,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               _fieldTouched['password'] = false;
             });
           },
-          child: const Text(
-            "Back to OTP",
-            style: TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-            ),
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+          child: Text("Back to OTP", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
         ),
       ],
     );
@@ -640,12 +565,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFE64B37)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () {
             if (step == ForgotStep.email) {
               Navigator.pop(context);
@@ -662,15 +587,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               : step == ForgotStep.otp
               ? "Verify OTP"
               : "Reset Password",
-          style: const TextStyle(
-            color: Color(0xFFE64B37),
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.heading4.copyWith(color: AppColors.primary),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spacingMD,
+            vertical: AppDimensions.spacingSM,
+          ),
           child: step == ForgotStep.email
               ? _buildEmailStep()
               : step == ForgotStep.otp
