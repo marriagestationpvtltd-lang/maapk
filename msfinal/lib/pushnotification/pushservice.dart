@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -6,6 +7,12 @@ import '../Calling/callmanager.dart';
 
 class NotificationService {
   static final CallManager _callManager = CallManager();
+
+  // Queue for notification requests to prevent race conditions
+  static final List<_NotificationRequest> _notificationQueue = [];
+  static bool _isProcessingQueue = false;
+  static const int _maxQueueSize = 100;
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   static Stream<Map<String, dynamic>> get incomingCalls => _callManager.incomingCalls;
   static Stream<Map<String, dynamic>> get callResponses => _callManager.callResponses;
@@ -164,13 +171,102 @@ class NotificationService {
 
 
 
-// Send any notification using your existing PHP API
+// Send any notification using your existing PHP API with queue and retry
   static Future<bool> sendNotification({
     required String userId,
     required String title,
     required String body,
     required Map<String, dynamic> data,
   }) async {
+    // Validate inputs
+    if (userId.isEmpty || userId.length > 100) {
+      print('❌ Invalid userId: must be non-empty and <= 100 chars');
+      return false;
+    }
+    if (title.length > 100) {
+      print('❌ Invalid title: must be <= 100 chars');
+      return false;
+    }
+    if (body.length > 500) {
+      print('❌ Invalid body: must be <= 500 chars');
+      return false;
+    }
+
+    // Check queue size limit
+    if (_notificationQueue.length >= _maxQueueSize) {
+      print('❌ Notification queue full (${_notificationQueue.length}/$_maxQueueSize), dropping request');
+      return false;
+    }
+
+    final request = _NotificationRequest(
+      userId: userId,
+      title: title,
+      body: body,
+      data: data,
+    );
+
+    // Add to queue
+    _notificationQueue.add(request);
+
+    // Start queue processor if not already running
+    _processQueueSequentially();
+
+    // Wait for this request to be processed with timeout
+    try {
+      return await request.completer.future.timeout(
+        _requestTimeout,
+        onTimeout: () {
+          print('⏰ Notification request timeout for user: $userId');
+          return false;
+        },
+      );
+    } catch (e) {
+      print('❌ Error waiting for notification result: $e');
+      return false;
+    }
+  }
+
+  // Process queue sequentially to avoid race conditions
+  static Future<void> _processQueueSequentially() async {
+    if (_isProcessingQueue) return;
+
+    _isProcessingQueue = true;
+
+    while (_notificationQueue.isNotEmpty) {
+      final request = _notificationQueue.removeAt(0);
+
+      // Throttle: wait 300ms between requests
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Send notification
+      final success = await _sendNotificationDirect(
+        userId: request.userId,
+        title: request.title,
+        body: request.body,
+        data: request.data,
+        retryCount: 0,
+      );
+
+      // Complete the request
+      if (!request.completer.isCompleted) {
+        request.completer.complete(success);
+      }
+    }
+
+    _isProcessingQueue = false;
+  }
+
+  // Direct notification send with retry logic
+  static Future<bool> _sendNotificationDirect({
+    required String userId,
+    required String title,
+    required String body,
+    required Map<String, dynamic> data,
+    int retryCount = 0,
+  }) async {
+    const maxRetries = 3;
+    const timeoutDuration = Duration(seconds: 10);
+
     try {
       final response = await http.post(
         Uri.parse(_notificationUrl),
@@ -180,17 +276,61 @@ class NotificationService {
           'body': body,
           'data': json.encode(data),
         },
-      );
+      ).timeout(timeoutDuration);
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        return result['status'] == true;
+        if (result['status'] == true) {
+          print('✅ Notification sent successfully to user: $userId');
+          return true;
+        }
       }
+
+      // Retry on failure
+      if (retryCount < maxRetries) {
+        print('⚠️ Notification failed, retrying (${retryCount + 1}/$maxRetries)...');
+        await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+        return await _sendNotificationDirect(
+          userId: userId,
+          title: title,
+          body: body,
+          data: data,
+          retryCount: retryCount + 1,
+        );
+      }
+
+      print('❌ Notification failed after $maxRetries retries');
       return false;
     } catch (e) {
       print('❌ Error sending notification: $e');
+
+      // Retry on exception
+      if (retryCount < maxRetries) {
+        print('⚠️ Retrying after error (${retryCount + 1}/$maxRetries)...');
+        await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+        return await _sendNotificationDirect(
+          userId: userId,
+          title: title,
+          body: body,
+          data: data,
+          retryCount: retryCount + 1,
+        );
+      }
+
       return false;
     }
+  }
+
+  // Clear the queue if needed
+  static void clearQueue() {
+    // Complete all pending requests with false
+    for (final request in _notificationQueue) {
+      if (!request.completer.isCompleted) {
+        request.completer.complete(false);
+      }
+    }
+    _notificationQueue.clear();
+    _isProcessingQueue = false;
   }
 
   static Future<bool> sendProfileViewNotification({
@@ -427,4 +567,20 @@ class NotificationService {
     );
   }
 
+}
+
+// Internal class for queuing notification requests
+class _NotificationRequest {
+  final String userId;
+  final String title;
+  final String body;
+  final Map<String, dynamic> data;
+  final Completer<bool> completer = Completer<bool>();
+
+  _NotificationRequest({
+    required this.userId,
+    required this.title,
+    required this.body,
+    required this.data,
+  });
 }
