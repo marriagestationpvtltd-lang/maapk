@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constant/app_colors.dart';
+import '../constant/app_dimensions.dart';
+import '../constant/app_text_styles.dart';
 
 // Standard Text Field
 class CustomTextField extends StatelessWidget {
@@ -52,13 +54,9 @@ class CustomTextField extends StatelessWidget {
         if (labelText != null) ...[
           Text(
             labelText!,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+            style: AppTextStyles.labelMedium,
           ),
-          const SizedBox(height: 8),
+          AppSpacing.verticalSM,
         ],
         TextFormField(
           controller: controller,
@@ -73,10 +71,7 @@ class CustomTextField extends StatelessWidget {
           maxLength: maxLength,
           focusNode: focusNode,
           autofocus: autofocus,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.textPrimary,
-          ),
+          style: AppTextStyles.bodyLarge,
           decoration: InputDecoration(
             hintText: hintText,
             errorText: errorText,
@@ -87,31 +82,31 @@ class CustomTextField extends StatelessWidget {
             filled: true,
             fillColor: enabled ? AppColors.white : AppColors.background,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+              horizontal: AppDimensions.spacingMD,
+              vertical: AppDimensions.spacingMD,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.border, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.error, width: 1),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.error, width: 2),
             ),
             disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
             ),
           ),
@@ -199,10 +194,7 @@ class SearchField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      style: const TextStyle(
-        fontSize: 16,
-        color: AppColors.textPrimary,
-      ),
+      style: AppTextStyles.bodyLarge,
       decoration: InputDecoration(
         hintText: hintText ?? 'Search...',
         prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
@@ -218,19 +210,19 @@ class SearchField extends StatelessWidget {
         filled: true,
         fillColor: AppColors.white,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+          horizontal: AppDimensions.spacingMD,
+          vertical: AppDimensions.spacingMD,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
       ),
@@ -267,22 +259,15 @@ class CustomDropdownField<T> extends StatelessWidget {
         if (labelText != null) ...[
           Text(
             labelText!,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+            style: AppTextStyles.labelMedium,
           ),
-          const SizedBox(height: 8),
+          AppSpacing.verticalSM,
         ],
         DropdownButtonFormField<T>(
           value: value,
           items: items,
           onChanged: onChanged,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.textPrimary,
-          ),
+          style: AppTextStyles.bodyLarge,
           decoration: InputDecoration(
             hintText: hintText,
             errorText: errorText,
@@ -292,23 +277,23 @@ class CustomDropdownField<T> extends StatelessWidget {
             filled: true,
             fillColor: AppColors.white,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+              horizontal: AppDimensions.spacingMD,
+              vertical: AppDimensions.spacingMD,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.border, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
               borderSide: const BorderSide(color: AppColors.error, width: 1),
             ),
           ),
