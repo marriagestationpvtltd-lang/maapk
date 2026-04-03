@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
-import 'Chat/ChatdetailsScreen.dart';
+import 'Chat/call_overlay_manager.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
 import 'Startup/onboarding.dart';
@@ -248,8 +249,34 @@ Future<void> _configureIOSNotifications() async {
   }
 }
 
+Future<String> _resolveCurrentUserName() async {
+  final prefs = await SharedPreferences.getInstance();
+  final cachedFirstName = prefs.getString('user_firstName')?.trim();
+  if (cachedFirstName != null && cachedFirstName.isNotEmpty) {
+    return cachedFirstName;
+  }
+
+  final rawUserData = prefs.getString('user_data');
+  if (rawUserData == null || rawUserData.isEmpty) {
+    return 'User';
+  }
+
+  try {
+    final userData = json.decode(rawUserData) as Map<String, dynamic>;
+    final firstName = userData['firstName']?.toString().trim() ?? '';
+    final lastName = userData['lastName']?.toString().trim() ?? '';
+    final fullName = [firstName, lastName]
+        .where((value) => value.isNotEmpty)
+        .join(' ')
+        .trim();
+    return fullName.isEmpty ? 'User' : fullName;
+  } catch (_) {
+    return 'User';
+  }
+}
+
 // Handle notification actions (Accept/Decline from notification)
-void _handleNotificationAction(NotificationResponse response) {
+Future<void> _handleNotificationAction(NotificationResponse response) async {
   final payload = response.payload;
   final actionId = response.actionId;
 
@@ -273,23 +300,33 @@ void _handleNotificationAction(NotificationResponse response) {
       // Navigate to call page
       _navigateToCallPage(data);
 
-      // Notify the system that call was accepted
-      NotificationService.triggerCallResponse({
-        ...data,
-        'action': 'accept',
-      });
-
     } else if (actionId == 'decline_call') {
       debugPrint('❌ Call declined from notification');
 
       // Cancel the ringing notification
       flutterLocalNotificationsPlugin.cancel(notificationId);
 
-      // Notify the system that call was declined
-      NotificationService.triggerCallResponse({
-        ...data,
-        'action': 'decline',
-      });
+      final callerId = data['callerId']?.toString();
+      if (callerId != null && callerId.isNotEmpty) {
+        final recipientName = await _resolveCurrentUserName();
+        if (isVideoCall) {
+          await NotificationService.sendVideoCallResponseNotification(
+            callerId: callerId,
+            recipientName: recipientName,
+            accepted: false,
+            recipientUid: '0',
+            channelName: data['channelName']?.toString(),
+          );
+        } else {
+          await NotificationService.sendCallResponseNotification(
+            callerId: callerId,
+            recipientName: recipientName,
+            accepted: false,
+            recipientUid: '0',
+            channelName: data['channelName']?.toString(),
+          );
+        }
+      }
 
     } else if (type == 'call' || type == 'video_call') {
       // Regular notification tap (for missed calls)
@@ -416,6 +453,7 @@ void _navigateToCallPage(Map<String, dynamic> data) {
         if (isVideoCall) {
           currentState.push(
             MaterialPageRoute(
+              settings: const RouteSettings(name: activeCallRouteName),
               fullscreenDialog: true,
               builder: (context) => IncomingVideoCallScreen(
                 callData: data,
@@ -425,6 +463,7 @@ void _navigateToCallPage(Map<String, dynamic> data) {
         } else {
           currentState.push(
             MaterialPageRoute(
+              settings: const RouteSettings(name: activeCallRouteName),
               fullscreenDialog: true,
               builder: (context) => IncomingCallScreen(
                 callData: data,
@@ -622,8 +661,10 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       navigatorObservers: [appRouteTracker],
       builder: (context, child) {
-        return GlobalConnectivityHandler(
-          child: child ?? const SizedBox.shrink(),
+        return CallOverlayWrapper(
+          child: GlobalConnectivityHandler(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: const SplashScreen(),

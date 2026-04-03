@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'dart:async';
 
 import '../Notification/notification_inbox_service.dart';
 import '../Calling/callmanager.dart';
@@ -20,12 +19,18 @@ class NotificationService {
   static const String _notificationUrl = 'https://digitallami.com/Api2/send_notification.php';
 
   // Stream for call responses (listen in outgoing call screen)
-  static final StreamController<Map<String, dynamic>> _callResponseController = StreamController.broadcast();
-
-  // Trigger response event (call this from FCM onMessage handler)
   static void triggerCallResponse(Map<String, dynamic> data) {
-    if (data['type'] == 'call_response') {
-      _callResponseController.add(data);
+    const callEventTypes = {
+      'call_response',
+      'video_call_response',
+      'call_ended',
+      'video_call_ended',
+      'missed_call',
+      'missed_video_call',
+    };
+
+    if (callEventTypes.contains(data['type'])) {
+      _callManager.triggerCallResponse(data);
     }
   }
 
@@ -250,6 +255,7 @@ class NotificationService {
     required String recipientName,
     required bool accepted,
     required String recipientUid,
+    String? channelName,
   }) async {
     return await sendNotification(
       userId: callerId, // Send back to the CALLER
@@ -262,6 +268,7 @@ class NotificationService {
         'accepted': accepted.toString(),
         'recipientName': recipientName,
         'recipientUid': recipientUid,
+        if (channelName != null) 'channelName': channelName,
         'timestamp': DateTime.now().toIso8601String(),
         'click_action': 'FLUTTER_NOTIFICATION_CLICK',
       },
@@ -291,6 +298,7 @@ class NotificationService {
     required String callerName,
     required String reason,
     required int duration,
+    String? channelName,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -303,6 +311,7 @@ class NotificationService {
         'callerName': callerName,
         'reason': reason,
         'duration': duration.toString(),
+        if (channelName != null) 'channelName': channelName,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
@@ -353,6 +362,7 @@ class NotificationService {
     required String recipientName,
     required bool accepted,
     required String recipientUid,
+    String? channelName,
   }) async {
     return await sendNotification(
       userId: callerId, // Send back to the CALLER
@@ -365,6 +375,7 @@ class NotificationService {
         'accepted': accepted.toString(),
         'recipientName': recipientName,
         'recipientUid': recipientUid,
+        if (channelName != null) 'channelName': channelName,
         'isVideoCall': 'true',
         'timestamp': DateTime.now().toIso8601String(),
         'click_action': 'FLUTTER_NOTIFICATION_CLICK',
@@ -396,6 +407,7 @@ class NotificationService {
     required String callerName,
     required String reason,
     required int duration,
+    String? channelName,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -408,6 +420,7 @@ class NotificationService {
         'callerName': callerName,
         'reason': reason,
         'duration': duration.toString(),
+        if (channelName != null) 'channelName': channelName,
         'isVideoCall': 'true',
         'timestamp': DateTime.now().toIso8601String(),
       },

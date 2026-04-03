@@ -16,7 +16,6 @@ import '../service/Service_chat.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
-import 'call_overlay_manager.dart';
 
 class ChatListScreen extends StatefulWidget {
   ChatListScreen({super.key});
@@ -443,33 +442,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
       );
     }
 
-    return CallOverlayWrapper(
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF075E54),
-          elevation: 0,
-          title: Row(
-            children: [
-              const Text('Chats', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              const SizedBox(width: 12),
-              if (_totalUnreadConversations > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF25D366),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$_totalUnreadConversations',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF075E54),
+        elevation: 0,
+        title: Row(
+          children: [
+            const Text('Chats', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 12),
+            if (_totalUnreadConversations > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_totalUnreadConversations',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
+        ),
           iconTheme: const IconThemeData(color: Colors.white),
           actions: [
             IconButton(

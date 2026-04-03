@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart'; // Add this import
+import '../Chat/ChatlistScreen.dart';
+import '../Chat/call_overlay_manager.dart';
+import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
@@ -35,6 +38,7 @@ class CallScreen extends StatefulWidget {
 
 class _CallScreenState extends State<CallScreen> {
   late RtcEngine _engine;
+  bool _engineInitialized = false;
 
   int _localUid = 0;
   int? _remoteUid;
@@ -56,6 +60,7 @@ class _CallScreenState extends State<CallScreen> {
   // Audio player for ringtone
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
+  StreamSubscription<Map<String, dynamic>>? _responseSubscription;
 
   // Call history tracking
   String? _callHistoryId;
@@ -66,6 +71,7 @@ class _CallScreenState extends State<CallScreen> {
     super.initState();
     _ringtonePlayer = AudioPlayer();
     _setupAudioPlayer();
+    _listenForCallResponse();
     _startCall();
   }
 
@@ -91,6 +97,62 @@ class _CallScreenState extends State<CallScreen> {
     // For error handling in newer versions
 
 
+  }
+
+  void _listenForCallResponse() {
+    _responseSubscription = NotificationService.callResponses.listen((data) {
+      final type = data['type']?.toString();
+      final channelName = data['channelName']?.toString();
+      if (channelName != null && channelName.isNotEmpty && channelName != _channel) {
+        return;
+      }
+
+      if (type == 'call_response') {
+        final accepted = data['accepted'] == 'true';
+        if (!accepted) {
+          _endCall();
+        }
+      } else if (type == 'call_ended') {
+        _endCall();
+      }
+    });
+  }
+
+  void _initializeOverlay() {
+    CallOverlayManager().startCall(
+      callType: 'audio',
+      otherUserName: widget.otherUserName,
+      otherUserId: widget.otherUserId,
+      currentUserId: widget.currentUserId,
+      currentUserName: widget.currentUserName,
+      onMaximize: () {
+        navigatorKey.currentState?.popUntil(
+          (route) => route.settings.name == activeCallRouteName || route.isFirst,
+        );
+      },
+      onEnd: _endCall,
+    );
+    _syncOverlayState();
+  }
+
+  void _syncOverlayState() {
+    final statusText = _callActive
+        ? 'Connected'
+        : (_isCallRinging ? 'Calling...' : 'Connecting...');
+    CallOverlayManager().updateCallState(
+      statusText: statusText,
+      duration: _duration,
+    );
+  }
+
+  Future<void> _minimizeCall() async {
+    CallOverlayManager().minimizeCall();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: minimizedCallHostRouteName),
+        builder: (_) => ChatListScreen(),
+      ),
+    );
   }
   // ================= PLAY RINGTONE =================
   Future<void> _playRingtone() async {
@@ -171,6 +233,8 @@ class _CallScreenState extends State<CallScreen> {
         _channel = _channel.substring(0, 64);
       }
 
+      _initializeOverlay();
+
       // Token
       _token = await AgoraTokenService.getToken(
         channelName: _channel,
@@ -209,19 +273,23 @@ class _CallScreenState extends State<CallScreen> {
         appId: AgoraTokenService.appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      _engineInitialized = true;
 
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
+            _syncOverlayState();
           },
           onUserJoined: (_, uid, __) {
             setState(() {
               _remoteUid = uid;
               _isCallRinging = false; // Stop ringing state
+              _callActive = true;
             });
             _stopRingtone(); // Stop ringtone when user joins
             _startCallTimer(); // Start call duration timer
+            _syncOverlayState();
           },
           onUserOffline: (_, __, ___) {
             _endCall();
@@ -267,9 +335,13 @@ class _CallScreenState extends State<CallScreen> {
   void _startCallTimer() {
     _timeoutTimer?.cancel();
     _callActive = true;
+    _syncOverlayState();
 
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _duration += const Duration(seconds: 1));
+      if (mounted) {
+        setState(() => _duration += const Duration(seconds: 1));
+        _syncOverlayState();
+      }
     });
   }
 
@@ -277,54 +349,50 @@ class _CallScreenState extends State<CallScreen> {
   Future<void> _endCall() async {
     if (_ending) return;
     _ending = true;
+    final wasMinimized = CallOverlayManager().isMinimized;
 
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
+    _responseSubscription?.cancel();
 
     await _stopRingtone();
 
-    // Update call history
-    if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
-      CallStatus callStatus;
-      if (_callActive && _remoteUid != null) {
-        // Call was connected
-        callStatus = CallStatus.completed;
-      } else if (_remoteUid == null) {
-        // Call was not answered
-        callStatus = CallStatus.missed;
-      } else {
-        // Call was cancelled
-        callStatus = CallStatus.cancelled;
-      }
-
-      await CallHistoryService.updateCallEnd(
-        callId: _callHistoryId!,
-        status: callStatus,
-        duration: _duration.inSeconds,
-      );
-    }
-
-    if (_engine != null) {
+    if (_engineInitialized) {
       try {
-        await _engine!.leaveChannel();
-        await _engine!.release();
+        await _engine.leaveChannel();
+        await _engine.release();
       } catch (e) {
         debugPrint("Engine cleanup error: $e");
       }
     }
 
-    if (mounted) Navigator.pop(context);
+    if (wasMinimized) {
+      navigatorKey.currentState?.popUntil(
+        (route) => route.settings.name == activeCallRouteName || route.isFirst,
+      );
+    }
+
+    CallOverlayManager().reset();
+
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
 
   void _exit() {
-    if (mounted) Navigator.pop(context);
+    CallOverlayManager().reset();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   // ================= TOGGLE SPEAKER =================
   Future<void> _toggleSpeaker() async {
     setState(() => _speakerOn = !_speakerOn);
-    await _engine.setEnableSpeakerphone(_speakerOn);
+    if (_engineInitialized) {
+      await _engine.setEnableSpeakerphone(_speakerOn);
+    }
 
     // Update ringtone volume based on speaker mode
     if (_isPlayingRingtone) {
@@ -346,6 +414,17 @@ class _CallScreenState extends State<CallScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16, bottom: 24),
+                  child: IconButton(
+                    onPressed: _minimizeCall,
+                    icon: const Icon(Icons.minimize, color: Colors.white, size: 28),
+                    tooltip: 'Minimize call',
+                  ),
+                ),
+              ),
               // Ringing animation when call is ringing
               if (_isCallRinging && widget.isOutgoingCall)
                 _buildRingingAnimation(),
@@ -454,6 +533,7 @@ class _CallScreenState extends State<CallScreen> {
   void dispose() {
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
+    _responseSubscription?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
     super.dispose();
   }
