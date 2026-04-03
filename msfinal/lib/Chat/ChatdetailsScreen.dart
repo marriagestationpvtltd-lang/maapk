@@ -1471,6 +1471,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     setState(() => _isLoadingMore = true);
 
+    // Save current scroll position before loading
+    final double currentScrollPosition = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : 0.0;
+    final int oldMessageCount = _cachedMessages.length;
+
     try {
       final moreMessages = await _firestore
           .collection('chatRooms')
@@ -1499,6 +1505,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         // Add new messages at the beginning (they are older)
         _cachedMessages.insertAll(0, newMessages.reversed);
         _isLoadingMore = false;
+      });
+
+      // Restore scroll position after new messages are added
+      // This prevents jumping to the top when older messages load
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          final int newMessageCount = _cachedMessages.length;
+          final int addedMessages = newMessageCount - oldMessageCount;
+
+          // Estimate average message height (adjust based on your UI)
+          // This includes message bubble + padding + date headers
+          const double estimatedMessageHeight = 80.0;
+          final double scrollOffset = addedMessages * estimatedMessageHeight;
+
+          // Jump to adjusted position to maintain user's view
+          _scrollController.jumpTo(currentScrollPosition + scrollOffset);
+        }
       });
     } catch (e) {
       print('Error loading more messages: $e');
