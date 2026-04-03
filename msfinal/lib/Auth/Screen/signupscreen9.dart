@@ -266,7 +266,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const FamilyDetailsPage(),
+            pageBuilder: (context, animation, secondaryAnimation) => FamilyDetailsPage(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(1.0, 0.0);
               const end = Offset.zero;
