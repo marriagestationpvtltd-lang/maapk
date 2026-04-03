@@ -33,6 +33,9 @@ class AdminChatScreen extends StatefulWidget {
 }
 
 class _AdminChatScreenState extends State<AdminChatScreen> {
+  static const String _adminUserId = '1';
+  static const String _adminUserName = 'Admin';
+
   final TextEditingController _controller = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
   final AudioRecorder _record = AudioRecorder();
@@ -112,8 +115,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   Stream<QuerySnapshot> _messagesStream() {
     return FirebaseFirestore.instance
         .collection('adminchat')
-        .where('senderid', whereIn: [widget.senderID, "1"])
-        .where('receiverid', whereIn: [widget.senderID, "1"])
+        .where('senderid', whereIn: [widget.senderID, _adminUserId])
+        .where('receiverid', whereIn: [widget.senderID, _adminUserId])
         .orderBy('timestamp', descending: false)
         .snapshots();
   }
@@ -155,7 +158,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 // Determine sender and receiver based on user type
     final senderId = widget.senderID;
     final receiverId =
-        widget.isAdmin ? "user_id_placeholder" : "1"; // Admin ID is "1"
+        widget.isAdmin ? "user_id_placeholder" : _adminUserId;
 
     final Map<String, dynamic> messageData = {
       'message': content,
@@ -367,8 +370,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     String formattedTime =
         ts != null ? DateFormat('HH:mm').format(ts.toDate()) : '';
 
-// Determine if message is from admin (admin ID is "1")
-    bool isFromAdmin = data['senderid'] == "1";
+// Determine if message is from admin
+    bool isFromAdmin = data['senderid'] == _adminUserId;
     String senderName =
         isFromAdmin ? "Admin Support" : (isMe ? "You" : widget.userName);
 
@@ -550,7 +553,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         if (snap.hasData && snap.data!.exists) {
           var replyData = snap.data!.data() as Map<String, dynamic>;
           bool isReplyFromMe = replyData['senderid'] == widget.senderID;
-          bool isReplyFromAdmin = replyData['senderid'] == "1";
+          bool isReplyFromAdmin = replyData['senderid'] == _adminUserId;
           String senderName = isReplyFromAdmin
               ? "Admin"
               : (isReplyFromMe ? "You" : widget.userName);
@@ -1061,16 +1064,23 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     child: TextButton.icon(
                       onPressed: () {
                         if (userId.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AdminChatScreen(
-                                senderID: widget.isAdmin ? userId : widget.senderID,
-                                userName: displayName,
-                                isAdmin: widget.isAdmin,
+                          // If user is already in this chat (viewing their own card), scroll to input
+                          // If admin is viewing a user's card, open that user's chat
+                          if (!widget.isAdmin) {
+                            _messageFocusNode.requestFocus();
+                            _scrollToBottom();
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AdminChatScreen(
+                                  senderID: userId,
+                                  userName: displayName,
+                                  isAdmin: widget.isAdmin,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         }
                       },
                       icon: Icon(Icons.chat_bubble_outline,
@@ -1193,8 +1203,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     builder: (context) => CallScreen(
                       currentUserId: widget.senderID,
                       currentUserName: widget.userName,
-                      otherUserId: "1",
-                      otherUserName: "Admin",
+                      otherUserId: _adminUserId,
+                      otherUserName: _adminUserName,
                     ),
                   ),
                 );
@@ -1210,8 +1220,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     builder: (context) => VideoCallScreen(
                       currentUserId: widget.senderID,
                       currentUserName: widget.userName,
-                      otherUserId: "1",
-                      otherUserName: "Admin",
+                      otherUserId: _adminUserId,
+                      otherUserName: _adminUserName,
                     ),
                   ),
                 );
