@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../Chat/ChatlistScreen.dart';
+import '../Chat/call_overlay_manager.dart';
+import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 
@@ -50,6 +53,40 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _recipientName = widget.callData['recipientName'] ?? 'You';
   }
 
+  void _initializeOverlay() {
+    CallOverlayManager().startCall(
+      callType: 'audio',
+      otherUserName: _callerName,
+      otherUserId: _callerId,
+      currentUserId: '',
+      currentUserName: _recipientName,
+      onMaximize: () {
+        navigatorKey.currentState?.popUntil(
+          (route) => route.settings.name == activeCallRouteName || route.isFirst,
+        );
+      },
+      onEnd: _endCall,
+    );
+    _syncOverlayState();
+  }
+
+  void _syncOverlayState() {
+    CallOverlayManager().updateCallState(
+      statusText: _callActive ? 'Connected' : 'Incoming call',
+      duration: _duration,
+    );
+  }
+
+  Future<void> _minimizeCall() async {
+    CallOverlayManager().minimizeCall();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: minimizedCallHostRouteName),
+        builder: (_) => ChatListScreen(),
+      ),
+    );
+  }
+
   // ================= ACCEPT CALL =================
   Future<void> _acceptCall() async {
     if (_processing) return;
@@ -69,6 +106,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         recipientName: _recipientName,
         accepted: true,
         recipientUid: _localUid.toString(),
+        channelName: _channel,
       );
 
       // Token
@@ -116,6 +154,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
 
       setState(() => _callActive = true);
+      _initializeOverlay();
     } catch (e) {
       debugPrint('Accept error $e');
       _end();
@@ -127,8 +166,23 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   // ================= TIMERS =================
   void _startCallTimer() {
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _duration += const Duration(seconds: 1));
+      if (mounted) {
+        setState(() => _duration += const Duration(seconds: 1));
+        _syncOverlayState();
+      }
     });
+  }
+
+  Future<void> _rejectCall() async {
+    _ringTimer?.cancel();
+    await NotificationService.sendCallResponseNotification(
+      callerId: _callerId,
+      recipientName: _recipientName,
+      accepted: false,
+      recipientUid: '0',
+      channelName: _channel,
+    );
+    _end();
   }
 
   // ================= MISSED =================
@@ -150,6 +204,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         callerName: _recipientName,
         reason: 'ended',
         duration: _duration.inSeconds,
+        channelName: _channel,
       );
     }
 
@@ -162,7 +217,16 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 
   void _end() {
-    if (mounted) Navigator.pop(context);
+    final wasMinimized = CallOverlayManager().isMinimized;
+    if (wasMinimized) {
+      navigatorKey.currentState?.popUntil(
+        (route) => route.settings.name == activeCallRouteName || route.isFirst,
+      );
+    }
+    CallOverlayManager().reset();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   // ================= UI =================
@@ -171,38 +235,56 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _callActive ? Icons.phone_in_talk : Icons.phone,
-                color: Colors.white,
-                size: 80,
+        child: Column(
+          children: [
+            if (_callActive)
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16, top: 12),
+                  child: IconButton(
+                    onPressed: _minimizeCall,
+                    icon: const Icon(Icons.minimize, color: Colors.white, size: 28),
+                    tooltip: 'Minimize call',
+                  ),
+                ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                _callActive ? 'Connected' : 'Incoming call',
-                style: const TextStyle(color: Colors.white70),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _callActive ? Icons.phone_in_talk : Icons.phone,
+                      color: Colors.white,
+                      size: 80,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _callActive ? 'Connected' : 'Incoming call',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _callerName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _callActive
+                          ? _format(_duration)
+                          : 'Voice Call',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 40),
+                    _callActive ? _activeControls() : _incomingControls(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _callerName,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _callActive
-                    ? _format(_duration)
-                    : 'Voice Call',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 40),
-              _callActive ? _activeControls() : _incomingControls(),
-            ],
+            ),
           ),
         ),
       ),
@@ -213,7 +295,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
       _btn(Icons.call, Colors.green, _acceptCall),
-      _btn(Icons.call_end, Colors.red, _end),
+      _btn(Icons.call_end, Colors.red, _rejectCall),
     ],
   );
 

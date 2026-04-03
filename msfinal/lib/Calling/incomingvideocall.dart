@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../Chat/ChatlistScreen.dart';
+import '../Chat/call_overlay_manager.dart';
+import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 
@@ -55,6 +58,40 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         (widget.callData['isVideoCall']?.toString() == 'true');
   }
 
+  void _initializeOverlay() {
+    CallOverlayManager().startCall(
+      callType: _isVideoCall ? 'video' : 'audio',
+      otherUserName: _callerName,
+      otherUserId: _callerId,
+      currentUserId: '',
+      currentUserName: _recipientName,
+      onMaximize: () {
+        navigatorKey.currentState?.popUntil(
+          (route) => route.settings.name == activeCallRouteName || route.isFirst,
+        );
+      },
+      onEnd: _endCall,
+    );
+    _syncOverlayState();
+  }
+
+  void _syncOverlayState() {
+    CallOverlayManager().updateCallState(
+      statusText: _callActive ? 'Connected' : 'Incoming call',
+      duration: _duration,
+    );
+  }
+
+  Future<void> _minimizeCall() async {
+    CallOverlayManager().minimizeCall();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: minimizedCallHostRouteName),
+        builder: (_) => ChatListScreen(),
+      ),
+    );
+  }
+
   // ================= ACCEPT CALL =================
 // ================= ACCEPT CALL =================
   Future<void> _acceptCall() async {
@@ -90,6 +127,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         recipientName: _recipientName,
         accepted: true,
         recipientUid: _localUid.toString(),
+        channelName: _channel,
       );
 
       // Token
@@ -179,6 +217,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
       print('✅ Call active');
       setState(() => _callActive = true);
+      _initializeOverlay();
     } catch (e) {
       print('❌ Accept error: $e');
       debugPrint('Accept error $e');
@@ -190,8 +229,23 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   // ================= TIMERS =================
   void _startCallTimer() {
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _duration += const Duration(seconds: 1));
+      if (mounted) {
+        setState(() => _duration += const Duration(seconds: 1));
+        _syncOverlayState();
+      }
     });
+  }
+
+  Future<void> _rejectCall() async {
+    _ringTimer?.cancel();
+    await NotificationService.sendVideoCallResponseNotification(
+      callerId: _callerId,
+      recipientName: _recipientName,
+      accepted: false,
+      recipientUid: '0',
+      channelName: _channel,
+    );
+    _end();
   }
 
   // ================= MISSED =================
@@ -213,6 +267,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         callerName: _recipientName,
         reason: 'ended',
         duration: _duration.inSeconds,
+        channelName: _channel,
       );
     }
 
@@ -225,7 +280,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   }
 
   void _end() {
-    if (mounted) Navigator.pop(context);
+    final wasMinimized = CallOverlayManager().isMinimized;
+    if (wasMinimized) {
+      navigatorKey.currentState?.popUntil(
+        (route) => route.settings.name == activeCallRouteName || route.isFirst,
+      );
+    }
+    CallOverlayManager().reset();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   // ================= TOGGLE CAMERA =================
@@ -319,7 +383,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
               _acceptRejectButton(
                 icon: Icons.call_end,
                 color: Colors.red,
-                onPressed: _end,
+                onPressed: _rejectCall,
                 size: 60,
               ),
             ],
@@ -431,6 +495,22 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
                   style: const TextStyle(color: Colors.white),
                 ),
               ],
+            ),
+          ),
+        ),
+
+        Positioned(
+          top: 40,
+          right: 20,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: IconButton(
+              onPressed: _minimizeCall,
+              icon: const Icon(Icons.minimize, color: Colors.white),
+              tooltip: 'Minimize call',
             ),
           ),
         ),

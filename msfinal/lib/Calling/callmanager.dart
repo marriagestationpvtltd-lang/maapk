@@ -39,8 +39,15 @@ class CallManager {
     print('📱 CallManager: Call response triggered: $data');
     _callResponseController.add(data);
 
-    // Clear current call data if rejected
-    if (data['type'] == 'call_response' && data['accepted'] == 'false') {
+    final type = data['type']?.toString();
+    final isRejected = (type == 'call_response' || type == 'video_call_response') &&
+        data['accepted'] == 'false';
+    final isEnded = type == 'call_ended' ||
+        type == 'video_call_ended' ||
+        type == 'missed_call' ||
+        type == 'missed_video_call';
+
+    if (isRejected || isEnded) {
       _currentCallData = null;
     }
   }
