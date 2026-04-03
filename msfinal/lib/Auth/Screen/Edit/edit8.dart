@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../ReUsable/dropdownwidget.dart';
 import '../../../service/updatepage.dart';
 
 
@@ -1717,7 +1718,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
   }
 
   // Multi-select dropdown widget
-// Multi-select dropdown widget
+// Multi-select dropdown widget with search
   Widget _buildMultiSelectDropdown({
     required List<String> selectedItems,
     required List<String> options,
@@ -1732,18 +1733,31 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: showError && (errorText?.isNotEmpty ?? false)
-                  ? Colors.red
-                  : const Color(0xFF48A54C),
-              width: 1.6,
+        InkWell(
+          onTap: disabled || isLoading ? null : () {
+            _showMultiSelectDialog(
+              context: context,
+              selectedItems: selectedItems,
+              options: options,
+              hint: hint,
+              onChanged: onChanged,
+              title: title ?? hint,
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: showError && (errorText?.isNotEmpty ?? false)
+                    ? Colors.red
+                    : selectedItems.isEmpty
+                        ? Colors.black
+                        : const Color(0xFF48A54C),
+                width: 1.6,
+              ),
             ),
-          ),
-          child: ExpansionTile(
-            title: Row(
+            child: Row(
               children: [
                 if (isLoading) ...[
                   SizedBox(
@@ -1764,79 +1778,19 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
                         ? hint
                         : selectedItems.contains('Any')
                         ? "Any (All options)"
-                        : "${selectedItems.length} selected: ${selectedItems.join(", ").length > 30 ? "${selectedItems.join(", ").substring(0, 30)}..." : selectedItems.join(", ")}",
+                        : "${selectedItems.length} selected",
                     style: TextStyle(
                       fontSize: 16,
                       color: isLoading || selectedItems.isEmpty ? Colors.black54 : Colors.black87,
                     ),
                   ),
                 ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: disabled || isLoading ? Colors.grey : Colors.black54,
+                ),
               ],
             ),
-            onExpansionChanged: (expanded) {
-              if (disabled || isLoading) return;
-            },
-            children: isLoading
-                ? [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFE64B37)),
-                  ),
-                ),
-              ),
-            ]
-                : [
-              // Constrained height to show only 4 items
-              ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxHeight: 56 * 4.5, // Approximately 4.5 items (4 full + partial 5th)
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (context, index) {
-                    final option = options[index];
-                    bool isSelected = selectedItems.contains(option);
-                    bool isAnySelected = selectedItems.contains('Any');
-
-                    return CheckboxListTile(
-                      title: Text(option),
-                      value: isSelected,
-                      onChanged: disabled ? null : (bool? value) {
-                        List<String> newSelection = List.from(selectedItems);
-
-                        if (option == 'Any') {
-                          if (value == true) {
-                            newSelection = ['Any'];
-                          } else {
-                            newSelection.remove('Any');
-                          }
-                        } else {
-                          if (value == true) {
-                            newSelection.remove('Any');
-                            newSelection.add(option);
-                          } else {
-                            newSelection.remove(option);
-                          }
-
-                          if (newSelection.isEmpty) {
-                            newSelection = ['Any'];
-                          }
-                        }
-
-                        onChanged(newSelection);
-                      },
-                      secondary: option == 'Any'
-                          ? const Icon(Icons.all_inclusive, color: Colors.blue)
-                          : null,
-                      activeColor: const Color(0xFFE64B37),
-                    );
-                  },
-                ),
-              ),
-            ],
           ),
         ),
         if (showError && (errorText?.isNotEmpty ?? false))
@@ -1851,6 +1805,35 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
             ),
           ),
       ],
+    );
+  }
+
+  void _showMultiSelectDialog({
+    required BuildContext context,
+    required List<String> selectedItems,
+    required List<String> options,
+    required String hint,
+    required Function(List<String>) onChanged,
+    required String title,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.75,
+          child: _MultiSelectBottomSheet(
+            selectedItems: selectedItems,
+            options: options,
+            title: title,
+            onChanged: onChanged,
+          ),
+        );
+      },
     );
   }
 
@@ -2314,5 +2297,188 @@ Navigator.pop(context);
   void dispose() {
     _otherExpectationsController.dispose();
     super.dispose();
+  }
+}
+
+// Multi-select bottom sheet with search
+class _MultiSelectBottomSheet extends StatefulWidget {
+  final List<String> selectedItems;
+  final List<String> options;
+  final String title;
+  final Function(List<String>) onChanged;
+
+  const _MultiSelectBottomSheet({
+    required this.selectedItems,
+    required this.options,
+    required this.title,
+    required this.onChanged,
+  });
+
+  @override
+  State<_MultiSelectBottomSheet> createState() => _MultiSelectBottomSheetState();
+}
+
+class _MultiSelectBottomSheetState extends State<_MultiSelectBottomSheet> {
+  late List<String> _currentSelection;
+  late List<String> _filteredOptions;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSelection = List.from(widget.selectedItems);
+    _filteredOptions = List.from(widget.options);
+    _searchController.addListener(_filterOptions);
+  }
+
+  void _filterOptions() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredOptions = widget.options
+          .where((option) => option.toLowerCase().contains(query))
+          .toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFE64B37),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Selected items chips
+            if (_currentSelection.isNotEmpty && !_currentSelection.contains('Any'))
+              SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _currentSelection.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final item = _currentSelection[index];
+                    return Chip(
+                      label: Text(item),
+                      backgroundColor: const Color(0xFFE64B37).withOpacity(0.1),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() {
+                          _currentSelection.remove(item);
+                          if (_currentSelection.isEmpty) {
+                            _currentSelection = ['Any'];
+                          }
+                        });
+                      },
+                      labelStyle: const TextStyle(fontSize: 13),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 12),
+
+            // Search field
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "Search...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Options list
+            Expanded(
+              child: ListView.builder(
+                itemCount: _filteredOptions.length,
+                itemBuilder: (context, index) {
+                  final option = _filteredOptions[index];
+                  final isSelected = _currentSelection.contains(option);
+
+                  return CheckboxListTile(
+                    title: Text(option),
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (option == 'Any') {
+                          if (value == true) {
+                            _currentSelection = ['Any'];
+                          } else {
+                            _currentSelection.remove('Any');
+                          }
+                        } else {
+                          if (value == true) {
+                            _currentSelection.remove('Any');
+                            _currentSelection.add(option);
+                          } else {
+                            _currentSelection.remove(option);
+                          }
+
+                          if (_currentSelection.isEmpty) {
+                            _currentSelection = ['Any'];
+                          }
+                        }
+                      });
+                    },
+                    secondary: option == 'Any'
+                        ? const Icon(Icons.all_inclusive, color: Colors.blue)
+                        : null,
+                    activeColor: const Color(0xFFE64B37),
+                  );
+                },
+              ),
+            ),
+
+            // Apply button
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  widget.onChanged(_currentSelection);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE64B37),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Apply (${_currentSelection.contains('Any') ? 'All' : _currentSelection.length} selected)',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
