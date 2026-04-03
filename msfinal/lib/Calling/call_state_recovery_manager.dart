@@ -103,29 +103,26 @@ class CallStateRecoveryManager {
     Widget callScreen;
 
     if (callState.status == CallStatus.ringing && callState.isIncoming) {
-      // Incoming call still ringing
+      // Incoming call still ringing - navigate to incoming call screen
       if (callState.callType == 'video') {
         callScreen = IncomingVideoCallScreen(
-          data: callData,
-          myId: callState.receiverId,
+          callData: callData,
         );
       } else {
         callScreen = IncomingCallScreen(
-          data: callData,
-          myId: callState.receiverId,
+          callData: callData,
         );
       }
     } else if (callState.status == CallStatus.active || callState.status == CallStatus.connecting) {
-      // Active or connecting call
+      // Call is already active/connecting - for now, treat as ringing to allow re-accept
+      // TODO: Create a proper "call in progress" recovery screen
       if (callState.callType == 'video') {
-        callScreen = VideoCallScreen(
-          data: callData,
-          myId: callState.isIncoming ? callState.receiverId : callState.callerId,
+        callScreen = IncomingVideoCallScreen(
+          callData: callData,
         );
       } else {
-        callScreen = ActiveCallScreen(
-          data: callData,
-          myId: callState.isIncoming ? callState.receiverId : callState.callerId,
+        callScreen = IncomingCallScreen(
+          callData: callData,
         );
       }
     } else {
