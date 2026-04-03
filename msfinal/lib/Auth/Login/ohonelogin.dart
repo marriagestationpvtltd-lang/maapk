@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ms2026/Auth/Login/LoginMain.dart';
 import 'package:ms2026/Auth/Screen/Signup.dart';
+import '../../ReUsable/terms_dialog.dart';
 
 class MobileLoginScreen extends StatelessWidget {
   const MobileLoginScreen({super.key});
@@ -151,8 +152,12 @@ class MobileLoginScreen extends StatelessWidget {
               children: [
                 const Text("Don't have an account?"),
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => IntroduceYourselfPage(),));
+                  onPressed: () async {
+                    final accepted = await TermsConditionsBottomSheet.show(context);
+                    if (!context.mounted) return;
+                    if (accepted) {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const IntroduceYourselfPage()));
+                    }
                   },
                   child: const Text('Register'),
                 ),
