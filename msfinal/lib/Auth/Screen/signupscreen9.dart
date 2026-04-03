@@ -237,12 +237,16 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         baseUrl: 'https://digitallami.com/Api2/save_partner_preference.php',
       );
 
+      // Extract cm values from height strings (e.g., "170 cm (5' 7")" -> "170")
+      final minHeightCm = _minHeight!.split(' ').first;
+      final maxHeightCm = _maxHeight!.split(' ').first;
+
       final result = await service.savePartnerPreference(
         userId: userId,
         ageFrom: _minAge!,
         ageTo: _maxAge!,
-        heightFrom: _minHeight!,
-        heightTo: _maxHeight!,
+        heightFrom: minHeightCm,
+        heightTo: maxHeightCm,
         maritalStatus: _selectedMaritalStatus.join(', '),
         religion: _selectedReligion.join(', '),
         community: _selectedCommunity.isNotEmpty ? _selectedCommunity.join(', ') : null,
@@ -280,11 +284,15 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
           ),
         );
       } else {
-        _showSnackBar(result['message'] ?? "Something went wrong", isError: true);
+        final errorMsg = result['message'] ?? "Something went wrong";
+        print('Partner preference save error: $errorMsg');
+        print('Result: $result');
+        _showSnackBar(errorMsg, isError: true);
       }
     } catch (e) {
       setState(() => _isSubmitting = false);
-      _showSnackBar(e.toString(), isError: true);
+      print('Partner preference save exception: $e');
+      _showSnackBar('Error: ${e.toString()}', isError: true);
     }
   }
 
