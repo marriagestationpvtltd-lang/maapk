@@ -2500,7 +2500,7 @@ String usertye = '';
       }
 
       final otherUserName =
-          'MS: ${request.memberid ?? ''} ${request.firstName ?? ''} ${request.lastName ?? ''}'
+          'MS ${request.memberid ?? ''} ${request.firstName ?? ''} ${request.lastName ?? ''}'
               .trim();
       final otherUserImage = _resolveApiImageUrl(request.profilePicture ?? '');
 
