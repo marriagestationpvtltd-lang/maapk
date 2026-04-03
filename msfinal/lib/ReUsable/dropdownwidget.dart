@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constant/app_colors.dart';
 
 class TypingDropdown<T> extends StatefulWidget {
   final bool showError;
@@ -9,6 +10,7 @@ class TypingDropdown<T> extends StatefulWidget {
   final void Function(T?) onChanged;
   final String hint;
   final String title;
+  final String? errorText;
 
   const TypingDropdown({
     Key? key,
@@ -19,6 +21,7 @@ class TypingDropdown<T> extends StatefulWidget {
     this.hint = "Select",
     required this.title,
     required this.showError,
+    this.errorText,
   }) : super(key: key);
 
 
@@ -79,35 +82,84 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 52,
-          decoration: BoxDecoration(
-            border:
-            Border.all(
-              color: hasError
-                  ? Colors.red
-                  : widget.selectedItem == null
-                  ? Colors.black
-                  : Colors.green,
-              width: 1.2,
-            ),
-            borderRadius: BorderRadius.circular(15),
+        // Label
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, left: 4),
+          child: Row(
+            children: [
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                '*',
+                style: TextStyle(
+                  color: AppColors.error,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          child:
-          InkWell(
-            borderRadius: BorderRadius.circular(15),
-            onTap: _openBottomSheet,
-            child: IgnorePointer(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: widget.hint,
-                  border: InputBorder.none,
-                  contentPadding:
-                  const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 14),
-                  suffixIcon:
-                  const Icon(Icons.keyboard_arrow_down),
+        ),
+        // Dropdown Field
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: hasError
+                    ? AppColors.error.withOpacity(0.1)
+                    : AppColors.shadowLight,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              border: Border.all(
+                color: hasError ? AppColors.error : AppColors.border,
+                width: hasError ? 2 : 1.5,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _openBottomSheet,
+              child: IgnorePointer(
+                child: TextField(
+                  controller: controller,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: widget.hint,
+                    hintStyle: const TextStyle(
+                      color: AppColors.textHint,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    suffixIcon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: hasError ? AppColors.error : AppColors.textSecondary,
+                      size: 24,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -115,17 +167,32 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
         ),
 
         /// ERROR TEXT
-        if (hasError)
+        if (hasError) ...[
+          const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.only(top: 6, left: 8),
-            child: Text(
-              "Please select ${widget.title}",
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-              ),
+            padding: const EdgeInsets.only(left: 4),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 14,
+                  color: AppColors.error,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    widget.errorText ?? "Please select ${widget.title}",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+        ],
       ],
     );
   }
@@ -190,7 +257,7 @@ class _BottomSheetContentState<T>
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFE64B37),
+                color: AppColors.primary,
               ),
             ),
 
@@ -204,11 +271,10 @@ class _BottomSheetContentState<T>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE64B37)
-                          .withOpacity(0.08),
+                      color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFFE64B37),
+                        color: AppColors.primary,
                       ),
                     ),
                     child: Row(
@@ -224,7 +290,7 @@ class _BottomSheetContentState<T>
                           child: const Icon(
                             Icons.close,
                             size: 16,
-                            color: Color(0xFFE64B37),
+                            color: AppColors.primary,
                           ),
                         )
                       ],

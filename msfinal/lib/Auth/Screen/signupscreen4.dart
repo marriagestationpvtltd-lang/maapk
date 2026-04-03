@@ -46,6 +46,9 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
   bool _isGettingLocation = false;
   bool _isLoading = false;
 
+  // Field errors
+  Map<String, String?> _fieldErrors = {};
+
   // Sample data for dropdowns
   List<String> _countryOptions = [];
   Map<String, int> _countryMap = {};
@@ -422,44 +425,92 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                   const SizedBox(height: 24),
 
                   // Willing to go abroad
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text(
-                      'Willing To Go Abroad?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: EnhancedRadioOption<bool>(
-                          label: 'Yes',
-                          value: true,
-                          groupValue: _willingToGoAbroad,
-                          onChanged: (value) {
-                            setState(() {
-                              _willingToGoAbroad = value;
-                            });
-                          },
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12, left: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Willing To Go Abroad?',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '*',
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EnhancedRadioOption<bool>(
-                          label: 'No',
-                          value: false,
-                          groupValue: _willingToGoAbroad,
-                          onChanged: (value) {
-                            setState(() {
-                              _willingToGoAbroad = value;
-                            });
-                          },
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: EnhancedRadioOption<bool>(
+                              label: 'Yes',
+                              value: true,
+                              groupValue: _willingToGoAbroad,
+                              onChanged: (value) {
+                                setState(() {
+                                  _willingToGoAbroad = value;
+                                  if (submitted) {
+                                    _fieldErrors['willingToGoAbroad'] = null;
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: EnhancedRadioOption<bool>(
+                              label: 'No',
+                              value: false,
+                              groupValue: _willingToGoAbroad,
+                              onChanged: (value) {
+                                setState(() {
+                                  _willingToGoAbroad = value;
+                                  if (submitted) {
+                                    _fieldErrors['willingToGoAbroad'] = null;
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ),
+                      if (submitted && _willingToGoAbroad == null) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 14,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Please select if willing to go abroad',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 20),
