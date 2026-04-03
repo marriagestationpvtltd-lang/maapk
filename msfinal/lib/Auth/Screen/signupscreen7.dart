@@ -10,6 +10,7 @@ import '../../ReUsable/dropdownwidget.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
+import '../../service/location_service.dart';
 import '../../service/updatepage.dart';
 
 class AstrologicDetailsPage extends StatefulWidget {
@@ -58,13 +59,6 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
   };
 
   // Dropdown options
-  final List<String> _countryOptions = [
-    'Nepal', 'India', 'USA', 'UK', 'Canada', 'Australia', 'Other'
-  ];
-  final List<String> _cityOptions = [
-    'Kathmandu', 'Pokhara', 'Lalitpur', 'Bharatpur', 'Biratnagar',
-    'Birgunj', 'Butwal', 'Dharan', 'Nepalgunj', 'Other'
-  ];
   final List<String> _monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -74,20 +68,28 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
   final List<String> _yearOptions =
       List.generate(100, (i) => (DateTime.now().year - 17 - i).toString());
 
-  // Zodiac data with symbols
+  // Dynamic location data (loaded from API – same as LivingStatusPage)
+  List<String> _countryOptions = [];
+  Map<String, int> _countryMap  = {};
+  List<String> _stateOptions    = [];
+  Map<String, int> _stateMap    = {};
+  bool _isLoadingCountries = false;
+  bool _isLoadingStates    = false;
+
+  // Zodiac data with symbols and Nepali names (राशि नाम)
   final List<Map<String, String>> _zodiacData = [
-    {'name': 'Aries',       'symbol': '♈', 'dates': 'Mar 21–Apr 19'},
-    {'name': 'Taurus',      'symbol': '♉', 'dates': 'Apr 20–May 20'},
-    {'name': 'Gemini',      'symbol': '♊', 'dates': 'May 21–Jun 20'},
-    {'name': 'Cancer',      'symbol': '♋', 'dates': 'Jun 21–Jul 22'},
-    {'name': 'Leo',         'symbol': '♌', 'dates': 'Jul 23–Aug 22'},
-    {'name': 'Virgo',       'symbol': '♍', 'dates': 'Aug 23–Sep 22'},
-    {'name': 'Libra',       'symbol': '♎', 'dates': 'Sep 23–Oct 22'},
-    {'name': 'Scorpio',     'symbol': '♏', 'dates': 'Oct 23–Nov 21'},
-    {'name': 'Sagittarius', 'symbol': '♐', 'dates': 'Nov 22–Dec 21'},
-    {'name': 'Capricorn',   'symbol': '♑', 'dates': 'Dec 22–Jan 19'},
-    {'name': 'Aquarius',    'symbol': '♒', 'dates': 'Jan 20–Feb 18'},
-    {'name': 'Pisces',      'symbol': '♓', 'dates': 'Feb 19–Mar 20'},
+    {'name': 'Aries',       'nepali': 'मेष',    'symbol': '♈', 'dates': 'Mar 21–Apr 19'},
+    {'name': 'Taurus',      'nepali': 'वृष',    'symbol': '♉', 'dates': 'Apr 20–May 20'},
+    {'name': 'Gemini',      'nepali': 'मिथुन',  'symbol': '♊', 'dates': 'May 21–Jun 20'},
+    {'name': 'Cancer',      'nepali': 'कर्क',   'symbol': '♋', 'dates': 'Jun 21–Jul 22'},
+    {'name': 'Leo',         'nepali': 'सिंह',   'symbol': '♌', 'dates': 'Jul 23–Aug 22'},
+    {'name': 'Virgo',       'nepali': 'कन्या',  'symbol': '♍', 'dates': 'Aug 23–Sep 22'},
+    {'name': 'Libra',       'nepali': 'तुला',   'symbol': '♎', 'dates': 'Sep 23–Oct 22'},
+    {'name': 'Scorpio',     'nepali': 'वृश्चिक','symbol': '♏', 'dates': 'Oct 23–Nov 21'},
+    {'name': 'Sagittarius', 'nepali': 'धनु',    'symbol': '♐', 'dates': 'Nov 22–Dec 21'},
+    {'name': 'Capricorn',   'nepali': 'मकर',    'symbol': '♑', 'dates': 'Dec 22–Jan 19'},
+    {'name': 'Aquarius',    'nepali': 'कुम्भ',  'symbol': '♒', 'dates': 'Jan 20–Feb 18'},
+    {'name': 'Pisces',      'nepali': 'मीन',    'symbol': '♓', 'dates': 'Feb 19–Mar 20'},
   ];
 
   @override
@@ -104,6 +106,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
     );
     _animationController.forward();
     _loadDefaultDateFromRegistration();
+    _loadCountries();
   }
 
   @override
@@ -147,7 +150,88 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
     }
   }
 
-  void _initializeNepaliDate() {
+  /// Load countries from LocationService (same API as LivingStatusPage).
+  /// After loading, pre-populate country + state from the values saved
+  /// during the registration location step (signupscreen4).
+  Future<void> _loadCountries() async {
+    setState(() => _isLoadingCountries = true);
+    try {
+      final data = await LocationService.fetchCountries();
+      final List<String> names = [];
+      final Map<String, int> map  = {};
+      for (final item in data) {
+        final n = item['name'].toString();
+        final id = int.parse(item['id'].toString());
+        names.add(n);
+        map[n] = id;
+      }
+
+      // Read the country/state that was saved when the user completed
+      // the LivingStatusPage (signupscreen4).
+      final prefs = await SharedPreferences.getInstance();
+      final savedCountry = prefs.getString('reg_country') ?? '';
+      final savedState   = prefs.getString('reg_state')   ?? '';
+
+      setState(() {
+        _countryOptions = names;
+        _countryMap     = map;
+        _isLoadingCountries = false;
+
+        // Pre-populate birth country with the registration country, falling
+        // back to 'Nepal' if nothing was saved yet.
+        if (_selectedCountryOfBirth == null || _selectedCountryOfBirth == 'Nepal') {
+          if (savedCountry.isNotEmpty && names.contains(savedCountry)) {
+            _selectedCountryOfBirth = savedCountry;
+          } else if (names.contains('Nepal')) {
+            _selectedCountryOfBirth = 'Nepal';
+          } else if (names.isNotEmpty) {
+            _selectedCountryOfBirth = names.first;
+          }
+        }
+      });
+
+      // Load states for the pre-populated country.
+      if (_selectedCountryOfBirth != null &&
+          _countryMap.containsKey(_selectedCountryOfBirth)) {
+        await _loadStates(_countryMap[_selectedCountryOfBirth]!,
+            preselectState: savedState);
+      }
+    } catch (_) {
+      setState(() => _isLoadingCountries = false);
+    }
+  }
+
+  Future<void> _loadStates(int countryId, {String preselectState = ''}) async {
+    setState(() {
+      _isLoadingStates  = true;
+      _selectedCityOfBirth = null; // reset state when country changes
+      _stateOptions = [];
+      _stateMap     = {};
+    });
+    try {
+      final data = await LocationService.fetchStates(countryId);
+      final List<String> names = [];
+      final Map<String, int> map  = {};
+      for (final item in data) {
+        final n = item['name'].toString();
+        final id = int.parse(item['id'].toString());
+        names.add(n);
+        map[n] = id;
+      }
+      setState(() {
+        _stateOptions        = names;
+        _stateMap            = map;
+        _isLoadingStates     = false;
+
+        // Pre-populate with the state saved from registration.
+        if (preselectState.isNotEmpty && names.contains(preselectState)) {
+          _selectedCityOfBirth = preselectState;
+        }
+      });
+    } catch (_) {
+      setState(() => _isLoadingStates = false);
+    }
+  }
     _nepaliMonths = [
       'Baisakh', 'Jestha', 'Ashad', 'Shrawan', 'Bhadra', 'Ashwin',
       'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
@@ -356,6 +440,10 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
       _selectedCountryOfBirth = value;
       _errors['countryOfBirth'] = '';
     });
+    // Re-load states for the newly selected country.
+    if (value != null && _countryMap.containsKey(value)) {
+      _loadStates(_countryMap[value]!);
+    }
   }
 
   void _handleCityOfBirthChange(String? value) {
@@ -487,31 +575,39 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
                     subtitle: 'Where were you born?',
                     child: Column(
                       children: [
-                        EnhancedDropdown<String>(
-                          label: 'Country of Birth',
-                          value: _selectedCountryOfBirth,
-                          items: _countryOptions,
-                          itemLabel: (item) => item,
-                          hint: 'Select your birth country',
-                          onChanged: _handleCountryOfBirthChange,
-                          hasError:
-                              submitted && _errors['countryOfBirth']!.isNotEmpty,
-                          errorText: _errors['countryOfBirth'],
-                          isRequired: true,
-                        ),
+                        // Country — loaded from LocationService API
+                        _isLoadingCountries
+                            ? _buildLocationLoading('Loading countries…')
+                            : EnhancedDropdown<String>(
+                                label: 'Country of Birth',
+                                value: _selectedCountryOfBirth,
+                                items: _countryOptions,
+                                itemLabel: (item) => item,
+                                hint: 'Select your birth country',
+                                onChanged: _handleCountryOfBirthChange,
+                                hasError: submitted &&
+                                    _errors['countryOfBirth']!.isNotEmpty,
+                                errorText: _errors['countryOfBirth'],
+                                isRequired: true,
+                              ),
                         const SizedBox(height: 16),
-                        EnhancedDropdown<String>(
-                          label: 'City of Birth',
-                          value: _selectedCityOfBirth,
-                          items: _cityOptions,
-                          itemLabel: (item) => item,
-                          hint: 'Select your birth city',
-                          onChanged: _handleCityOfBirthChange,
-                          hasError:
-                              submitted && _errors['cityOfBirth']!.isNotEmpty,
-                          errorText: _errors['cityOfBirth'],
-                          isRequired: true,
-                        ),
+                        // State — loaded from LocationService API based on country
+                        _isLoadingStates
+                            ? _buildLocationLoading('Loading states…')
+                            : EnhancedDropdown<String>(
+                                label: 'State / Province of Birth',
+                                value: _selectedCityOfBirth,
+                                items: _stateOptions,
+                                itemLabel: (item) => item,
+                                hint: _stateOptions.isEmpty
+                                    ? 'Select a country first'
+                                    : 'Select your birth state',
+                                onChanged: _handleCityOfBirthChange,
+                                hasError: submitted &&
+                                    _errors['cityOfBirth']!.isNotEmpty,
+                                errorText: _errors['cityOfBirth'],
+                                isRequired: true,
+                              ),
                       ],
                     ),
                   ),
@@ -1124,17 +1220,28 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
                 Text(
                   z['symbol']!,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     color: isSelected ? Colors.white : const Color(0xFF5C35A8),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
+                Text(
+                  z['nepali']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : const Color(0xFF3D3D5C),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 Text(
                   z['name']!,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : const Color(0xFF3D3D5C),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w400,
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.85)
+                        : const Color(0xFF7B6FAE),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1143,6 +1250,38 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
           ),
         );
       },
+    );
+  }
+
+  /// Shown while country/state data is being fetched from the API.
+  Widget _buildLocationLoading(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F0FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDDD6F0)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF5C35A8),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF8878C3),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
