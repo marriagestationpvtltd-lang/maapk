@@ -71,6 +71,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   bool _photoRequestsLoading = true;
   bool _chatRequestsLoading = true;
   int _proposalRequestCount = 0;
+  int _favoriteRequestCount = 0;
   int _messageRequestCount = 0;
 
   List<dynamic> _shortlistedProfiles = [];
@@ -284,6 +285,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
       setState(() {
         _shortlistedProfiles = _cache[cacheKey]!.data as List<dynamic>;
+        _favoriteRequestCount = _shortlistedProfiles.length;
         _isLoadingShortlist = false;
       });
       return;
@@ -312,6 +314,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
           setState(() {
             _shortlistedProfiles = profiles;
+            _favoriteRequestCount = profiles.length;
             _isLoadingShortlist = false;
           });
         } else {
@@ -1248,7 +1251,7 @@ String usertye = '';
       {
         'icon': Icons.favorite_rounded,
         'label': 'Favorites',
-        'count': _shortlistedProfiles.length,
+        'count': _favoriteRequestCount,
         'gradient': [const Color(0xFFE91E63), const Color(0xFFC2185B)],
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => FavoritePeoplePage())),
