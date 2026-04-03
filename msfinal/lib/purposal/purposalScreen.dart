@@ -7,6 +7,7 @@ import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:ms2026/Chat/ChatlistScreen.dart';
 import 'package:ms2026/Home/Screen/HomeScreenPage.dart';
 import 'package:ms2026/Package/PackageScreen.dart';
+import 'package:ms2026/ReUsable/loading_widgets.dart';
 import 'package:ms2026/purposal/purposalservice.dart';
 import 'package:ms2026/purposal/requestcard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,6 +44,11 @@ class _ProposalsPageState extends State<ProposalsPage> {
   bool loadingReceived = true;
   bool loadingSent = true;
   bool loadingAccepted = true;
+
+  // Refresh shimmer state for each tab
+  bool _refreshingReceived = false;
+  bool _refreshingSent = false;
+  bool _refreshingAccepted = false;
 
   @override
   void initState() {
@@ -271,6 +277,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
                   // Received Tab
                   _buildTabContent(
                     isLoading: loadingReceived,
+                    isRefreshing: _refreshingReceived,
                     list: receivedList,
                     tabIndex: 0,
                   ),
@@ -278,6 +285,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
                   // Sent Tab
                   _buildTabContent(
                     isLoading: loadingSent,
+                    isRefreshing: _refreshingSent,
                     list: sentList,
                     tabIndex: 1,
                   ),
@@ -285,6 +293,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
                   // Accepted Tab
                   _buildTabContent(
                     isLoading: loadingAccepted,
+                    isRefreshing: _refreshingAccepted,
                     list: acceptedList,
                     tabIndex: 2,
                   ),
@@ -299,6 +308,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
 
   Widget _buildTabContent({
     required bool isLoading,
+    required bool isRefreshing,
     required List<ProposalModel> list,
     required int tabIndex,
   }) {
@@ -328,22 +338,37 @@ class _ProposalsPageState extends State<ProposalsPage> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        setState(() {
+          if (tabIndex == 0) _refreshingReceived = true;
+          else if (tabIndex == 1) _refreshingSent = true;
+          else _refreshingAccepted = true;
+        });
         await _loadDataForTab(tabIndex);
+        if (mounted) {
+          setState(() {
+            if (tabIndex == 0) _refreshingReceived = false;
+            else if (tabIndex == 1) _refreshingSent = false;
+            else _refreshingAccepted = false;
+          });
+        }
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          return RequestCardDynamic(
-            data: list[index],
-            tabIndex: tabIndex,
-            userid: userid,
-            onActionComplete: () {
-              // Refresh this tab after action
-              _loadDataForTab(tabIndex);
-            },
-          );
-        },
+      child: ShimmerLoading(
+        isLoading: isRefreshing,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            return RequestCardDynamic(
+              data: list[index],
+              tabIndex: tabIndex,
+              userid: userid,
+              onActionComplete: () {
+                // Refresh this tab after action
+                _loadDataForTab(tabIndex);
+              },
+            );
+          },
+        ),
       ),
     );
   }
