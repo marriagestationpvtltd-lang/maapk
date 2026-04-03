@@ -844,7 +844,8 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                     onPhotoRequestTap: () async {
                       final prefs = await SharedPreferences.getInstance();
                       final userDataString = prefs.getString('user_data');
-                      final userData = jsonDecode(userDataString!);
+                      if (userDataString == null) return;
+                      final userData = jsonDecode(userDataString);
                       final senderId = int.tryParse(userData["id"].toString());
                       if (docstatus == 'approved') {
                         Navigator.push(
