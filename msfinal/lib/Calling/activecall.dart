@@ -198,8 +198,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
-    _foregroundServiceStarted = false;
-    await CallForegroundServiceManager.stopCallService();
+    try {
+      _foregroundServiceStarted = false;
+      await CallForegroundServiceManager.stopCallService();
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 
   @override

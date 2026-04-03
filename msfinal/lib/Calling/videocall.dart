@@ -334,7 +334,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     } catch (e) {
       debugPrint("Video call init error: $e");
-      _exit();
+      await _exit();
     }
   }
 
@@ -413,11 +413,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     CallOverlayManager().reset();
 
-    _exit();
+    await _exit();
   }
 
-  void _exit() {
-    unawaited(_stopForegroundService());
+  Future<void> _exit() async {
+    await _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -437,8 +437,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
-    _foregroundServiceStarted = false;
-    await CallForegroundServiceManager.stopCallService();
+    try {
+      _foregroundServiceStarted = false;
+      await CallForegroundServiceManager.stopCallService();
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 
   // ================= TOGGLE CAMERA =================

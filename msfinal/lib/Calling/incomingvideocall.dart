@@ -147,16 +147,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       _ringTimer?.cancel();
 
       // Permissions
-      if (!(await Permission.microphone.request()).isGranted) {
-        print('❌ Microphone permission denied');
-        _end();
-        return;
-      }
-      if (_isVideoCall && !(await Permission.camera.request()).isGranted) {
-        print('❌ Camera permission denied');
-        _end();
-        return;
-      }
+        if (!(await Permission.microphone.request()).isGranted) {
+          print('❌ Microphone permission denied');
+          await _end();
+          return;
+        }
+        if (_isVideoCall && !(await Permission.camera.request()).isGranted) {
+          print('❌ Camera permission denied');
+          await _end();
+          return;
+        }
 
       print('✅ Permissions granted');
 
@@ -263,7 +263,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     } catch (e) {
       print('❌ Accept error: $e');
       debugPrint('Accept error $e');
-      _end();
+      await _end();
     } finally {
       _processing = false;
     }
@@ -287,7 +287,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       recipientUid: '0',
       channelName: _channel,
     );
-    _end();
+    await _end();
   }
 
   // ================= MISSED =================
@@ -306,7 +306,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= DECLINE CALL =================
@@ -322,7 +322,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= END =================
@@ -354,11 +354,11 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     }
     await _stopForegroundService();
 
-    _end();
+    await _end();
   }
 
-  void _end() {
-    unawaited(_stopForegroundService());
+  Future<void> _end() async {
+    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -735,7 +735,11 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
-    _foregroundServiceStarted = false;
-    await CallForegroundServiceManager.stopCallService();
+    try {
+      _foregroundServiceStarted = false;
+      await CallForegroundServiceManager.stopCallService();
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 }

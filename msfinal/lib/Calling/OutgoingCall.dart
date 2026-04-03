@@ -330,7 +330,7 @@ class _CallScreenState extends State<CallScreen> {
       });
     } catch (e) {
       debugPrint('Init error: $e');
-      _exit();
+      await _exit();
     }
   }
 
@@ -384,8 +384,8 @@ class _CallScreenState extends State<CallScreen> {
   }
 
 
-  void _exit() {
-    unawaited(_stopForegroundService());
+  Future<void> _exit() async {
+    await _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -405,8 +405,12 @@ class _CallScreenState extends State<CallScreen> {
 
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
-    _foregroundServiceStarted = false;
-    await CallForegroundServiceManager.stopCallService();
+    try {
+      _foregroundServiceStarted = false;
+      await CallForegroundServiceManager.stopCallService();
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 
   // ================= TOGGLE SPEAKER =================

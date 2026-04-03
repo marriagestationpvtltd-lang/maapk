@@ -136,7 +136,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       _ringTimer?.cancel();
 
       if (!(await Permission.microphone.request()).isGranted) {
-        _end();
+        await _end();
         return;
       }
 
@@ -199,7 +199,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       await _startForegroundService();
     } catch (e) {
       debugPrint('Accept error $e');
-      _end();
+      await _end();
     } finally {
       _processing = false;
     }
@@ -224,7 +224,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       recipientUid: '0',
       channelName: _channel,
     );
-    _end();
+    await _end();
   }
 
   // ================= MISSED =================
@@ -243,7 +243,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= DECLINE CALL =================
@@ -259,7 +259,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= END =================
@@ -291,11 +291,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     }
     await _stopForegroundService();
 
-    _end();
+    await _end();
   }
 
-  void _end() {
-    unawaited(_stopForegroundService());
+  Future<void> _end() async {
+    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -444,7 +444,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
-    _foregroundServiceStarted = false;
-    await CallForegroundServiceManager.stopCallService();
+    try {
+      _foregroundServiceStarted = false;
+      await CallForegroundServiceManager.stopCallService();
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 }
