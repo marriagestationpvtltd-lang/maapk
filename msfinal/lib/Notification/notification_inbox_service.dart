@@ -551,4 +551,22 @@ class NotificationInboxService {
     }
     return 'Someone';
   }
+
+  static String buildActorName({
+    String? firstName,
+    String? lastName,
+    String? displayName,
+    String? fallbackId,
+  }) {
+    final parts = [
+      firstName?.trim(),
+      lastName?.trim(),
+    ].where((value) => value?.isNotEmpty == true).cast<String>().toList();
+
+    if (parts.isNotEmpty) {
+      return _cleanName(parts.join(' '), fallbackId: fallbackId);
+    }
+
+    return _cleanName(displayName, fallbackId: fallbackId);
+  }
 }

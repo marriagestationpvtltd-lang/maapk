@@ -38,7 +38,7 @@ class _MatrimonyNotificationPageState
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
 
-    if (userDataString == null || userDataString.isEmpty) {
+    if (userDataString?.isEmpty ?? true) {
       if (!mounted) return;
       setState(() {
         _notifications = [];
@@ -287,9 +287,9 @@ class _MatrimonyNotificationPageState
   }
 
   Future<void> _sendReminder(Map<String, dynamic> notification) async {
-    final recipientId = notification['recipient_id']?.toString() ??
+    final requestRecipientId = notification['recipient_id']?.toString() ??
         notification['related_user_id']?.toString();
-    if (recipientId == null || recipientId.isEmpty) {
+    if (requestRecipientId == null || requestRecipientId.isEmpty) {
       return;
     }
 
@@ -301,7 +301,7 @@ class _MatrimonyNotificationPageState
     final senderName = await NotificationInboxService.getCurrentUserDisplayName();
     final requestType = notification['request_type']?.toString() ?? 'Request';
     final success = await NotificationService.sendRequestNotification(
-      recipientUserId: recipientId,
+      recipientUserId: requestRecipientId,
       senderName: senderName,
       senderId: currentUserId,
       requestType: requestType,
@@ -451,16 +451,10 @@ class _MatrimonyNotificationPageState
   }
 
   String _actorNameFromItem(Map<String, dynamic> item) {
-    final parts = [
-      item['firstName']?.toString(),
-      item['lastName']?.toString(),
-    ]
-        .where((value) => value?.trim().isNotEmpty == true)
-        .map((value) => value!.trim())
-        .toList();
-
-    return _cleanName(
-      parts.join(' '),
+    return NotificationInboxService.buildActorName(
+      firstName: item['firstName']?.toString(),
+      lastName: item['lastName']?.toString(),
+      displayName: item['sender_name']?.toString(),
       fallbackId: item['sender_id']?.toString(),
     );
   }
