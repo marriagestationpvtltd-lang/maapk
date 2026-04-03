@@ -356,7 +356,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
