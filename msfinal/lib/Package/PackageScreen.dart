@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import '../constant/app_colors.dart';
 import 'Paymentscreen.dart';
 import 'historypage.dart';
 
@@ -122,8 +123,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       icon: Icons.star_border_rounded,
     ),
     _TierConfig(
-      gradient: [Color(0xFFB71C1C), Color(0xFFF90E18)],
-      accentColor: Color(0xFFFFD700),
+      gradient: [Color(0xFFB71C1C), AppColors.primary],
+      accentColor: AppColors.premium,
       label: 'Popular',
       icon: Icons.workspace_premium_rounded,
     ),
@@ -144,7 +145,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           _buildSliverHeader(context),
@@ -174,9 +175,9 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: const Color(0xFFF90E18),
+      backgroundColor: AppColors.primary,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white),
         onPressed: () => Navigator.of(context).pop(),
       ),
       actions: [
@@ -196,21 +197,17 @@ class _SubscriptionPageState extends State<SubscriptionPage>
               );
             }
           },
-          icon: const Icon(Icons.history_rounded, color: Colors.white, size: 18),
+          icon: const Icon(Icons.history_rounded, color: AppColors.white, size: 18),
           label: const Text(
             'History',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
           ),
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFD00D15), Color(0xFFF90E18)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: AppColors.primaryGradient,
           ),
           child: SafeArea(
             child: Column(
@@ -220,12 +217,12 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: AppColors.white.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.workspace_premium_rounded,
-                    color: Colors.white,
+                    color: AppColors.white,
                     size: 40,
                   ),
                 ),
@@ -233,7 +230,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 const Text(
                   'Upgrade to Premium',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.4,
@@ -243,7 +240,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 Text(
                   'Unlock all features and find your perfect match',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
+                    color: AppColors.white.withOpacity(0.85),
                     fontSize: 13,
                   ),
                   textAlign: TextAlign.center,
@@ -254,7 +251,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
         ),
         title: const Text(
           'Subscription Plans',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: AppColors.white, fontSize: 16),
         ),
         titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
         collapseMode: CollapseMode.parallax,
@@ -267,13 +264,11 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
-        ),
+        gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF90E18).withOpacity(0.25),
+            color: AppColors.primary.withOpacity(0.25),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -281,16 +276,16 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       ),
       child: Row(
         children: [
-          const Icon(Icons.verified_rounded, color: Color(0xFFFFD700), size: 28),
+          const Icon(Icons.verified_rounded, color: AppColors.premium, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Active Plan: $_activePackageName',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppColors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -299,7 +294,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                   Text(
                     'Expires: $_activePackageExpiry',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: AppColors.white.withOpacity(0.8),
                       fontSize: 12,
                     ),
                   ),
@@ -320,7 +315,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
             width: 4,
             height: 22,
             decoration: BoxDecoration(
-              color: const Color(0xFFF90E18),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -330,7 +325,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1C1C2E),
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -342,7 +337,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     if (isLoading) {
       return const SizedBox(
         height: 460,
-        child: Center(child: CircularProgressIndicator(color: Color(0xFFF90E18))),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (errorMessage.isNotEmpty) {
@@ -352,10 +347,10 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey),
+              const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
               const SizedBox(height: 16),
               Text(errorMessage,
-                  style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+                  style: const TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
@@ -368,8 +363,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF90E18),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                 ),
               ),
             ],
@@ -423,7 +418,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           width: isActive ? 24 : 8,
           height: 8,
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFF90E18) : Colors.grey.shade300,
+            color: isActive ? AppColors.primary : AppColors.border,
             borderRadius: BorderRadius.circular(4),
           ),
         );
@@ -447,11 +442,11 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.shadowLight,
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -460,16 +455,16 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.stars_rounded, color: Color(0xFFF90E18), size: 22),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.stars_rounded, color: AppColors.primary, size: 22),
+              SizedBox(width: 8),
+              Text(
                 'Why go Premium?',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1C1C2E),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -482,10 +477,10 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF90E18).withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(f.icon, color: const Color(0xFFF90E18), size: 20),
+                  child: Icon(f.icon, color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -497,12 +492,12 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
-                          color: Color(0xFF1C1C2E),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       Text(
                         f.subtitle,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -639,7 +634,7 @@ class _PackagePlanCard extends StatelessWidget {
               height: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: AppColors.white.withOpacity(0.05),
               ),
             ),
           ),
@@ -651,7 +646,7 @@ class _PackagePlanCard extends StatelessWidget {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.04),
+                color: AppColors.white.withOpacity(0.04),
               ),
             ),
           ),
@@ -668,7 +663,7 @@ class _PackagePlanCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: AppColors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(config.icon, color: config.accentColor, size: 26),
@@ -706,7 +701,7 @@ class _PackagePlanCard extends StatelessWidget {
                 Text(
                   package.name,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.3,
@@ -718,7 +713,7 @@ class _PackagePlanCard extends StatelessWidget {
                   padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: AppColors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -738,7 +733,7 @@ class _PackagePlanCard extends StatelessWidget {
                     Text(
                       package.priceString,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
@@ -750,7 +745,7 @@ class _PackagePlanCard extends StatelessWidget {
                       child: Text(
                         '/ plan',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.65),
+                          color: AppColors.white.withOpacity(0.65),
                           fontSize: 13,
                         ),
                       ),
@@ -758,14 +753,14 @@ class _PackagePlanCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Divider(color: Colors.white.withOpacity(0.2), height: 1),
+                Divider(color: AppColors.white.withOpacity(0.2), height: 1),
                 const SizedBox(height: 14),
                 // Description
                 if (package.description.isNotEmpty)
                   Text(
                     package.description,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.75),
+                      color: AppColors.white.withOpacity(0.75),
                       fontSize: 13,
                       height: 1.5,
                     ),
@@ -834,7 +829,7 @@ class _PackagePlanCard extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.white,
                 fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,

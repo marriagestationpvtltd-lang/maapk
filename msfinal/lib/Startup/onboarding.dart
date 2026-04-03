@@ -35,11 +35,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Container(
         height: 62,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(40),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: AppColors.shadowLight,
               blurRadius: 8,
               offset: const Offset(0, 4),
             )
@@ -54,7 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
               ),
             ),
             SizedBox(width: 10),
@@ -100,13 +100,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Text(
                   'Skip',
                   style: TextStyle(
-                    color: Colors.black87,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -123,12 +123,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: SmoothPageIndicator(
                 controller: _pc,
                 count: 2,
-                effect: const ExpandingDotsEffect(
+                effect: ExpandingDotsEffect(
                   dotHeight: 8,
                   dotWidth: 8,
                   spacing: 8,
-                  activeDotColor: Colors.white,
-                  dotColor: Colors.white38,
+                  activeDotColor: AppColors.white,
+                  dotColor: AppColors.white.withOpacity(0.38),
                 ),
               ),
             ),
@@ -197,7 +197,7 @@ class OnboardPageOne extends StatelessWidget {
                     child: Text(
                       'Real People, Real Story',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontSize: 30,
                         height: 1.02,
                         fontWeight: FontWeight.w800,
@@ -210,7 +210,7 @@ class OnboardPageOne extends StatelessWidget {
                     child: Text(
                       'A space where real people connect through genuine conversations and create stories that truly matter.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: AppColors.white.withOpacity(0.9),
                         fontSize: 14,
                         height: 1.6,
                         fontWeight: FontWeight.w500,
@@ -250,11 +250,11 @@ class _CoupleIllustration extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: AppColors.shadowMedium,
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -289,15 +289,15 @@ class _ProfileCard extends StatelessWidget {
       width: 120,
       height: 152,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: AppColors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.45),
+          color: AppColors.white.withOpacity(0.45),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.10),
+            color: AppColors.shadowMedium,
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -310,16 +310,16 @@ class _ProfileCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: AppColors.white.withOpacity(0.25),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 34),
+            child: Icon(icon, color: AppColors.white, size: 34),
           ),
           const SizedBox(height: 12),
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.white,
               fontSize: 14,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
@@ -440,7 +440,7 @@ class OnboardPageTwo extends StatelessWidget {
                     child: Text(
                       'Find Your Kind Of Connection',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
                       ),
@@ -452,7 +452,7 @@ class OnboardPageTwo extends StatelessWidget {
                     child: Text(
                       'Find your kind of connection with people who share your vibe, match your energy, and make every conversation feel natural.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.95),
+                        color: AppColors.white.withOpacity(0.95),
                         fontSize: 14,
                         height: 1.6,
                         fontWeight: FontWeight.w500,
@@ -489,10 +489,10 @@ class CircleAvatarWithBorder extends StatelessWidget {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(colors: [Colors.white, Colors.white70]),
+        gradient: LinearGradient(colors: [AppColors.white, AppColors.white.withOpacity(0.7)]),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: AppColors.shadowMedium,
             blurRadius: 6,
             offset: const Offset(0, 3),
           )
@@ -517,17 +517,17 @@ class FloatingIcon extends StatelessWidget {
       height: 36,
       decoration: BoxDecoration(
         color: Colors.transparent,
-        border: Border.all(color: Colors.white, width: 1.6),
+        border: Border.all(color: AppColors.white, width: 1.6),
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: AppColors.shadowMedium,
             blurRadius: 6,
             offset: const Offset(0, 3),
           )
         ],
       ),
-      child: Icon(icon, color: Colors.white, size: 18),
+      child: Icon(icon, color: AppColors.white, size: 18),
     );
   }
 }
@@ -554,7 +554,7 @@ class RoundedImageCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: AppColors.shadowDark,
             blurRadius: 18,
             offset: const Offset(0, 10),
           )
@@ -587,7 +587,7 @@ class ArcBigCircle extends StatelessWidget {
 class _ArcPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color.fromARGB(60, 255, 255, 255);
+    final paint = Paint()..color = AppColors.white.withOpacity(0.24);
     canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
   }
 
