@@ -571,7 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 matchedPreferencesCount: userProfile.matchedPreferencesCount,
                 totalPreferencesCount: userProfile.totalPreferencesCount,
                 red: red,
-                imageUrl: userProfile.imageUrl,
+                imageUrl: userProfile.avatarUrl,
               ),
             const SizedBox(height: 16),
 
