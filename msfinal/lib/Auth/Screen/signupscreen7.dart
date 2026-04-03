@@ -96,7 +96,6 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
   void initState() {
     super.initState();
     _initializeNepaliDate();
-    _selectedCountryOfBirth = 'Nepal';
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -145,8 +144,9 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
         _selectedMonth = _monthNames[month - 1];
         _selectedDay   = day;
       });
-    } catch (_) {
-      // Silently ignore – user can still select manually.
+    } catch (e) {
+      // Silently ignore – user can still select date manually.
+      debugPrint('AstroPage: failed to pre-load registration date: $e');
     }
   }
 
@@ -196,7 +196,8 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
         await _loadStates(_countryMap[_selectedCountryOfBirth]!,
             preselectState: savedState);
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AstroPage: failed to load countries: $e');
       setState(() => _isLoadingCountries = false);
     }
   }
@@ -228,10 +229,13 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
           _selectedCityOfBirth = preselectState;
         }
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AstroPage: failed to load states: $e');
       setState(() => _isLoadingStates = false);
     }
   }
+
+  void _initializeNepaliDate() {
     _nepaliMonths = [
       'Baisakh', 'Jestha', 'Ashad', 'Shrawan', 'Bhadra', 'Ashwin',
       'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
