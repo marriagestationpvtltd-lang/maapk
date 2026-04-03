@@ -11,8 +11,15 @@ import 'filterPage.dart';
 
 class SearchResultPage extends StatefulWidget {
   final Map<String, dynamic>? filterParams;
+  final String? quickSearchType;
+  final String? quickSearchValue;
 
-  const SearchResultPage({super.key, this.filterParams});
+  const SearchResultPage({
+    super.key,
+    this.filterParams,
+    this.quickSearchType,
+    this.quickSearchValue,
+  });
 
   @override
   State<SearchResultPage> createState() => _SearchResultPageState();
@@ -101,18 +108,26 @@ class _SearchResultPageState extends State<SearchResultPage> {
         _errorMessage = '';
       });
 
-      String baseUrl = 'https://digitallami.com/Api2/search_opposite_gender.php?user_id=$userId';
+      String baseUrl =
+          'https://digitallami.com/Api2/search_opposite_gender.php?user_id=$userId';
 
-      if (widget.filterParams != null && widget.filterParams!.isNotEmpty) {
+      // Quick search by phone / id / email / name
+      if (widget.quickSearchType != null &&
+          widget.quickSearchValue != null &&
+          widget.quickSearchValue!.isNotEmpty) {
+        baseUrl =
+            '$baseUrl&search_type=${Uri.encodeComponent(widget.quickSearchType!)}'
+            '&search_value=${Uri.encodeComponent(widget.quickSearchValue!)}';
+      } else if (widget.filterParams != null &&
+          widget.filterParams!.isNotEmpty) {
+        // Advanced search with filters
         Map<String, String> queryParams = {};
         widget.filterParams!.forEach((key, value) {
           if (value != null) {
             queryParams[key] = value.toString();
           }
         });
-
         queryParams.removeWhere((key, value) => value.isEmpty);
-
         if (queryParams.isNotEmpty) {
           String queryString = Uri(queryParameters: queryParams).query;
           baseUrl = '$baseUrl&$queryString';
@@ -373,6 +388,23 @@ class _SearchResultPageState extends State<SearchResultPage> {
     );
   }
 
+  String _buildResultTitle() {
+    if (widget.quickSearchType != null && widget.quickSearchValue != null) {
+      final typeLabel = {
+        'phone': 'Phone',
+        'id': 'Profile ID',
+        'email': 'Email',
+        'name': 'Name',
+      }[widget.quickSearchType] ??
+          widget.quickSearchType!;
+      return 'Results for "$typeLabel: ${widget.quickSearchValue}"';
+    }
+    if (widget.filterParams != null && widget.filterParams!.isNotEmpty) {
+      return 'Match Based On Your Filter';
+    }
+    return 'All Matches';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -389,15 +421,16 @@ class _SearchResultPageState extends State<SearchResultPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    widget.filterParams != null &&
-                        widget.filterParams!.isNotEmpty
-                        ? "Match Based On Your Filter"
-                        : "All Matches",
-                    style: TextStyle(
-                      color: Color(0xfffb5f6a),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Expanded(
+                    child: Text(
+                      _buildResultTitle(),
+                      style: TextStyle(
+                        color: Color(0xfffb5f6a),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (_totalCount > 0)
@@ -477,9 +510,12 @@ class _SearchResultPageState extends State<SearchResultPage> {
             Icon(Icons.search_off, size: 60, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              widget.filterParams != null && widget.filterParams!.isNotEmpty
-                  ? 'No Profiles Match Your Filters'
-                  : 'No Profiles Found',
+              widget.quickSearchType != null
+                  ? 'No Results Found'
+                  : widget.filterParams != null &&
+                          widget.filterParams!.isNotEmpty
+                      ? 'No Profiles Match Your Filters'
+                      : 'No Profiles Found',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -488,19 +524,17 @@ class _SearchResultPageState extends State<SearchResultPage> {
             ),
             SizedBox(height: 8),
             Text(
-              widget.filterParams != null && widget.filterParams!.isNotEmpty
-                  ? 'Try adjusting your search filters'
-                  : 'Check back later for new profiles',
+              widget.quickSearchType != null
+                  ? 'Try a different search term'
+                  : widget.filterParams != null &&
+                          widget.filterParams!.isNotEmpty
+                      ? 'Try adjusting your search filters'
+                      : 'Check back later for new profiles',
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FilterPage()),
-                );
-              },
+              onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xffFF0066),
                 shape: RoundedRectangleBorder(
@@ -508,9 +542,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
                 ),
               ),
               child: Text(
-                widget.filterParams != null && widget.filterParams!.isNotEmpty
-                    ? 'Adjust Filters'
-                    : 'Browse Filters',
+                'Go Back',
                 style: TextStyle(color: Colors.white),
               ),
             ),
