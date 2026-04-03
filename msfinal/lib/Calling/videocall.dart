@@ -392,6 +392,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         duration: _duration.inSeconds,
         channelName: _channel,
       );
+    } else if (!_callActive && widget.isOutgoingCall && _channel.isNotEmpty) {
+      // Call was never answered; notify receiver to dismiss their incoming call screen
+      await NotificationService.sendVideoCallCancelledNotification(
+        recipientUserId: widget.otherUserId,
+        callerName: widget.currentUserName,
+        channelName: _channel,
+      );
     }
 
     if (_joined) {

@@ -44,6 +44,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Timer? _ringTimer;
   Timer? _callTimer;
   Duration _duration = Duration.zero;
+  StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
 
   // Call history tracking
   String? _callHistoryId;
@@ -58,6 +59,21 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _localUid = Random().nextInt(999999);
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
+    _listenForCallCancelled();
+  }
+
+  void _listenForCallCancelled() {
+    _cancelSubscription = NotificationService.callResponses.listen((data) {
+      final type = data['type']?.toString();
+      if (type == 'video_call_cancelled' || type == 'video_call_ended') {
+        final channelName = data['channelName']?.toString();
+        if (channelName == _channel) {
+          if (!_callActive) {
+            _end();
+          }
+        }
+      }
+    });
   }
 
   Future<void> _loadUserDataAndLogCall() async {
@@ -712,6 +728,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   void dispose() {
     _ringTimer?.cancel();
     _callTimer?.cancel();
+    _cancelSubscription?.cancel();
     super.dispose();
   }
 }
