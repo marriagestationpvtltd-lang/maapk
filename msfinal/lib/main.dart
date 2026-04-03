@@ -17,6 +17,7 @@ import 'Startup/onboarding.dart';
 import 'otherenew/modelfile.dart';
 import 'otherenew/othernew.dart';
 import 'otherenew/service.dart';
+import 'constant/app_theme.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -484,11 +485,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      title: 'MS2026',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      title: 'Marriage Station',
+      theme: AppTheme.lightTheme,
       home: const SplashScreen(),
       routes: {
         '/login': (context) => const OnboardingScreen(),
