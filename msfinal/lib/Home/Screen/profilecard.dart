@@ -6,6 +6,7 @@ import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../Models/masterdata.dart';
+import '../../constant/app_colors.dart';
 import '../../main.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../pushnotification/pushservice.dart';
@@ -799,7 +800,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     if (isLoading) {
       return const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF90E18)),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
       );
     }
@@ -809,18 +810,18 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Color(0xFFF90E18), size: 48),
+            const Icon(Icons.error_outline, color: AppColors.primary, size: 48),
             const SizedBox(height: 12),
             Text(
               errorMessage,
-              style: const TextStyle(color: Color(0xFFF90E18)),
+              style: const TextStyle(color: AppColors.primary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadProfiles,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF90E18),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -887,14 +888,14 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF212121),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const Text(
                     'Suggested Profiles',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF757575),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -943,13 +944,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
               children: List.generate(
                 profiles.length > 7 ? 7 : profiles.length,
                 (i) {
-                  final dotIndex = profiles.length > 7
-                      ? (currentIndex <= 3
-                          ? i
-                          : currentIndex >= profiles.length - 4
-                              ? profiles.length - 7 + i
-                              : currentIndex - 3 + i)
-                      : i;
+                  final dotIndex = _slidingWindowDotIndex(i);
                   final isActive = dotIndex == currentIndex;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
@@ -958,7 +953,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                     height: 7,
                     decoration: BoxDecoration(
                       color: isActive
-                          ? const Color(0xFFF90E18)
+                          ? AppColors.primary
                           : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -969,6 +964,15 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
           ),
       ],
     );
+  }
+
+  /// Maps a dot position [i] (0–6) to the actual profile index using a
+  /// sliding window when there are more than 7 profiles.
+  int _slidingWindowDotIndex(int i) {
+    if (profiles.length <= 7) return i;
+    if (currentIndex <= 3) return i;
+    if (currentIndex >= profiles.length - 4) return profiles.length - 7 + i;
+    return currentIndex - 3 + i;
   }
 
   Widget _buildPopupMessage() {
@@ -1165,7 +1169,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF212121),
+                            color: AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1271,7 +1275,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
   Color _getMatchColor(int percent) {
     if (percent >= 80) return Colors.green;
     if (percent >= 50) return Colors.orange;
-    return const Color(0xFFF90E18);
+    return AppColors.primary;
   }
 }
 
@@ -1297,18 +1301,18 @@ class _NavArrowButton extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: enabled
-              ? const Color(0xFFF90E18).withOpacity(0.08)
+              ? AppColors.primary.withOpacity(0.08)
               : Colors.grey.shade100,
           shape: BoxShape.circle,
           border: Border.all(
             color: enabled
-                ? const Color(0xFFF90E18).withOpacity(0.3)
+                ? AppColors.primary.withOpacity(0.3)
                 : Colors.grey.shade300,
           ),
         ),
         child: Icon(
           icon,
-          color: enabled ? const Color(0xFFF90E18) : Colors.grey.shade400,
+          color: enabled ? AppColors.primary : Colors.grey.shade400,
           size: 22,
         ),
       ),
@@ -1323,7 +1327,7 @@ class _MatchBadge extends StatelessWidget {
   Color get _color {
     if (percent >= 80) return const Color(0xFF388E3C);
     if (percent >= 50) return const Color(0xFFF57C00);
-    return const Color(0xFFF90E18);
+    return AppColors.primary;
   }
 
   @override
@@ -1362,14 +1366,14 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: const Color(0xFF757575)),
+        Icon(icon, size: 15, color: AppColors.textSecondary),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF424242),
+              color: AppColors.textPrimary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1387,7 +1391,7 @@ class _CompatibilityBar extends StatelessWidget {
   Color get _color {
     if (percent >= 80) return const Color(0xFF388E3C);
     if (percent >= 50) return const Color(0xFFF57C00);
-    return const Color(0xFFF90E18);
+    return AppColors.primary;
   }
 
   @override
@@ -1400,7 +1404,7 @@ class _CompatibilityBar extends StatelessWidget {
           children: [
             const Text(
               'Compatibility',
-              style: TextStyle(fontSize: 12, color: Color(0xFF757575)),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             Text(
               '$percent%',
@@ -1446,7 +1450,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFFF90E18);
+    final primaryColor = AppColors.primary;
 
     if (isPrimary) {
       return ElevatedButton.icon(
@@ -1486,12 +1490,12 @@ class _ActionButton extends StatelessWidget {
                 valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
               ),
             )
-          : Icon(icon, size: 16, color: isActive ? primaryColor : const Color(0xFF757575)),
+          : Icon(icon, size: 16, color: isActive ? primaryColor : AppColors.textSecondary),
       label: Text(
         label,
         style: TextStyle(
           fontSize: 13,
-          color: isActive ? primaryColor : const Color(0xFF757575),
+          color: isActive ? primaryColor : AppColors.textSecondary,
         ),
       ),
       style: OutlinedButton.styleFrom(
@@ -1623,7 +1627,7 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFFF90E18).withOpacity(0.9),
+                          color: AppColors.primary.withOpacity(0.9),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
