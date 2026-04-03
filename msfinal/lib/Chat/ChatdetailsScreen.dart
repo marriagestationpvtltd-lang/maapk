@@ -234,7 +234,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'isDeletedForSender': false,
         'isDeletedForReceiver': false,
       };
-      NotificationService.sendChatNotification(
+      await NotificationService.sendChatNotification(
         recipientUserId: widget.receiverId.toString(),
         senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
         senderId: widget.currentUserId,

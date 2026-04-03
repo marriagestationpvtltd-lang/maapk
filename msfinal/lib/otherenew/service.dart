@@ -3,8 +3,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../Notification/notification_inbox_service.dart';
 import '../pushnotification/pushservice.dart';
 import '../otherenew/modelfile.dart';
@@ -183,7 +181,7 @@ class ProfileService {
        if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(json.decode(response.body));
         if (result['status'] == 'success') {
-          final senderName = await _currentUserDisplayName();
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
           await NotificationService.sendRequestNotification(
             recipientUserId: userId,
             senderName: senderName,
@@ -232,7 +230,7 @@ class ProfileService {
       if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(json.decode(response.body));
         if (result['status'] == 'success') {
-          final senderName = await _currentUserDisplayName();
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
           await NotificationService.sendRequestNotification(
             recipientUserId: userId,
             senderName: senderName,
@@ -304,7 +302,7 @@ class ProfileService {
 
     final result = Map<String, dynamic>.from(json.decode(response.body));
     if (result['status'] == 'success') {
-      final senderName = await _currentUserDisplayName();
+      final senderName = await NotificationInboxService.getCurrentUserDisplayName();
       await NotificationService.sendRequestAccepted(
         recipientUserId: senderId,
         senderName: senderName,
@@ -336,7 +334,7 @@ class ProfileService {
 
     final result = Map<String, dynamic>.from(json.decode(response.body));
     if (result['status'] == 'success') {
-      final senderName = await _currentUserDisplayName();
+      final senderName = await NotificationInboxService.getCurrentUserDisplayName();
       await NotificationService.sendRequestRejected(
         recipientUserId: senderId,
         senderName: senderName,
@@ -351,38 +349,5 @@ class ProfileService {
     }
 
     return result;
-  }
-
-  Future<String> _currentUserDisplayName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString == null || userDataString.isEmpty) {
-      return 'Someone';
-    }
-
-    try {
-      final userData = jsonDecode(userDataString);
-      final id = userData['id']?.toString() ?? '';
-      final firstName = userData['firstName']?.toString() ?? '';
-      final lastName = userData['lastName']?.toString() ?? '';
-      final fullName = [firstName, lastName]
-          .where((value) => value.trim().isNotEmpty)
-          .join(' ')
-          .trim();
-
-      if (id.isNotEmpty && fullName.isNotEmpty) {
-        return 'MS:$id $fullName';
-      }
-      if (id.isNotEmpty) {
-        return 'MS:$id';
-      }
-      if (fullName.isNotEmpty) {
-        return fullName;
-      }
-    } catch (_) {
-      return 'Someone';
-    }
-
-    return 'Someone';
   }
 }

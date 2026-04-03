@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationInboxService {
   static const String _storageKey = 'notification_inbox_records_v2';
   static const Duration reminderCooldown = Duration(hours: 6);
+  static final Random _random = Random();
 
   static Future<List<Map<String, dynamic>>> loadNotifications() async {
     final prefs = await SharedPreferences.getInstance();
@@ -517,7 +519,7 @@ class NotificationInboxService {
   }
 
   static String _localId(String type) {
-    return 'local_${type}_${DateTime.now().microsecondsSinceEpoch}';
+    return 'local_${type}_${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 20)}';
   }
 
   static String _toSentenceCase(String value) {
