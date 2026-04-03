@@ -493,12 +493,14 @@ void _navigateToCallPage(Map<String, dynamic> data) {
 }
 
 Future<void> setupFirebaseMessaging() async {
-  // Set up iOS foreground notification presentation
+  // Set up iOS foreground notification presentation.
+  // Disable auto-display so our onMessage handler has full control over
+  // when to show notifications (e.g. suppressing while user is on chat screen).
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
+      alert: false,
+      badge: false,
+      sound: false,
     );
   }
 
@@ -585,9 +587,11 @@ Future<void> setupFirebaseMessaging() async {
       return;
     }
 
-    // call_response and call_ended are handled programmatically by the call screen UI.
+    // call_response, call_ended, and call_cancelled are handled programmatically by the call screen UI.
     // No notification banner is needed; just record them for the inbox.
-    if (data['type'] == 'call_response' || data['type'] == 'call_ended') {
+    if (data['type'] == 'call_response' || data['type'] == 'call_ended' ||
+        data['type'] == 'video_call_response' || data['type'] == 'video_call_ended' ||
+        data['type'] == 'call_cancelled' || data['type'] == 'video_call_cancelled') {
       await NotificationInboxService.recordIncomingRemoteNotification(
         data: data,
         fallbackTitle: message.notification?.title,

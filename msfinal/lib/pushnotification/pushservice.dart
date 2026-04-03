@@ -34,6 +34,8 @@ class NotificationService {
       'video_call_ended',
       'missed_call',
       'missed_video_call',
+      'call_cancelled',
+      'video_call_cancelled',
     };
 
     if (callEventTypes.contains(data['type'])) {
@@ -561,6 +563,45 @@ class NotificationService {
         'reason': reason,
         'duration': duration.toString(),
         if (channelName != null) 'channelName': channelName,
+        'isVideoCall': 'true',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  // Send call cancelled notification (caller hung up before receiver answered)
+  static Future<bool> sendCallCancelledNotification({
+    required String recipientUserId,
+    required String callerName,
+    required String channelName,
+  }) async {
+    return await sendNotification(
+      userId: recipientUserId,
+      title: '📞 Call Cancelled',
+      body: '$callerName cancelled the call',
+      data: {
+        'type': 'call_cancelled',
+        'callerName': callerName,
+        'channelName': channelName,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  // Send video call cancelled notification (caller hung up before receiver answered)
+  static Future<bool> sendVideoCallCancelledNotification({
+    required String recipientUserId,
+    required String callerName,
+    required String channelName,
+  }) async {
+    return await sendNotification(
+      userId: recipientUserId,
+      title: '📹 Video Call Cancelled',
+      body: '$callerName cancelled the video call',
+      data: {
+        'type': 'video_call_cancelled',
+        'callerName': callerName,
+        'channelName': channelName,
         'isVideoCall': 'true',
         'timestamp': DateTime.now().toIso8601String(),
       },

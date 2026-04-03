@@ -361,6 +361,15 @@ class _CallScreenState extends State<CallScreen> {
     await _stopRingtone();
     await _stopForegroundService();
 
+    // If the call was never answered, notify the receiver to dismiss their incoming call screen
+    if (!_callActive && widget.isOutgoingCall && _channel.isNotEmpty) {
+      await NotificationService.sendCallCancelledNotification(
+        recipientUserId: widget.otherUserId,
+        callerName: widget.currentUserName,
+        channelName: _channel,
+      );
+    }
+
     if (_engineInitialized) {
       try {
         await _engine.leaveChannel();
