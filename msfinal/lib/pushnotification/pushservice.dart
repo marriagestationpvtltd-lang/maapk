@@ -11,7 +11,8 @@ class NotificationService {
   // Queue for notification requests to prevent race conditions
   static final List<_NotificationRequest> _notificationQueue = [];
   static bool _isProcessingQueue = false;
-  static Timer? _queueProcessorTimer;
+  static const int _maxQueueSize = 100;
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   static Stream<Map<String, dynamic>> get incomingCalls => _callManager.incomingCalls;
   static Stream<Map<String, dynamic>> get callResponses => _callManager.callResponses;
@@ -177,6 +178,26 @@ class NotificationService {
     required String body,
     required Map<String, dynamic> data,
   }) async {
+    // Validate inputs
+    if (userId.isEmpty || userId.length > 100) {
+      print('❌ Invalid userId: must be non-empty and <= 100 chars');
+      return false;
+    }
+    if (title.length > 100) {
+      print('❌ Invalid title: must be <= 100 chars');
+      return false;
+    }
+    if (body.length > 500) {
+      print('❌ Invalid body: must be <= 500 chars');
+      return false;
+    }
+
+    // Check queue size limit
+    if (_notificationQueue.length >= _maxQueueSize) {
+      print('❌ Notification queue full (${_notificationQueue.length}/$_maxQueueSize), dropping request');
+      return false;
+    }
+
     final request = _NotificationRequest(
       userId: userId,
       title: title,
@@ -188,25 +209,36 @@ class NotificationService {
     _notificationQueue.add(request);
 
     // Start queue processor if not already running
-    _startQueueProcessor();
+    _processQueueSequentially();
 
-    // Wait for this request to be processed
-    return await request.completer.future;
+    // Wait for this request to be processed with timeout
+    try {
+      return await request.completer.future.timeout(
+        _requestTimeout,
+        onTimeout: () {
+          print('⏰ Notification request timeout for user: $userId');
+          return false;
+        },
+      );
+    } catch (e) {
+      print('❌ Error waiting for notification result: $e');
+      return false;
+    }
   }
 
-  // Start queue processor with throttling
-  static void _startQueueProcessor() {
+  // Process queue sequentially to avoid race conditions
+  static Future<void> _processQueueSequentially() async {
     if (_isProcessingQueue) return;
 
     _isProcessingQueue = true;
-    _queueProcessorTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) async {
-      if (_notificationQueue.isEmpty) {
-        timer.cancel();
-        _isProcessingQueue = false;
-        return;
-      }
 
+    while (_notificationQueue.isNotEmpty) {
       final request = _notificationQueue.removeAt(0);
+
+      // Throttle: wait 300ms between requests
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Send notification
       final success = await _sendNotificationDirect(
         userId: request.userId,
         title: request.title,
@@ -215,8 +247,13 @@ class NotificationService {
         retryCount: 0,
       );
 
-      request.completer.complete(success);
-    });
+      // Complete the request
+      if (!request.completer.isCompleted) {
+        request.completer.complete(success);
+      }
+    }
+
+    _isProcessingQueue = false;
   }
 
   // Direct notification send with retry logic
@@ -286,7 +323,12 @@ class NotificationService {
 
   // Clear the queue if needed
   static void clearQueue() {
-    _queueProcessorTimer?.cancel();
+    // Complete all pending requests with false
+    for (final request in _notificationQueue) {
+      if (!request.completer.isCompleted) {
+        request.completer.complete(false);
+      }
+    }
     _notificationQueue.clear();
     _isProcessingQueue = false;
   }

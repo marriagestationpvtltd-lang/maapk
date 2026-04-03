@@ -517,8 +517,8 @@ Future<void> setupFirebaseMessaging() async {
         localPlugin: flutterLocalNotificationsPlugin,
       );
 
-      // Auto-navigate for call notifications when app is in foreground
-      _navigateToCallPage(data);
+      // Note: Navigation is handled by CallOverlayWrapper's incoming call stream listener
+      // to avoid duplicate navigation
     } else {
       await _showStandardNotification(message);
     }

@@ -265,51 +265,64 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper> {
   }
 
   void _setupIncomingCallListener() {
-    // Listen to incoming call stream
-    _incomingCallSubscription = NotificationService.incomingCalls.listen((data) {
-      print('📱 CallOverlayWrapper: Incoming call received: $data');
+    // Listen to incoming call stream with error handling
+    _incomingCallSubscription = NotificationService.incomingCalls.listen(
+      (data) {
+        print('📱 CallOverlayWrapper: Incoming call received: $data');
 
-      // Navigate to incoming call screen
-      final isVideoCall = data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+        // Navigate to incoming call screen
+        final isVideoCall = data['type'] == 'video_call' || data['isVideoCall'] == 'true';
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final currentContext = navigatorKey.currentContext;
-        final currentState = navigatorKey.currentState;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final currentContext = navigatorKey.currentContext;
+          final currentState = navigatorKey.currentState;
 
-        if (currentState != null && currentContext != null) {
-          // Check if we're already on a call page to avoid duplicates
-          final route = ModalRoute.of(currentContext);
-          if (route?.settings.name?.contains('call') ?? false) {
-            print('⚠️ Already on a call page, skipping navigation');
-            return;
-          }
+          if (currentState != null && currentContext != null) {
+            // Check if we're already on a call page to avoid duplicates
+            final route = ModalRoute.of(currentContext);
+            if (route?.settings.name?.contains('call') ?? false) {
+              print('⚠️ Already on a call page, skipping navigation');
+              return;
+            }
 
-          if (isVideoCall) {
-            currentState.push(
-              MaterialPageRoute(
-                settings: const RouteSettings(name: activeCallRouteName),
-                fullscreenDialog: true,
-                builder: (context) => IncomingVideoCallScreen(
-                  callData: data,
+            if (isVideoCall) {
+              currentState.push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
+                  fullscreenDialog: true,
+                  builder: (context) => IncomingVideoCallScreen(
+                    callData: data,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              currentState.push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
+                  fullscreenDialog: true,
+                  builder: (context) => IncomingCallScreen(
+                    callData: data,
+                  ),
+                ),
+              );
+            }
           } else {
-            currentState.push(
-              MaterialPageRoute(
-                settings: const RouteSettings(name: activeCallRouteName),
-                fullscreenDialog: true,
-                builder: (context) => IncomingCallScreen(
-                  callData: data,
-                ),
-              ),
-            );
+            print('❌ Navigator state is null, cannot navigate to incoming call');
           }
-        } else {
-          print('❌ Navigator state is null, cannot navigate to incoming call');
-        }
-      });
-    });
+        });
+      },
+      onError: (error, stackTrace) {
+        print('❌ Error in incoming call stream: $error');
+        print('Stack trace: $stackTrace');
+        // Re-subscribe after error
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            _setupIncomingCallListener();
+          }
+        });
+      },
+      cancelOnError: false,
+    );
   }
 
   @override
