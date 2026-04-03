@@ -110,20 +110,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
 
-  final LinearGradient _primaryGradient = const LinearGradient(
+  static const LinearGradient _primaryGradient = LinearGradient(
     colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  final LinearGradient _secondaryGradient = const LinearGradient(
+  static const LinearGradient _secondaryGradient = LinearGradient(
     colors: [Color(0xFFFFE4E6), Color(0xFFFFF1F2)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
-  final Color _accentColor = const Color(0xFFDB2777);
-  final Color _backgroundColor = const Color(0xFFF8FAFC);
-  final Color _textColor = const Color(0xFF1F2937);
-  final Color _lightTextColor = const Color(0xFF6B7280);
+  static const Color _accentColor = Color(0xFFDB2777);
+  static const Color _backgroundColor = Color(0xFFF8FAFC);
+  static const Color _textColor = Color(0xFF1F2937);
+  static const Color _lightTextColor = Color(0xFF6B7280);
 
   @override
   void initState() {
@@ -954,7 +954,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.75,
                   ),
                   decoration: BoxDecoration(
                     gradient: isMine ? _primaryGradient : _secondaryGradient,
