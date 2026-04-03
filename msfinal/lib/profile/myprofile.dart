@@ -541,8 +541,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final model = context.read<SignupModel>();
-
     if (isLoading) {
       return Scaffold(
         body: Center(
@@ -589,7 +587,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(personalDetail, lifestyle, familyDetail, model),
+            _buildHeader(personalDetail, lifestyle, familyDetail),
             _buildCompletionSection(
               personalDetail: personalDetail,
               familyDetail: familyDetail,
@@ -600,7 +598,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             _buildPackageDetailsSection(),
             _buildProfileInfo(personalDetail),
             _buildAboutMe(personalDetail, lifestyle, familyDetail),
-            _buildPersonalDetails(personalDetail, lifestyle, model),
+            _buildPersonalDetails(personalDetail, lifestyle),
             _buildProfessionalDetails(personalDetail),
             _buildFamilyDetails(familyDetail),
             _buildLifestyle(lifestyle),
@@ -616,8 +614,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     Map<String, dynamic> personalDetail,
     Map<String, dynamic> lifestyle,
     Map<String, dynamic> familyDetail,
-    SignupModel model,
   ) {
+    final model = context.read<SignupModel>();
     final completion = _calculateProfileCompletion(
       personalDetail: personalDetail,
       familyDetail: familyDetail,
@@ -1752,8 +1750,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Widget _buildPersonalDetails(
     Map<String, dynamic> personalDetail,
     Map<String, dynamic> lifestyle,
-    SignupModel model,
   ) {
+    final model = context.read<SignupModel>();
     return _buildSection(
       title: 'Personal Details',
       icon: Icons.favorite_border,
@@ -1976,7 +1974,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => PersonalDetailsPagee()));
   }
 
-  Future<void> _saveAboutMe(String aboutMe) async {
+  Future<bool> _saveAboutMe(String aboutMe) async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
     final userData = jsonDecode(userDataString!);
@@ -2003,34 +2001,35 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
       await fetchProfileData();
 
-      if (!mounted) return;
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('About Me updated successfully!'),
           backgroundColor: Color(0xFFD32F2F),
         ),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );
+      return false;
     }
   }
 
   Future<void> _editAboutMe(BuildContext context, String currentAboutMe) async {
     final TextEditingController _controller = TextEditingController(text: currentAboutMe);
+    bool isSaving = false;
 
     try {
       await showDialog(
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, setStateDialog) {
-            bool isSaving = false;
-
             return AlertDialog(
               title: Text(
                 "Edit About Me",
@@ -2088,8 +2087,15 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         isSaving = true;
                       });
 
-                      Navigator.pop(context);
-                      await _saveAboutMe(_controller.text.trim());
+                      final saved = await _saveAboutMe(_controller.text.trim());
+                      if (!mounted) return;
+                      if (saved) {
+                        Navigator.pop(context);
+                      } else {
+                        setStateDialog(() {
+                          isSaving = false;
+                        });
+                      }
                     },
                     child: Text('Save', style: TextStyle(color: Colors.white)),
                   ),
