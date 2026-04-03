@@ -282,9 +282,9 @@ class _SubscriptionPageState extends State<SubscriptionPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Active Plan: $_activePackageName',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
