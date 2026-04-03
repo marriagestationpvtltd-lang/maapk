@@ -184,8 +184,24 @@ class NepaliDateConverter {
     return days;
   }
 
-  // Get valid BS years
+  // Get valid BS years (filtered for age range: 21 to 80 years from today)
   static List<String> getBsYearsList() {
-    return _nepaliCalendar.keys.map((e) => e.toString()).toList();
+    final now = DateTime.now();
+    final currentBsDate = adToBs(now);
+
+    if (currentBsDate == null) {
+      return _nepaliCalendar.keys.map((e) => e.toString()).toList();
+    }
+
+    final currentBsYear = currentBsDate['year']!;
+    final minYear = currentBsYear - 80; // 80 years ago
+    final maxYear = currentBsYear - 21; // 21 years ago
+
+    return _nepaliCalendar.keys
+        .where((year) => year >= minYear && year <= maxYear)
+        .map((e) => e.toString())
+        .toList()
+        .reversed
+        .toList();
   }
 }
