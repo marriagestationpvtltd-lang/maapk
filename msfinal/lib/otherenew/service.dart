@@ -194,8 +194,8 @@ class ProfileService {
               requestType: 'Photo',
               recipientName: 'MS:$userId',
             );
-          } catch (notifError) {
-            debugPrint('⚠️ Photo request sent but notification failed: $notifError');
+          } catch (notifError, stackTrace) {
+            debugPrint('⚠️ Photo request sent but notification failed: $notifError\n$stackTrace');
           }
         }
         return result;
@@ -247,8 +247,8 @@ class ProfileService {
               requestType: 'Chat',
               recipientName: 'MS:$userId',
             );
-          } catch (notifError) {
-            debugPrint('⚠️ Chat request sent but notification failed: $notifError');
+          } catch (notifError, stackTrace) {
+            debugPrint('⚠️ Chat request sent but notification failed: $notifError\n$stackTrace');
           }
         }
         return result;
