@@ -2980,12 +2980,12 @@ class _MatchOverviewSection extends StatelessWidget {
     required this.red,
   });
 
+  int get matchPercentage => totalPreferencesCount > 0
+      ? ((matchedPreferencesCount / totalPreferencesCount) * 100).round()
+      : 0;
+
   @override
   Widget build(BuildContext context) {
-    final int percentage = totalPreferencesCount > 0
-        ? ((matchedPreferencesCount / totalPreferencesCount) * 100).round()
-        : 0;
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -3015,7 +3015,7 @@ class _MatchOverviewSection extends StatelessWidget {
               const SizedBox(width: 16),
               Flexible(
                 child: Text(
-                  "$percentage% match • $matchedPreferencesCount of $totalPreferencesCount preferences",
+                  "$matchPercentage% Match • $matchedPreferencesCount of $totalPreferencesCount preferences",
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
@@ -3093,6 +3093,7 @@ class _PartnerPreferenceSection extends StatelessWidget {
 }
 
 class _OtherMatchedProfilesSection extends StatelessWidget {
+  static const int _newMemberBadgeCount = 3;
   final List<MatchedProfile> otherMatchedProfiles;
   final Color red;
   final LinearGradient gradient;
@@ -3144,7 +3145,7 @@ class _OtherMatchedProfilesSection extends StatelessWidget {
                   profile: profile,
                   red: red,
                   gradient: gradient,
-                  isNewMember: index < 3,
+                  isNewMember: index < _newMemberBadgeCount,
                 );
               },
             ),

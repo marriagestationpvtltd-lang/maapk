@@ -1038,6 +1038,7 @@ class UserProfile extends ChangeNotifier {
     final accessControl = response.accessControl;
 
     String normalize(dynamic value) {
+      if (value == null) return '';
       return value
           .toString()
           .trim()
@@ -1093,12 +1094,24 @@ class UserProfile extends ChangeNotifier {
       final maxAge = int.tryParse(partner.maxage.toString());
       if (minAge == null || maxAge == null) return true;
 
-      final age = int.tryParse(personalDetail.birthDate.split('-').first);
-      if (age != null && age > 18 && age < 100) {
-        return age >= minAge && age <= maxAge;
+      DateTime? birthDate = DateTime.tryParse(personalDetail.birthDate);
+      if (birthDate == null) {
+        final match = RegExp(r'^(\d{2})-(\d{2})-(\d{4})$')
+            .firstMatch(personalDetail.birthDate);
+        if (match != null) {
+          final day = int.tryParse(match.group(1)!);
+          final month = int.tryParse(match.group(2)!);
+          final year = int.tryParse(match.group(3)!);
+          if (day != null && month != null && year != null) {
+            birthDate = DateTime.tryParse(
+              '${year.toString().padLeft(4, '0')}-'
+              '${month.toString().padLeft(2, '0')}-'
+              '${day.toString().padLeft(2, '0')}',
+            );
+          }
+        }
       }
 
-      final birthDate = DateTime.tryParse(personalDetail.birthDate);
       if (birthDate == null) return false;
 
       final now = DateTime.now();
