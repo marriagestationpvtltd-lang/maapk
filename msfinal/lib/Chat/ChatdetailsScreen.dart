@@ -662,7 +662,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
         border: Border(
-          left: BorderSide(
+          left: const BorderSide(
             color: _accentColor,
             width: 4,
           ),
@@ -745,7 +745,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
         border: Border(
-          left: BorderSide(color: _accentColor, width: 4),
+          left: const BorderSide(color: _accentColor, width: 4),
         ),
         boxShadow: [
           BoxShadow(
@@ -872,6 +872,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }) {
     final time = _formatTime(timestamp);
     final userName = isMine ? widget.currentUserName : widget.receiverName;
+    final screenWidth = MediaQuery.sizeOf(context).width;
 
     final messageContent = GestureDetector(
       onLongPress: () {
@@ -915,7 +916,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       gradient: _secondaryGradient,
                       borderRadius: BorderRadius.circular(10),
                       border: Border(
-                        left: BorderSide(
+                        left: const BorderSide(
                           color: _accentColor,
                           width: 3.5,
                         ),
@@ -954,7 +955,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+                    maxWidth: screenWidth * 0.75,
                   ),
                   decoration: BoxDecoration(
                     gradient: isMine ? _primaryGradient : _secondaryGradient,
