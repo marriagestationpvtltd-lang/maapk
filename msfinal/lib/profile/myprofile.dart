@@ -16,6 +16,7 @@ import '../Auth/SuignupModel/signup_model.dart';
 import '../DeleteAccount/deleteAccointScreen.dart';
 import '../Package/PackageScreen.dart';
 import '../Startup/onboarding.dart';
+import '../constant/app_colors.dart';
 import '../otherenew/blocked_users_screen.dart';
 
 class MatrimonyProfilePage extends StatefulWidget {
@@ -199,6 +200,15 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   String _joinNonEmpty(List<String> values, {String separator = ', '}) {
     return values.where((value) => value.trim().isNotEmpty).join(separator);
+  }
+
+  Future<void> _openEditPage(Widget page) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+    if (!mounted) return;
+    await fetchProfileData();
   }
 
   void _showMoreOptions(BuildContext context) {
@@ -1471,11 +1481,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
           ),
         ],
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1485,39 +1496,54 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, color: Color(0xFFD32F2F), size: 20),
-                  SizedBox(width: 10),
-                  Text(
-                    'Basic Information',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.14),
+                          AppColors.primaryLight.withOpacity(0.06),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    child: const Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Basic Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      Text(
+                        'Clean snapshot of your core profile details',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              InkWell(
-                onTap: () => _editBasicInfo(),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
-                    ),
-                  ),
-                  child: Icon(Icons.edit, color: Colors.white, size: 18),
-                ),
-              ),
+              _buildSectionAction(onTap: _editBasicInfo),
             ],
           ),
-          SizedBox(height: 15),
+          SizedBox(height: 18),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               _buildMiniStat('Profile ID', _displayValue(personalDetail['memberid'])),
               _buildMiniStat('Height', _displayValue(personalDetail['height_name'])),
@@ -1534,6 +1560,102 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               ),
               _buildMiniStat('Privacy', _displayValue(personalDetail['privacy'])),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionAction({
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.edit_outlined, color: Colors.white, size: 16),
+            SizedBox(width: 6),
+            Text(
+              'Edit',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionValueCard({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBFB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.grey[900],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1569,11 +1691,19 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   Widget _buildMiniStat(String label, String value) {
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(12),
+      width: 156,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FD),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFFFBFB),
+            AppColors.primary.withOpacity(0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1588,7 +1718,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+            ),
           ),
         ],
       ),
@@ -1977,7 +2110,11 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   void _editBasicInfo() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => PersonalDetailsPagee()));
+    _openEditPage(
+      PersonalDetailsPagee(
+        initialData: _asMap(profileData?['personalDetail']),
+      ),
+    );
   }
 
   Future<bool> _saveAboutMe(String aboutMe) async {
@@ -2117,22 +2254,43 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   void _editPersonalDetails() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => PersonalDetailsPagee()));
+    _openEditPage(
+      PersonalDetailsPagee(
+        initialData: _asMap(profileData?['personalDetail']),
+      ),
+    );
   }
 
   void _editProfessionalDetails() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => EducationCareerPagee()));
+    _openEditPage(
+      EducationCareerPagee(
+        initialData: _asMap(profileData?['personalDetail']),
+      ),
+    );
   }
 
   void _editFamilyDetails() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => FamilyDetailsPagee()));
+    _openEditPage(
+      FamilyDetailsPagee(
+        initialFamilyData: _asMap(profileData?['familyDetail']),
+      ),
+    );
   }
 
   void _editLifestyle() {
-Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee(),));  }
+    _openEditPage(
+      LifestylePagee(
+        initialData: _asMap(profileData?['lifestyle']),
+      ),
+    );
+  }
 
   void _editPartnerPreferences() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => PartnerPreferencesPagee()));
+    _openEditPage(
+      PartnerPreferencesPagee(
+        initialData: _asMap(profileData?['partner']),
+      ),
+    );
   }
 
   void _upgradeMembership() {
@@ -2262,31 +2420,11 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _buildSectionValueCard(
+        label: label,
+        value: value,
+        icon: Icons.check_circle_outline,
       ),
     );
   }
@@ -2476,14 +2614,15 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
           ),
         ],
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2493,36 +2632,47 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
             children: [
               Row(
                 children: [
-                  Icon(icon, color: Color(0xFFD32F2F), size: 20),
-                  SizedBox(width: 10),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.14),
+                          AppColors.primaryLight.withOpacity(0.06),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    child: Icon(icon, color: AppColors.primary, size: 20),
+                  ),
+                  SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      Text(
+                        'Keep this section complete and up to date',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              InkWell(
-                onTap: onEdit,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
-                    ),
-                  ),
-                  child: Icon(Icons.edit, color: Colors.white, size: 18),
-                ),
-              ),
+              _buildSectionAction(onTap: onEdit),
             ],
           ),
-          SizedBox(height: 15),
+          SizedBox(height: 18),
           content,
         ],
       ),
@@ -2531,40 +2681,11 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
 
   Widget _buildPreferenceRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Color(0xFFD32F2F),
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _buildSectionValueCard(
+        label: label,
+        value: value,
+        icon: Icons.favorite_border,
       ),
     );
   }
