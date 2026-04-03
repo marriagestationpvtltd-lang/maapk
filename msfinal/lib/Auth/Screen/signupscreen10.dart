@@ -18,6 +18,10 @@ class IDVerificationScreen extends StatefulWidget {
 
 class _IDVerificationScreenState extends State<IDVerificationScreen>
     with TickerProviderStateMixin {
+  static const Duration _autoRefreshInterval = Duration(seconds: 30);
+  static const double _kPulseScaleMin = 0.94;
+  static const double _kPulseScaleMax = 1.06;
+
   final ImagePicker _picker = ImagePicker();
   String? _selectedDocumentType;
   final TextEditingController _documentNumberController =
@@ -60,7 +64,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     )..repeat(reverse: true);
     _fadeAnimation =
         CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
-    _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
+    _pulseAnimation = Tween<double>(begin: _kPulseScaleMin, end: _kPulseScaleMax).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _checkDocumentStatus();
@@ -77,7 +81,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
 
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
       if (_documentStatus == 'pending' && mounted) {
         _checkDocumentStatus();
       }
@@ -1219,7 +1223,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Status refreshes automatically every 30 seconds.',
+              'Status refreshes automatically every ${_autoRefreshInterval.inSeconds} seconds.',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ),
