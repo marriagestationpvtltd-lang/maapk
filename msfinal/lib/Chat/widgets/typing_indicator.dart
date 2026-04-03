@@ -18,6 +18,9 @@ class TypingIndicatorWidget extends StatefulWidget {
 }
 
 class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> {
+  static const Duration _kAnimationInterval = Duration(milliseconds: 400);
+  static const Duration _kFadeDuration = Duration(milliseconds: 250);
+
   // Which dot is currently "active" (enlarged + opaque)
   int _activeDot = 0;
   Timer? _timer;
@@ -25,7 +28,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+    _timer = Timer.periodic(_kAnimationInterval, (_) {
       if (mounted) {
         setState(() {
           _activeDot = (_activeDot + 1) % 3;
@@ -47,7 +50,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> {
       children: List.generate(3, (index) {
         final isActive = index == _activeDot;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          duration: _kFadeDuration,
           curve: Curves.easeInOut,
           margin: const EdgeInsets.symmetric(horizontal: 2.5),
           width: isActive ? widget.dotSize + 2 : widget.dotSize,

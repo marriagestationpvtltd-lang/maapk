@@ -124,6 +124,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   // Delivered status (hover for web)
   String? _hoveredMessageId;
 
+  // Timing constants
+  static const int _kTypingTimeoutSeconds = 5;
+  static const Duration _kTypingDebounceDelay = Duration(seconds: 3);
+  static const Duration _kHighlightDuration = Duration(milliseconds: 700);
+
   static const LinearGradient _primaryGradient = LinearGradient(
     colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
     begin: Alignment.topLeft,
@@ -277,7 +282,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       bool typing = false;
       if (receiverTypingTs is Timestamp) {
         final diff = DateTime.now().difference(receiverTypingTs.toDate());
-        typing = diff.inSeconds < 5;
+        typing = diff.inSeconds < _kTypingTimeoutSeconds;
       }
       if (mounted && _isReceiverTyping != typing) {
         setState(() => _isReceiverTyping = typing);
@@ -293,7 +298,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       {'typing': {widget.currentUserId: FieldValue.serverTimestamp()}},
       SetOptions(merge: true),
     );
-    _typingDebounce = Timer(const Duration(seconds: 3), _clearTyping);
+    _typingDebounce = Timer(_kTypingDebounceDelay, _clearTyping);
   }
 
   void _clearTyping() {
@@ -317,7 +322,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
 
     setState(() => _highlightedMessageId = messageId);
-    Future.delayed(const Duration(milliseconds: 700), () {
+    Future.delayed(_kHighlightDuration, () {
       if (mounted) setState(() => _highlightedMessageId = null);
     });
   }

@@ -73,8 +73,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   // PiP (local video preview) draggable offset (from top-right)
   Offset _pipOffset = const Offset(20, 40);
+  static const double _kPipWidth = 120.0;
+  static const double _kPipHeight = 160.0;
+  static const double _kPipPadding = 8.0;
 
   // Auto-hide controls after 3 s idle
+  static const Duration _kControlsHideDelay = Duration(seconds: 3);
   bool _showControls = true;
   Timer? _controlsHideTimer;
 
@@ -530,7 +534,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void _scheduleControlsHide() {
     _controlsHideTimer?.cancel();
     if (_callActive) {
-      _controlsHideTimer = Timer(const Duration(seconds: 3), () {
+      _controlsHideTimer = Timer(_kControlsHideDelay, () {
         if (mounted) setState(() => _showControls = false);
       });
     }
@@ -692,17 +696,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 Positioned(
                   top: _pipOffset.dy,
                   right: _pipOffset.dx,
-                  width: 120,
-                  height: 160,
+                  width: _kPipWidth,
+                  height: _kPipHeight,
                   child: GestureDetector(
                     onPanUpdate: (details) {
                       final size = MediaQuery.sizeOf(context);
                       setState(() {
-                        // Move pip; keep within safe bounds
                         double newRight = _pipOffset.dx - details.delta.dx;
                         double newTop = _pipOffset.dy + details.delta.dy;
-                        newRight = newRight.clamp(8.0, size.width - 128.0);
-                        newTop = newTop.clamp(8.0, size.height - 168.0);
+                        newRight = newRight.clamp(
+                            _kPipPadding, size.width - _kPipWidth - _kPipPadding);
+                        newTop = newTop.clamp(
+                            _kPipPadding, size.height - _kPipHeight - _kPipPadding);
                         _pipOffset = Offset(newRight, newTop);
                       });
                     },

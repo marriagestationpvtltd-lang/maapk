@@ -67,6 +67,8 @@ class _CallScreenState extends State<CallScreen> {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _connectionStatus;
 
+  static const Duration _kConnectivityLossTimeout = Duration(seconds: 30);
+
   // Call history tracking
   String? _callHistoryId;
   DateTime? _callStartTime;
@@ -479,7 +481,7 @@ class _CallScreenState extends State<CallScreen> {
       });
       if (!hasConnection && _callActive) {
         // Auto-end if connectivity fully drops for too long
-        Future.delayed(const Duration(seconds: 30), () {
+        Future.delayed(_kConnectivityLossTimeout, () {
           if (mounted && _connectionStatus != null) _endCall();
         });
       }
