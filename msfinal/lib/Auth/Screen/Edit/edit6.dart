@@ -8,7 +8,12 @@ import '../../../ReUsable/dropdownwidget.dart';
 import '../../../service/updatepage.dart';
 
 class FamilyDetailsPagee extends StatefulWidget {
-  const FamilyDetailsPagee({super.key});
+  const FamilyDetailsPagee({
+    super.key,
+    this.initialFamilyData,
+  });
+
+  final Map<String, dynamic>? initialFamilyData;
 
   @override
   State<FamilyDetailsPagee> createState() => _FamilyDetailsPageeState();
@@ -118,7 +123,14 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSavedData();
+      if (widget.initialFamilyData != null && widget.initialFamilyData!.isNotEmpty) {
+        _applyFamilyData(widget.initialFamilyData!);
+        setState(() {
+          isDataLoaded = true;
+        });
+      } else {
+        _loadSavedData();
+      }
     });
   }
 
@@ -161,21 +173,7 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
           setState(() {
             // Load family data if exists
             if (familyData != null) {
-              _selectedFamilyType = _getValidValue(familyData['familytype']);
-              _selectedFamilyBackground = _getValidValue(familyData['familybackground']);
-              _fatherStatus = _getValidValue(familyData['fatherstatus']);
-              _motherStatus = _getValidValue(familyData['motherstatus']);
-              _selectedFamilyOrigin = _getValidValue(familyData['familyorigin']);
-
-              // Father details
-              _fatherNameController.text = familyData['fathername']?.toString() ?? '';
-              _fatherEducation = _getValidValue(familyData['fathereducation']);
-              _fatherOccupation = _getValidValue(familyData['fatheroccupation']);
-
-              // Mother details
-              _motherCastController.text = familyData['mothercaste']?.toString() ?? '';
-              _motherEducation = _getValidValue(familyData['mothereducation']);
-              _motherOccupation = _getValidValue(familyData['motheroccupation']);
+              _applyFamilyData(familyData, updateState: false);
             }
 
             // Load family members
@@ -230,6 +228,31 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
       return null;
     }
     return value.toString();
+  }
+
+  void _applyFamilyData(
+    Map<String, dynamic> familyData, {
+    bool updateState = true,
+  }) {
+    final apply = () {
+      _selectedFamilyType = _getValidValue(familyData['familytype']);
+      _selectedFamilyBackground = _getValidValue(familyData['familybackground']);
+      _fatherStatus = _getValidValue(familyData['fatherstatus']);
+      _motherStatus = _getValidValue(familyData['motherstatus']);
+      _selectedFamilyOrigin = _getValidValue(familyData['familyorigin']);
+      _fatherNameController.text = familyData['fathername']?.toString() ?? '';
+      _fatherEducation = _getValidValue(familyData['fathereducation']);
+      _fatherOccupation = _getValidValue(familyData['fatheroccupation']);
+      _motherCastController.text = familyData['mothercaste']?.toString() ?? '';
+      _motherEducation = _getValidValue(familyData['mothereducation']);
+      _motherOccupation = _getValidValue(familyData['motheroccupation']);
+    };
+
+    if (updateState) {
+      setState(apply);
+    } else {
+      apply();
+    }
   }
 
   @override

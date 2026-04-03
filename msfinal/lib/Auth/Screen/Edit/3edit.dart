@@ -5,7 +5,12 @@ import '../../../ReUsable/dropdownwidget.dart';
 import '../../../service/personal_details_api.dart'; // Your existing service
 
 class PersonalDetailsPagee extends StatefulWidget {
-  const PersonalDetailsPagee({super.key});
+  const PersonalDetailsPagee({
+    super.key,
+    this.initialData,
+  });
+
+  final Map<String, dynamic>? initialData;
 
   @override
   State<PersonalDetailsPagee> createState() => _PersonalDetailsPageeState();
@@ -95,7 +100,13 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     _detailService = UserPersonalDetailService(
       baseUrl: 'https://digitallami.com/Api2/get_personal_detail.php', // Use same endpoint
     );
-    _loadUserData();
+    if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+      _populateFormWithData(widget.initialData!);
+      _hasSavedData = true;
+      _isLoading = false;
+    } else {
+      _loadUserData();
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -177,6 +188,7 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
         _selectedMaritalStatus = _maritalStatusOptions[index];
       }
     }
+    _selectedMaritalStatus ??= data['maritalStatusName']?.toString();
 
     // Height
     if (data['height_name'] != null && data['height_name'].toString().isNotEmpty) {
@@ -190,19 +202,23 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
     // Specs
     if (data['haveSpecs'] != null) {
-      final value = data['haveSpecs'];
-      _hasSpecs = value == true || value == 1 || value == '1';
+      final value = data['haveSpecs'].toString().toLowerCase();
+      _hasSpecs = value == 'true' || value == '1' || value == 'yes';
     }
 
     // Disability
     if (data['anyDisability'] != null) {
-      final value = data['anyDisability'];
-      _hasDisability = value == true || value == 1 || value == '1';
+      final value = data['anyDisability'].toString().toLowerCase();
+      _hasDisability = value == 'true' || value == '1' || value == 'yes';
+    } else if (data['disability'] != null) {
+      final value = data['disability'].toString().toLowerCase();
+      _hasDisability = value == 'yes' || value == '1' || value == 'true';
     }
 
     // Disability description
-    if (data['Disability'] != null && data['Disability'].toString().isNotEmpty) {
-      _disabilityController.text = data['Disability'].toString();
+    final disabilityText = data['Disability'] ?? data['disability'];
+    if (disabilityText != null && disabilityText.toString().isNotEmpty) {
+      _disabilityController.text = disabilityText.toString();
     }
 
     // Blood Group

@@ -6,7 +6,12 @@ import 'package:http/http.dart' as http;
 import '../../../ReUsable/dropdownwidget.dart';
 
 class EducationCareerPagee extends StatefulWidget {
-  const EducationCareerPagee({super.key});
+  const EducationCareerPagee({
+    super.key,
+    this.initialData,
+  });
+
+  final Map<String, dynamic>? initialData;
 
   @override
   State<EducationCareerPagee> createState() => _EducationCareerPageeState();
@@ -164,7 +169,14 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSavedData();
+      if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+        _applySavedData(widget.initialData!);
+        setState(() {
+          isDataLoaded = true;
+        });
+      } else {
+        _loadSavedData();
+      }
     });
   }
 
@@ -199,46 +211,8 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
         if (data['status'] == 'success' && data['data'] != null) {
           final savedData = data['data'];
           print("Loaded Data: $savedData");
-
-          // Update all state variables at once
+          _applySavedData(savedData);
           setState(() {
-            // Education data
-            _selectedEducationMedium = _getValidValue(savedData['educationmedium']);
-            _selectedEducationType = _getValidValue(savedData['educationtype']);
-            _selectedFaculty = _getValidValue(savedData['faculty']);
-            _selectedEducationDegree = _getValidValue(savedData['degree']);
-
-            // Career data
-            String areYouWorking = savedData['areyouworking']?.toString() ?? '';
-            _isWorking = areYouWorking == "Yes" || areYouWorking == "1";
-            _occupationType = _getValidValue(savedData['occupationtype']);
-
-            // Clear controllers first
-            _companyNameController.clear();
-            _businessNameController.clear();
-            _designationController.clear();
-            _businessDesignationController.clear();
-
-            // Load job/business data based on occupation type
-            if (_occupationType == "Job") {
-              _companyNameController.text = savedData['companyname']?.toString() ?? '';
-              _selectedDesignation = _getValidValue(savedData['designation']);
-              _selectedWorkingWith = _getValidValue(savedData['workingwith']);
-              _selectedAnnualIncome = _getValidValue(savedData['annualincome']);
-            } else if (_occupationType == "Business") {
-              _businessNameController.text = savedData['businessname']?.toString() ?? '';
-              _selectedDesignation = _getValidValue(savedData['designation']);
-              _selectedBusinessWorkingWith = _getValidValue(savedData['workingwith']);
-              _selectedBusinessAnnualIncome = _getValidValue(savedData['annualincome']);
-            } else {
-              // If no occupation type, clear all related fields
-              _selectedDesignation = null;
-              _selectedWorkingWith = null;
-              _selectedAnnualIncome = null;
-              _selectedBusinessWorkingWith = null;
-              _selectedBusinessAnnualIncome = null;
-            }
-
             isDataLoaded = true;
           });
 
@@ -296,6 +270,46 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       return null;
     }
     return value.toString();
+  }
+
+  void _applySavedData(Map<String, dynamic> savedData) {
+    setState(() {
+      _selectedEducationMedium = _getValidValue(savedData['educationmedium']);
+      _selectedEducationType = _getValidValue(savedData['educationtype']);
+      _selectedFaculty = _getValidValue(savedData['faculty']);
+      _selectedEducationDegree = _getValidValue(savedData['degree']);
+
+      final areYouWorking = savedData['areyouworking']?.toString().toLowerCase() ?? '';
+      _isWorking = areYouWorking == "yes" || areYouWorking == "1" || areYouWorking == "true";
+      _occupationType = _getValidValue(savedData['occupationtype']);
+
+      _companyNameController.clear();
+      _businessNameController.clear();
+      _designationController.clear();
+      _businessDesignationController.clear();
+
+      if (_occupationType == "Job" || _occupationType == null) {
+        _companyNameController.text = savedData['companyname']?.toString() ?? '';
+        _selectedDesignation = _getValidValue(savedData['designation']);
+        _selectedWorkingWith = _getValidValue(savedData['workingwith']);
+        _selectedAnnualIncome = _getValidValue(savedData['annualincome']);
+        _selectedBusinessWorkingWith = null;
+        _selectedBusinessAnnualIncome = null;
+      } else if (_occupationType == "Business") {
+        _businessNameController.text = savedData['businessname']?.toString() ?? '';
+        _selectedDesignation = _getValidValue(savedData['designation']);
+        _selectedBusinessWorkingWith = _getValidValue(savedData['workingwith']);
+        _selectedBusinessAnnualIncome = _getValidValue(savedData['annualincome']);
+        _selectedWorkingWith = null;
+        _selectedAnnualIncome = null;
+      } else {
+        _selectedDesignation = _getValidValue(savedData['designation']);
+        _selectedWorkingWith = _getValidValue(savedData['workingwith']);
+        _selectedAnnualIncome = _getValidValue(savedData['annualincome']);
+        _selectedBusinessWorkingWith = null;
+        _selectedBusinessAnnualIncome = null;
+      }
+    });
   }
 
   @override

@@ -6,7 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../ReUsable/dropdownwidget.dart';
 
 class LifestylePagee extends StatefulWidget {
-  const LifestylePagee({super.key});
+  const LifestylePagee({
+    super.key,
+    this.initialData,
+  });
+
+  final Map<String, dynamic>? initialData;
 
   @override
   State<LifestylePagee> createState() => _LifestylePageeState();
@@ -80,7 +85,11 @@ class _LifestylePageeState extends State<LifestylePagee> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSavedData();
+      if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+        _applyLifestyleData(widget.initialData!);
+      } else {
+        _loadSavedData();
+      }
     });
   }
 
@@ -132,16 +141,7 @@ class _LifestylePageeState extends State<LifestylePagee> {
                   newSmokeType != _selectedSmokeType;
 
           if (valuesChanged) {
-            // Update state with force rebuild
-            setState(() {
-              _selectedDiet = newDiet;
-              _selectedDrink = newDrink;
-              _selectedDrinkType = newDrinkType;
-              _selectedSmoke = newSmoke;
-              _selectedSmokeType = newSmokeType;
-              _rebuildCounter++;
-              isDataLoaded = true;
-            });
+            _applyLifestyleData(savedData);
 
             print("Values updated and widgets will rebuild");
           } else {
@@ -195,6 +195,19 @@ class _LifestylePageeState extends State<LifestylePagee> {
       return null;
     }
     return value.toString();
+  }
+
+  void _applyLifestyleData(Map<String, dynamic> savedData) {
+    setState(() {
+      _selectedDiet = _getValidValue(savedData['diet']);
+      _selectedDrink = _getValidValue(savedData['drinks']);
+      _selectedDrinkType = _getValidValue(savedData['drinktype']);
+      _selectedSmoke = _getValidValue(savedData['smoke']);
+      _selectedSmokeType = _getValidValue(savedData['smoketype']);
+      _rebuildCounter++;
+      isDataLoaded = true;
+      isLoading = false;
+    });
   }
 
   @override
