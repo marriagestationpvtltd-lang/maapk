@@ -26,7 +26,12 @@ class UserPartnerPreferenceService {
       if (data is Map<String, dynamic>) {
         return data;
       }
-    } catch (_) {}
+    } catch (e) {
+      return {
+        'status': 'error',
+        'message': e.toString(),
+      };
+    }
 
     return null;
   }

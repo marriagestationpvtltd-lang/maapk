@@ -273,12 +273,13 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
       return null;
     }
 
-    final match = _heightOptions.cast<String?>().firstWhere(
-      (option) => option != null && option.startsWith('$number cm'),
-      orElse: () => null,
-    );
+    for (final option in _heightOptions) {
+      if (option.startsWith('$number cm')) {
+        return option;
+      }
+    }
 
-    return match ?? '$number cm';
+    return '$number cm';
   }
 
   Future<void> _loadInitialData() async {
