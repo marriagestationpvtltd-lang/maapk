@@ -96,6 +96,13 @@ class ProfileTabs extends StatelessWidget {
                       icon: Icons.cake_outlined,
                       isDark: isDark,
                     ),
+                  if (partner['minheight'] != null && partner['maxheight'] != null)
+                    _buildInfoItem(
+                      label: 'Height Range',
+                      value: '${partner['minheight']} - ${partner['maxheight']} cm',
+                      icon: Icons.height_outlined,
+                      isDark: isDark,
+                    ),
                   if (partner['minweight'] != null && partner['maxweight'] != null)
                     _buildInfoItem(
                       label: 'Weight Range',
@@ -124,6 +131,7 @@ class ProfileTabs extends StatelessWidget {
               // Religious Preferences
               if (((partner['religion'] as String?)?.isNotEmpty == true) ||
                   ((partner['caste'] as String?)?.isNotEmpty == true) ||
+                  ((partner['community'] as String?)?.isNotEmpty == true) ||
                   ((partner['mothertoungue'] as String?)?.isNotEmpty == true) ||
                   ((partner['herscopeblief'] as String?)?.isNotEmpty == true) ||
                   ((partner['manglik'] as String?)?.isNotEmpty == true))
@@ -146,6 +154,13 @@ class ProfileTabs extends StatelessWidget {
                       _buildInfoItem(
                         label: 'Caste',
                         value: partner['caste'].toString(),
+                        icon: Icons.groups_outlined,
+                        isDark: isDark,
+                      ),
+                    if ((partner['community'] as String?)?.isNotEmpty == true)
+                      _buildInfoItem(
+                        label: 'Community',
+                        value: partner['community'].toString(),
                         icon: Icons.groups_outlined,
                         isDark: isDark,
                       ),
@@ -175,6 +190,7 @@ class ProfileTabs extends StatelessWidget {
 
               if (((partner['religion'] as String?)?.isNotEmpty == true) ||
                   ((partner['caste'] as String?)?.isNotEmpty == true) ||
+                  ((partner['community'] as String?)?.isNotEmpty == true) ||
                   ((partner['mothertoungue'] as String?)?.isNotEmpty == true) ||
                   ((partner['herscopeblief'] as String?)?.isNotEmpty == true) ||
                   ((partner['manglik'] as String?)?.isNotEmpty == true))
@@ -183,6 +199,7 @@ class ProfileTabs extends StatelessWidget {
               // Location Preferences
               if (((partner['country'] as String?)?.isNotEmpty == true) ||
                   ((partner['state'] as String?)?.isNotEmpty == true) ||
+                  ((partner['district'] as String?)?.isNotEmpty == true) ||
                   ((partner['city'] as String?)?.isNotEmpty == true))
                 _buildSectionCard(
                   title: 'Location Preferences',
@@ -206,6 +223,13 @@ class ProfileTabs extends StatelessWidget {
                         icon: Icons.map_outlined,
                         isDark: isDark,
                       ),
+                    if ((partner['district'] as String?)?.isNotEmpty == true)
+                      _buildInfoItem(
+                        label: 'District',
+                        value: partner['district'].toString(),
+                        icon: Icons.location_city_outlined,
+                        isDark: isDark,
+                      ),
                     if ((partner['city'] as String?)?.isNotEmpty == true)
                       _buildInfoItem(
                         label: 'City',
@@ -218,6 +242,7 @@ class ProfileTabs extends StatelessWidget {
 
               if (((partner['country'] as String?)?.isNotEmpty == true) ||
                   ((partner['state'] as String?)?.isNotEmpty == true) ||
+                  ((partner['district'] as String?)?.isNotEmpty == true) ||
                   ((partner['city'] as String?)?.isNotEmpty == true))
                 const SizedBox(height: 16),
 
