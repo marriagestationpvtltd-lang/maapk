@@ -85,9 +85,10 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
 
   List<String> get adYears {
     final now = DateTime.now();
-    final maxYear = now.year - 21;
+    final maxYear = now.year - 21; // Minimum age: 21 years
+    final minYear = now.year - 80; // Maximum age: 80 years
     final years = <String>[];
-    for (int year = maxYear - 100; year <= maxYear; year++) {
+    for (int year = minYear; year <= maxYear; year++) {
       years.add(year.toString());
     }
     return years.reversed.toList();
@@ -203,6 +204,46 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
     return null;
   }
 
+  String? _validateDateOfBirth() {
+    // Check if all date fields are filled
+    if (selectedADYear.isEmpty || selectedADMonth.isEmpty || selectedADDay.isEmpty) {
+      return 'Date of birth is required';
+    }
+
+    // Parse the selected date
+    final year = int.tryParse(selectedADYear);
+    final monthIndex = adMonths.indexOf(selectedADMonth) + 1;
+    final day = int.tryParse(selectedADDay);
+
+    if (year == null || monthIndex <= 0 || day == null) {
+      return 'Invalid date selected';
+    }
+
+    try {
+      final selectedDate = DateTime(year, monthIndex, day);
+      final now = DateTime.now();
+      final age = now.year - selectedDate.year;
+      final hasHadBirthdayThisYear = now.month > selectedDate.month ||
+          (now.month == selectedDate.month && now.day >= selectedDate.day);
+
+      final actualAge = hasHadBirthdayThisYear ? age : age - 1;
+
+      // Minimum age validation (21 years)
+      if (actualAge < 21) {
+        return 'तपाईं विवाह गर्नको लागि योग्य उमेर हुनुभएको छैन';
+      }
+
+      // Maximum age validation (80 years)
+      if (actualAge > 80) {
+        return 'तपाईंको उमेर ८० वर्षभन्दा बढी छ';
+      }
+    } catch (e) {
+      return 'Invalid date';
+    }
+
+    return null;
+  }
+
   bool _validateForm() {
     setState(() {
       _fieldErrors = {
@@ -212,8 +253,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
         'password': _validatePassword(_passwordController.text),
         'confirmPassword': _validateConfirmPassword(_confirmPasswordController.text),
         'phone': completeNumberr.isEmpty ? 'Phone number is required' : null,
-        'dob': (selectedADYear.isEmpty || selectedADMonth.isEmpty || selectedADDay.isEmpty)
-            ? 'Date of birth is required' : null,
+        'dob': _validateDateOfBirth(),
         'languages': selectedLanguages.isEmpty ? 'Select at least one language' : null,
         'nationality': selectedNationality.isEmpty ? 'Nationality is required' : null,
       };
@@ -256,7 +296,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
       model.setDateOfBirth(dob);
 
       setState(() {
-        _fieldErrors['dob'] = null;
+        _fieldErrors['dob'] = _validateDateOfBirth();
       });
     }
   }
