@@ -169,10 +169,9 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       if (mounted) {
         setState(() => _unreadNotificationCount = count);
       }
-    } catch (_) {}
-  }
-
-  Future<void> _refreshAllData() async {
+    } catch (e) {
+      debugPrint('Failed to load notification count: $e');
+    } async {
     setState(() => _isRefreshing = true);
     // Clear cache so fresh data is fetched
     _cache.clear();
