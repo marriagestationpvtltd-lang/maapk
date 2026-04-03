@@ -393,10 +393,7 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _startForegroundService() async {
-    if (_channel.isEmpty) {
-      _foregroundServiceStarted = false;
-      return;
-    }
+    if (_channel.isEmpty) return;
     if (_foregroundServiceStarted) return;
     _foregroundServiceStarted = true;
     await CallForegroundServiceManager.startOngoingCall(
