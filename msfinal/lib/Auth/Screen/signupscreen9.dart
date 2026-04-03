@@ -9,6 +9,7 @@ import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../ReUsable/dropdownwidget.dart';
 import '../../service/location_service.dart';
+import '../../service/partner_age_preferences.dart';
 import '../../service/partner_pref_api.dart';
 import '../../service/updatepage.dart';
 
@@ -20,6 +21,9 @@ class PartnerPreferencesPage extends StatefulWidget {
 }
 
 class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with SingleTickerProviderStateMixin {
+  static const int _defaultMaximumPartnerAge =
+      PartnerAgePreferenceBounds.defaultMaximumAge;
+
   // Form state
   String? _minAge;
   String? _maxAge;
@@ -55,7 +59,12 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   late Animation<double> _fadeAnimation;
 
   // Options data
-  final List<String> _ageOptions = List.generate(44, (index) => (18 + index).toString());
+  int _minimumPartnerAge = PartnerAgePreferenceBounds.minimumAllowedAge;
+  int _maximumPartnerAge = _defaultMaximumPartnerAge;
+  List<String> _ageOptions = List.generate(
+    (_defaultMaximumPartnerAge - PartnerAgePreferenceBounds.minimumAllowedAge) + 1,
+    (index) => (PartnerAgePreferenceBounds.minimumAllowedAge + index).toString(),
+  );
 
   late final List<String> _heightOptions;
 
@@ -284,10 +293,80 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     return '$number cm';
   }
 
+  String? _clampAgeValue(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+
+    final parsedAge = int.tryParse(value);
+    if (parsedAge == null) {
+      return null;
+    }
+
+    if (parsedAge < _minimumPartnerAge) {
+      return _minimumPartnerAge.toString();
+    }
+
+    if (parsedAge > _maximumPartnerAge) {
+      return _maximumPartnerAge.toString();
+    }
+
+    return parsedAge.toString();
+  }
+
+  void _applyAgeRange({
+    String? minAge,
+    String? maxAge,
+  }) {
+    final normalizedMin = _clampAgeValue(minAge);
+    final normalizedMax = _clampAgeValue(maxAge);
+
+    if (normalizedMin != null &&
+        normalizedMax != null &&
+        int.parse(normalizedMin) > int.parse(normalizedMax)) {
+      _minAge = normalizedMax;
+      _maxAge = normalizedMin;
+      return;
+    }
+
+    _minAge = normalizedMin;
+    _maxAge = normalizedMax;
+  }
+
+  Future<void> _loadAgePreferenceBounds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+
+    Map<String, dynamic>? userData;
+    if (userDataString != null) {
+      final decoded = jsonDecode(userDataString);
+      if (decoded is Map<String, dynamic>) {
+        userData = decoded;
+      }
+    }
+
+    final bounds = resolvePartnerAgePreferenceBounds(
+      userData: userData,
+      fallbackMaxAge: _maximumPartnerAge,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _minimumPartnerAge = bounds.minAge;
+      _maximumPartnerAge = bounds.maxAge;
+      _ageOptions = bounds.buildAgeOptions();
+      _applyAgeRange(
+        minAge: _minAge,
+        maxAge: _maxAge,
+      );
+    });
+  }
+
   Future<void> _loadInitialData() async {
     setState(() => _isLoadingInitialData = true);
 
     try {
+      await _loadAgePreferenceBounds();
       await _loadCountries();
       await _loadSavedPreferences();
     } catch (e) {
@@ -486,8 +565,10 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
 
     if (!mounted) return;
     setState(() {
-      _minAge = data['minage']?.toString();
-      _maxAge = data['maxage']?.toString();
+      _applyAgeRange(
+        minAge: data['minage']?.toString(),
+        maxAge: data['maxage']?.toString(),
+      );
       _minHeight = _heightValueFromApi(data['minheight']);
       _maxHeight = _heightValueFromApi(data['maxheight']);
       _selectedMaritalStatus = _parsePreferenceList(data['maritalstatus']);
@@ -632,243 +713,17 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     required Function(List<String>) onConfirm,
     IconData? icon,
   }) {
-    List<String> tempSelected = List.from(selectedOptions);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.all(20),
-              height: MediaQuery.of(context).size.height * 0.75,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    children: [
-                      if (icon != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(icon, color: AppColors.white, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: AppColors.textSecondary),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Selected count
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withOpacity(0.1),
-                          AppColors.primaryLight.withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.primary.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${tempSelected.length} selected',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Options list
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: options.length,
-                      itemBuilder: (context, index) {
-                        final option = options[index];
-                        final isSelected = tempSelected.contains(option);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: InkWell(
-                             onTap: () {
-                               setModalState(() {
-                                 if (isSelected) {
-                                   tempSelected.remove(option);
-                                 } else {
-                                   if (option == 'Any') {
-                                     tempSelected = ['Any'];
-                                   } else {
-                                     tempSelected.remove('Any');
-                                     tempSelected.add(option);
-                                   }
-                                 }
-                               });
-                             },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: isSelected ? AppColors.primaryGradient : null,
-                                color: isSelected ? null : AppColors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected ? Colors.transparent : AppColors.border,
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: isSelected
-                                        ? AppColors.primary.withOpacity(0.3)
-                                        : AppColors.shadowLight,
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isSelected
-                                          ? AppColors.white
-                                          : AppColors.background,
-                                    ),
-                                    child: Icon(
-                                      isSelected
-                                          ? Icons.check_circle
-                                          : Icons.circle_outlined,
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      option,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: isSelected
-                                            ? AppColors.white
-                                            : AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setModalState(() => tempSelected.clear());
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: const BorderSide(color: AppColors.border, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Clear All',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            onConfirm(tempSelected);
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Apply Selection',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
+        return _PartnerPreferenceMultiSelectSheet(
+          title: title,
+          options: options,
+          selectedOptions: selectedOptions,
+          onConfirm: onConfirm,
+          icon: icon,
         );
       },
     );
@@ -1553,6 +1408,339 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PartnerPreferenceMultiSelectSheet extends StatefulWidget {
+  final String title;
+  final List<String> options;
+  final List<String> selectedOptions;
+  final Function(List<String>) onConfirm;
+  final IconData? icon;
+
+  const _PartnerPreferenceMultiSelectSheet({
+    required this.title,
+    required this.options,
+    required this.selectedOptions,
+    required this.onConfirm,
+    this.icon,
+  });
+
+  @override
+  State<_PartnerPreferenceMultiSelectSheet> createState() =>
+      _PartnerPreferenceMultiSelectSheetState();
+}
+
+class _PartnerPreferenceMultiSelectSheetState
+    extends State<_PartnerPreferenceMultiSelectSheet> {
+  late List<String> _tempSelected;
+  final TextEditingController _searchController = TextEditingController();
+
+  bool get _shouldShowSearch => widget.options.length >= 5;
+
+  List<String> get _visibleOptions {
+    final query = _searchController.text.trim().toLowerCase();
+
+    return widget.options.where((option) {
+      if (_tempSelected.contains(option)) {
+        return false;
+      }
+
+      if (!_shouldShowSearch || query.isEmpty) {
+        return true;
+      }
+
+      return option.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tempSelected = List<String>.from(widget.selectedOptions);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _updateSelection(List<String> values) {
+    widget.onConfirm(List<String>.from(values));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.all(20),
+      height: MediaQuery.of(context).size.height * 0.75,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (widget.icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(widget.icon, color: AppColors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withOpacity(0.1),
+                  AppColors.primaryLight.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${_tempSelected.length} selected',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_tempSelected.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _tempSelected.map((item) {
+                return Chip(
+                  label: Text(item),
+                  backgroundColor: AppColors.primary.withOpacity(0.08),
+                  deleteIcon: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  side: BorderSide(
+                    color: AppColors.primary.withOpacity(0.25),
+                  ),
+                  onDeleted: () {
+                    setState(() {
+                      _tempSelected.remove(item);
+                    });
+                    _updateSelection(_tempSelected);
+                  },
+                  labelStyle: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          if (_shouldShowSearch) ...[
+            const SizedBox(height: 16),
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Expanded(
+            child: _visibleOptions.isEmpty
+                ? Center(
+                    child: Text(
+                      _shouldShowSearch && _searchController.text.trim().isNotEmpty
+                          ? 'No options found'
+                          : 'All options already selected',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _visibleOptions.length,
+                    itemBuilder: (context, index) {
+                      final option = _visibleOptions[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (option == 'Any') {
+                                _tempSelected = ['Any'];
+                              } else {
+                                _tempSelected.remove('Any');
+                                _tempSelected.add(option);
+                              }
+                            });
+                            _updateSelection(_tempSelected);
+                            Navigator.pop(context);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.shadowLight,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.background,
+                                  ),
+                                  child: const Icon(
+                                    Icons.add_circle_outline,
+                                    color: AppColors.textSecondary,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    option,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _tempSelected.clear();
+                    });
+                    _updateSelection(_tempSelected);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: AppColors.border, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Clear All',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _updateSelection(_tempSelected);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
