@@ -25,6 +25,8 @@ import '../purposal/purposalScreen.dart';
 import '../pushnotification/pushservice.dart';
 import '../service/pagenocheck.dart';
 import '../webrtc/webrtc.dart';
+import '../constant/app_colors.dart';
+import '../constant/app_dimensions.dart';
 import 'MainControllere.dart';
 import 'onboarding.dart';
 
@@ -138,33 +140,101 @@ class _SplashScreenState extends State<SplashScreen> {
   void _showUpdateDialog(bool forceUpdate, String description, String appLink, String newVersion) {
     showDialog(
       context: context,
-      barrierDismissible: !forceUpdate, // Can't dismiss if force update
+      barrierDismissible: !forceUpdate,
       builder: (BuildContext context) {
         return WillPopScope(
-          onWillPop: () async => !forceUpdate, // Prevent back button if force update
+          onWillPop: () async => !forceUpdate,
           child: AlertDialog(
-            title: Text(
-              forceUpdate ? 'Update Required' : 'New Update Available',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: forceUpdate ? AppColors.error.withOpacity(0.1) : AppColors.info.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    forceUpdate ? Icons.system_update_alt : Icons.update,
+                    color: forceUpdate ? AppColors.error : AppColors.info,
+                    size: 24,
+                  ),
+                ),
+                AppSpacing.horizontalMD,
+                Expanded(
+                  child: Text(
+                    forceUpdate ? 'Update Required' : 'New Update Available',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Version $newVersion is now available',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 10),
-                Text(description),
-                if (forceUpdate)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'You must update to continue using the app.',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Version $newVersion',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                      fontSize: 14,
                     ),
                   ),
+                ),
+                AppSpacing.verticalMD,
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (forceUpdate) ...[
+                  AppSpacing.verticalMD,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.error.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_rounded,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        AppSpacing.horizontalSM,
+                        const Expanded(
+                          child: Text(
+                            'You must update to continue using the app.',
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
             actions: [
@@ -174,30 +244,46 @@ class _SplashScreenState extends State<SplashScreen> {
                     Navigator.of(context).pop();
                     _proceedWithNavigation();
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
                   child: const Text('Later'),
                 ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () async {
                   final Uri url = Uri.parse(appLink);
                   if (await canLaunchUrl(url)) {
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                     if (forceUpdate) {
-                      // If force update, close the app or keep dialog open
-                      // You might want to exit the app here
+                      // If force update, keep dialog open
                     }
                   }
                 },
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFF90E18),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('Update Now'),
+                child: const Text(
+                  'Update Now',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
         );
       },
     ).then((_) {
-      // If dialog is dismissed (only possible for non-force update)
       if (!forceUpdate) {
         _proceedWithNavigation();
       }
@@ -361,54 +447,168 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              child: const Image(image: AssetImage('assets/images/Mslogo.gif')),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Marriage Station',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Welcome to Nepal #1 Matrimony.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 30),
-            if (_isCheckingVersion)
-              const CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Color(0xFFF90E18)),
-              )
-            else if (_errorMessage != null)
-              Column(
-                children: [
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _isCheckingVersion = true;
-                        _errorMessage = null;
-                      });
-                      _checkAppVersion();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF90E18),
+      backgroundColor: AppColors.white,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.white,
+              AppColors.primary.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo Container with shadow
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
-                    child: const Text('Retry'),
-                  ),
-                ],
+                  ],
+                ),
+                child: const Image(
+                  image: AssetImage('assets/images/Mslogo.gif'),
+                  height: 120,
+                  width: 120,
+                ),
               ),
-          ],
+              AppSpacing.verticalXL,
+              // App Name
+              ShaderMask(
+                shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+                child: const Text(
+                  'Marriage Station',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              AppSpacing.verticalSM,
+              // Tagline
+              const Text(
+                'Nepal\'s #1 Matrimony Platform',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              AppSpacing.verticalXL,
+              AppSpacing.verticalMD,
+              // Loading/Error State
+              if (_isCheckingVersion)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowLight,
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 32,
+                        width: 32,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      ),
+                      AppSpacing.verticalSM,
+                      const Text(
+                        'Loading...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_errorMessage != null)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.error.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 48,
+                      ),
+                      AppSpacing.verticalMD,
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      AppSpacing.verticalMD,
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isCheckingVersion = true;
+                            _errorMessage = null;
+                          });
+                          _checkAppVersion();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.refresh, color: AppColors.white),
+                        label: const Text(
+                          'Retry',
+                          style: TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
