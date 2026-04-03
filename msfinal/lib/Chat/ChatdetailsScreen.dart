@@ -56,6 +56,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _messageFocusNode = FocusNode();
 
   String myImage = "";
   String otherUserImage = "";
@@ -121,6 +122,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
+      // Auto-focus keyboard when chat opens
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _messageFocusNode.requestFocus();
+        }
+      });
     });
 
     _checkBlockStatus(); // Add this line
@@ -154,6 +161,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _messageController.dispose();
     _editController.dispose();
     _scrollController.dispose();
+    _messageFocusNode.dispose();
     _audioRecorder.dispose();
     _recordingTimer?.cancel();
     _swipeAnimationController?.dispose();
@@ -1297,6 +1305,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           controller: isEditing
                               ? _editController
                               : _messageController,
+                          focusNode: _messageFocusNode,
                           decoration: InputDecoration(
                             hintText: isEditing
                                 ? "Edit your message..."
