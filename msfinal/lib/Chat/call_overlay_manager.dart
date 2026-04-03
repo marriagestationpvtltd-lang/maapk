@@ -1,4 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../pushnotification/pushservice.dart';
+import '../Calling/incommingcall.dart';
+import '../Calling/incomingvideocall.dart';
+import '../navigation/app_navigation.dart';
 
 const String activeCallRouteName = '/active-call';
 const String minimizedCallHostRouteName = '/minimized-call-host';
@@ -237,8 +242,8 @@ class MinimizedCallOverlay extends StatelessWidget {
   }
 }
 
-/// Wrapper widget that adds minimized call overlay to any screen
-class CallOverlayWrapper extends StatelessWidget {
+/// Wrapper widget that adds minimized call overlay to any screen and listens for incoming calls
+class CallOverlayWrapper extends StatefulWidget {
   final Widget child;
 
   const CallOverlayWrapper({
@@ -247,10 +252,77 @@ class CallOverlayWrapper extends StatelessWidget {
   });
 
   @override
+  State<CallOverlayWrapper> createState() => _CallOverlayWrapperState();
+}
+
+class _CallOverlayWrapperState extends State<CallOverlayWrapper> {
+  StreamSubscription<Map<String, dynamic>>? _incomingCallSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupIncomingCallListener();
+  }
+
+  void _setupIncomingCallListener() {
+    // Listen to incoming call stream
+    _incomingCallSubscription = NotificationService.incomingCalls.listen((data) {
+      print('📱 CallOverlayWrapper: Incoming call received: $data');
+
+      // Navigate to incoming call screen
+      final isVideoCall = data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final currentContext = navigatorKey.currentContext;
+        final currentState = navigatorKey.currentState;
+
+        if (currentState != null && currentContext != null) {
+          // Check if we're already on a call page to avoid duplicates
+          final route = ModalRoute.of(currentContext);
+          if (route?.settings.name?.contains('call') ?? false) {
+            print('⚠️ Already on a call page, skipping navigation');
+            return;
+          }
+
+          if (isVideoCall) {
+            currentState.push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: activeCallRouteName),
+                fullscreenDialog: true,
+                builder: (context) => IncomingVideoCallScreen(
+                  callData: data,
+                ),
+              ),
+            );
+          } else {
+            currentState.push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: activeCallRouteName),
+                fullscreenDialog: true,
+                builder: (context) => IncomingCallScreen(
+                  callData: data,
+                ),
+              ),
+            );
+          }
+        } else {
+          print('❌ Navigator state is null, cannot navigate to incoming call');
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _incomingCallSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        child,
+        widget.child,
         const MinimizedCallOverlay(),
       ],
     );

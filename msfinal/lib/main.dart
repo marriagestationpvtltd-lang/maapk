@@ -39,7 +39,15 @@ const String generalChannelDescription = 'Channel for general app notifications'
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   final data = message.data;
+
+  // Trigger call response for response notifications
   NotificationService.triggerCallResponse(data);
+
+  // Trigger incoming call for new call notifications
+  if (data['type'] == 'call' || data['type'] == 'video_call') {
+    NotificationService.triggerIncomingCall(data);
+  }
+
   await NotificationInboxService.recordIncomingRemoteNotification(
     data: data,
     fallbackTitle: message.notification?.title,
@@ -487,7 +495,14 @@ Future<void> setupFirebaseMessaging() async {
     debugPrint('📱 Foreground message received: ${message.notification?.title}');
     debugPrint('📱 Message data: $data');
 
+    // Trigger call response for response notifications
     NotificationService.triggerCallResponse(data);
+
+    // Trigger incoming call for new call notifications
+    if (data['type'] == 'call' || data['type'] == 'video_call') {
+      NotificationService.triggerIncomingCall(data);
+    }
+
     await NotificationInboxService.recordIncomingRemoteNotification(
       data: data,
       fallbackTitle: message.notification?.title,
