@@ -306,11 +306,13 @@ Future<void> _handleNotificationAction(NotificationResponse response) async {
     if (actionId == 'accept_call') {
       debugPrint('✅ Call accepted from notification');
 
-      // Cancel the ringing notification
-      flutterLocalNotificationsPlugin.cancel(notificationId);
-
-      // Navigate to call page
+      // Navigate to call page first
       _navigateToCallPage(data);
+
+      // Delay notification cancellation to ensure call screen is visible
+      Future.delayed(const Duration(milliseconds: 800), () {
+        flutterLocalNotificationsPlugin.cancel(notificationId);
+      });
 
     } else if (actionId == 'decline_call') {
       debugPrint('❌ Call declined from notification');
@@ -343,6 +345,11 @@ Future<void> _handleNotificationAction(NotificationResponse response) async {
     } else if (type == 'call' || type == 'video_call') {
       // Regular notification tap (for missed calls)
       _navigateToCallPage(data);
+
+      // Delay notification cancellation to ensure call screen is visible
+      Future.delayed(const Duration(milliseconds: 800), () {
+        flutterLocalNotificationsPlugin.cancel(notificationId);
+      });
     }
   } catch (e) {
     debugPrint('❌ Error handling notification action: $e');

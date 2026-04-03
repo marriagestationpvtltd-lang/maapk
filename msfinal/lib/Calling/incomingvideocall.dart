@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -63,6 +64,22 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
+
+    // Cancel the call notification once the screen is mounted and visible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cancelCallNotification();
+    });
+  }
+
+  void _cancelCallNotification() {
+    try {
+      // Cancel the video call notification (ID: 1002)
+      final plugin = FlutterLocalNotificationsPlugin();
+      plugin.cancel(1002);
+      debugPrint('✅ Cancelled video call notification after screen mounted');
+    } catch (e) {
+      debugPrint('Error cancelling video call notification: $e');
+    }
   }
 
   void _listenForCallCancelled() {
