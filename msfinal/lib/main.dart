@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
+import 'Calling/call_state_recovery_manager.dart';
+import 'Calling/unified_call_manager.dart';
 import 'Chat/call_overlay_manager.dart';
 import 'Chat/ChatdetailsScreen.dart';
 import 'Startup/SplashScreen.dart';
@@ -606,9 +608,9 @@ Future<void> setupFirebaseMessaging() async {
       fallbackBody: message.notification?.body,
     );
 
-    // Navigate to chat for call notifications
+    // Handle call notifications with recovery manager
     if (data['type'] == 'call' || data['type'] == 'video_call') {
-      _navigateToChatFromCallNotification(data);
+      await CallStateRecoveryManager().handleNotificationTap(data);
     }
   });
 
@@ -624,10 +626,10 @@ Future<void> setupFirebaseMessaging() async {
         fallbackBody: message.notification?.body,
       );
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Navigate to chat for call notifications
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Handle call notifications with recovery manager
         if (data['type'] == 'call' || data['type'] == 'video_call') {
-          _navigateToChatFromCallNotification(data);
+          await CallStateRecoveryManager().handleNotificationTap(data);
         }
       });
     }
@@ -647,6 +649,9 @@ void main() async {
   final connectivityService = ConnectivityService();
   await connectivityService.initialize();
 
+  // Initialize call state recovery manager
+  final callRecoveryManager = CallStateRecoveryManager();
+
   runApp(
     MultiProvider(
       providers: [
@@ -655,6 +660,7 @@ void main() async {
           create: (_) => UserProfile.empty(),
         ),
         ChangeNotifierProvider.value(value: connectivityService),
+        ChangeNotifierProvider.value(value: UnifiedCallManager()),
       ],
       child: const MyApp(),
     ),
@@ -662,6 +668,8 @@ void main() async {
 
   WidgetsBinding.instance.addPostFrameCallback((_) {
     setupFirebaseMessaging();
+    // Initialize call recovery after first frame
+    callRecoveryManager.initialize();
   });
 }
 
