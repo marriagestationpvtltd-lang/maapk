@@ -61,14 +61,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
             _scrollController.position.maxScrollExtent - 200 &&
         !_isLoadingMore &&
         _displayCount < _cachedTotalRooms) {
-      setState(() => _isLoadingMore = true);
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          setState(() {
-            _displayCount += 10;
-            _isLoadingMore = false;
-          });
-        }
+      setState(() {
+        _isLoadingMore = true;
+        _displayCount += 10;
+        _isLoadingMore = false;
       });
     }
   }
@@ -624,7 +620,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           );
         }
 
-        final displayedRooms = chatRooms.take(_displayCount).toList();
+        final displayedRooms = chatRooms.sublist(0, _displayCount.clamp(0, chatRooms.length));
 
         // Build the chat list with pagination
         return Container(
