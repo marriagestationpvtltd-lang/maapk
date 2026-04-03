@@ -180,70 +180,78 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Minimize button at the top
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16, top: 12),
-                child: IconButton(
-                  onPressed: _minimizeCall,
-                  icon: const Icon(Icons.minimize, color: Colors.white, size: 28),
-                  tooltip: 'Minimize call',
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // When back button is pressed, minimize the call instead of closing
+        await _minimizeCall();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Minimize button at the top
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16, top: 12),
+                  child: IconButton(
+                    onPressed: _minimizeCall,
+                    icon: const Icon(Icons.minimize, color: Colors.white, size: 32),
+                    tooltip: 'Minimize call',
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.phone_in_talk, color: Colors.white, size: 80),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Call with ${widget.callerName}',
-                      style: const TextStyle(color: Colors.white, fontSize: 24),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _formatDuration(_duration),
-                      style: const TextStyle(color: Colors.white70, fontSize: 18),
-                    ),
-                    const SizedBox(height: 40),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
-                              color: Colors.white, size: 40),
-                          onPressed: () {
-                            setState(() => _micMuted = !_micMuted);
-                            _engine.muteLocalAudioStream(_micMuted);
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.call_end, color: Colors.red, size: 60),
-                          onPressed: _endCall,
-                        ),
-                        IconButton(
-                          icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
-                              color: Colors.white, size: 40),
-                          onPressed: () {
-                            setState(() => _speakerOn = !_speakerOn);
-                            _engine.setEnableSpeakerphone(_speakerOn);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.phone_in_talk, color: Colors.white, size: 80),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Call with ${widget.callerName}',
+                        style: const TextStyle(color: Colors.white, fontSize: 24),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _formatDuration(_duration),
+                        style: const TextStyle(color: Colors.white70, fontSize: 18),
+                      ),
+                      const SizedBox(height: 40),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
+                                color: Colors.white, size: 40),
+                            onPressed: () {
+                              setState(() => _micMuted = !_micMuted);
+                              _engine.muteLocalAudioStream(_micMuted);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.call_end, color: Colors.red, size: 60),
+                            onPressed: _endCall,
+                          ),
+                          IconButton(
+                            icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
+                                color: Colors.white, size: 40),
+                            onPressed: () {
+                              setState(() => _speakerOn = !_speakerOn);
+                              _engine.setEnableSpeakerphone(_speakerOn);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -305,60 +305,74 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (_callActive)
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16, top: 12),
-                  child: IconButton(
-                    onPressed: _minimizeCall,
-                    icon: const Icon(Icons.minimize, color: Colors.white, size: 28),
-                    tooltip: 'Minimize call',
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // When back button is pressed during incoming call
+        if (_callActive) {
+          // If call is active, minimize it
+          await _minimizeCall();
+        } else {
+          // If call is not yet accepted, reject it
+          await _rejectCall();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (_callActive)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16, top: 12),
+                    child: IconButton(
+                      onPressed: _minimizeCall,
+                      icon: const Icon(Icons.minimize, color: Colors.white, size: 32),
+                      tooltip: 'Minimize call',
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _callActive ? Icons.phone_in_talk : Icons.phone,
+                        color: Colors.white,
+                        size: 80,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        _callActive ? 'Connected' : 'Incoming call',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _callerName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        _callActive
+                            ? _format(_duration)
+                            : 'Voice Call',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 40),
+                      _callActive ? _activeControls() : _incomingControls(),
+                    ],
                   ),
                 ),
               ),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _callActive ? Icons.phone_in_talk : Icons.phone,
-                      color: Colors.white,
-                      size: 80,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _callActive ? 'Connected' : 'Incoming call',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _callerName,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _callActive
-                          ? _format(_duration)
-                          : 'Voice Call',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 40),
-                    _callActive ? _activeControls() : _incomingControls(),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

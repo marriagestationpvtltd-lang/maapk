@@ -447,11 +447,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // When back button is pressed, minimize the call instead of closing
+        await _minimizeCall();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
             // Remote video (full screen)
             if (_remoteUid != null)
               AgoraVideoView(
@@ -615,7 +622,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                      ),
                      child: IconButton(
                        onPressed: _minimizeCall,
-                       icon: const Icon(Icons.minimize, color: Colors.white),
+                       icon: const Icon(Icons.minimize, color: Colors.white, size: 24),
                        tooltip: 'Minimize call',
                      ),
                    ),
@@ -666,7 +673,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
