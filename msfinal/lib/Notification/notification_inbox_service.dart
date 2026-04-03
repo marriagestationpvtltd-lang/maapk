@@ -122,7 +122,7 @@ class NotificationInboxService {
       'related_user_id': recipientUserId,
       'peer_name': peerName,
       'external_id':
-          'local_request_sent_${cleanRequestType.toLowerCase()}_${recipientUserId}_${createdAt.millisecondsSinceEpoch}',
+          'local_request_sent|${cleanRequestType.toLowerCase()}|$recipientUserId|${createdAt.millisecondsSinceEpoch}',
     });
   }
 
@@ -166,7 +166,7 @@ class NotificationInboxService {
       'related_user_id': source['related_user_id'],
       'peer_name': peerName,
       'external_id':
-          'local_request_reminder_${requestType.toLowerCase()}_${source['recipient_id']}_${reminderAt.millisecondsSinceEpoch}',
+          'local_request_reminder|${requestType.toLowerCase()}|${source['recipient_id']}|${reminderAt.millisecondsSinceEpoch}',
     });
 
     await saveNotifications(items);
