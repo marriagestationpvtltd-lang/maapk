@@ -1,5 +1,4 @@
 // Professional Redesigned Partner Preferences Page - Step 10
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
@@ -156,7 +155,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     );
 
     _animationController.forward();
-    unawaited(_loadInitialData());
+    _loadInitialData();
   }
 
   @override
@@ -1385,7 +1384,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                            _selectedState = normalized.contains('Any') ? ['Any'] : [];
                            _selectedDistrict = normalized.contains('Any') ? ['Any'] : [];
                          });
-                         unawaited(_loadStatesForSelectedCountries());
+                         _loadStatesForSelectedCountries();
                       },
                     );
                   },
@@ -1415,7 +1414,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                           _selectedState = normalized;
                           _selectedDistrict = normalized.contains('Any') ? ['Any'] : [];
                         });
-                        unawaited(_loadDistrictsForSelectedStates());
+                         _loadDistrictsForSelectedStates();
                       },
                     );
                   },
