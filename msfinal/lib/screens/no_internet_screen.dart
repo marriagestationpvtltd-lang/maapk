@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -11,7 +9,7 @@ import '../service/connectivity_service.dart';
 class NoInternetScreen extends StatefulWidget {
   static const String routeName = noInternetRouteName;
 
-  final FutureOr<void> Function()? onRetry;
+  final Future<void> Function()? onRetry;
 
   const NoInternetScreen({super.key, this.onRetry});
 
@@ -43,7 +41,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
   void _onConnectivityChange() {
     if (_connectivityService.isConnected && mounted) {
-      unawaited(_completeRetry());
+      _triggerRecovery();
     }
   }
 
@@ -96,6 +94,23 @@ class _NoInternetScreenState extends State<NoInternetScreen>
       }
     } finally {
       _isRecovering = false;
+    }
+  }
+
+  Future<void> _triggerRecovery() async {
+    try {
+      await _completeRetry();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to restore the connection right now.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
