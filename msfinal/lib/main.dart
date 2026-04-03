@@ -400,34 +400,6 @@ Future<void> setupFirebaseMessaging() async {
     debugPrint("⚠️ FCM token not ready yet: $e");
   }
 
-  // Set up foreground message handlers
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    final data = message.data;
-    debugPrint('📱 Foreground message received: ${message.notification?.title}');
-    debugPrint('📱 Message data: $data');
-
-    NotificationService.triggerCallResponse(data);
-    await NotificationInboxService.recordIncomingRemoteNotification(
-      data: data,
-      fallbackTitle: message.notification?.title,
-      fallbackBody: message.notification?.body,
-    );
-
-    // Show WhatsApp-like notification for calls
-    if (data['type'] == 'call' || data['type'] == 'video_call') {
-      await _displayWhatsAppCallNotification(
-        data,
-        message.notification,
-        localPlugin: flutterLocalNotificationsPlugin,
-      );
-
-      // Auto-navigate for call notifications when app is in foreground
-      _navigateToCallPage(data);
-    } else {
-      await _showStandardNotification(message);
-    }
-  });
-
   Future<void> _showStandardNotification(RemoteMessage message) async {
     final data = message.data;
     final content = NotificationInboxService.buildNotificationContent(
@@ -468,6 +440,34 @@ Future<void> setupFirebaseMessaging() async {
       payload: json.encode(data),
     );
   }
+
+  // Set up foreground message handlers
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    final data = message.data;
+    debugPrint('📱 Foreground message received: ${message.notification?.title}');
+    debugPrint('📱 Message data: $data');
+
+    NotificationService.triggerCallResponse(data);
+    await NotificationInboxService.recordIncomingRemoteNotification(
+      data: data,
+      fallbackTitle: message.notification?.title,
+      fallbackBody: message.notification?.body,
+    );
+
+    // Show WhatsApp-like notification for calls
+    if (data['type'] == 'call' || data['type'] == 'video_call') {
+      await _displayWhatsAppCallNotification(
+        data,
+        message.notification,
+        localPlugin: flutterLocalNotificationsPlugin,
+      );
+
+      // Auto-navigate for call notifications when app is in foreground
+      _navigateToCallPage(data);
+    } else {
+      await _showStandardNotification(message);
+    }
+  });
 
   // Handle messages when app is in background but opened via notification
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
