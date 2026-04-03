@@ -374,6 +374,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final profileResponse = results[0] as ProfileResponse;
       final matchedProfiles = results[1] as List<MatchedProfile>;
+      // Sort: new members (higher userId) first
+      matchedProfiles.sort((a, b) => b.userid.compareTo(a.userid));
 
       if (mounted) {
         final userProfile = Provider.of<UserProfile>(context, listen: false);
@@ -568,7 +570,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _MatchOverviewSection(
                 matchedPreferencesCount: userProfile.matchedPreferencesCount,
                 totalPreferencesCount: userProfile.totalPreferencesCount,
-                imageUrl: userProfile.avatarUrl,
                 red: red,
               ),
             const SizedBox(height: 16),
@@ -613,7 +614,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Navigate to upgrade package screen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -2970,13 +2970,11 @@ class _DetailsGridSection<T> extends StatelessWidget {
 class _MatchOverviewSection extends StatelessWidget {
   final int matchedPreferencesCount;
   final int totalPreferencesCount;
-  final String imageUrl;
   final Color red;
 
   const _MatchOverviewSection({
     required this.matchedPreferencesCount,
     required this.totalPreferencesCount,
-    required this.imageUrl,
     required this.red,
   });
 
@@ -2986,6 +2984,12 @@ class _MatchOverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = totalPreferencesCount > 0 ? totalPreferencesCount : 1;
+    final double ratio = matchedPreferencesCount / total;
+    final int percent = (ratio * 100).round();
+    final Color color = _matchColor(ratio);
+    final String label = _matchLabel(ratio);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -2998,11 +3002,12 @@ class _MatchOverviewSection extends StatelessWidget {
             blurRadius: 10,
           ),
         ],
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
       ),
       child: Column(
         children: <Widget>[
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               CircleAvatar(
                 radius: 28,
@@ -3024,25 +3029,55 @@ class _MatchOverviewSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: NetworkImage(imageUrl),
-                onBackgroundImageError: (_, __) {},
-                child: imageUrl.isEmpty
-                    ? const Icon(Icons.person, size: 28)
-                    : null,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Partner Performance',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$matchedPreferencesCount out of $totalPreferencesCount preferences match',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: matchedPreferencesCount /
-                  (totalPreferencesCount > 0 ? totalPreferencesCount : 1),
-              minHeight: 10,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(red),
+              value: ratio,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
         ],
@@ -3473,25 +3508,26 @@ class _MatchedProfileCard extends StatelessWidget {
               ),
 
               // Match Percent Badge
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "${profile.matchPercent}%",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+              if (profile.matchPercent > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getMatchColor(profile.matchPercent),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${profile.matchPercent}%",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               if (isNewMember)
                 Positioned(
@@ -3687,6 +3723,13 @@ class _MatchedProfileCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _getMatchColor(int percent) {
+    if (percent >= 80) return const Color(0xFF2E7D32);
+    if (percent >= 60) return const Color(0xFF1565C0);
+    if (percent >= 40) return const Color(0xFFE65100);
+    return const Color(0xFFC62828);
   }
 
   // Helper methods for photo request status

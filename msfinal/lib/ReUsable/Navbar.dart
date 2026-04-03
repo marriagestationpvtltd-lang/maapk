@@ -72,8 +72,8 @@ class AppNavbar extends StatelessWidget {
             context: context,
           ),
           _navItem(
-            icon: Icons.bookmark,
-            label: "Shortlist",
+            icon: Icons.favorite,
+            label: "Liked",
             index: 1,
             active: selectedIndex == 1,
             context: context,
