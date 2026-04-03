@@ -949,7 +949,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
             child: Container(
               width: double.infinity,
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius:
@@ -957,7 +957,11 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   // Name row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -966,7 +970,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                         child: Text(
                           user.displayName,
                           style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
@@ -976,14 +980,14 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
                   // Age & Height
                   _InfoRow(
                     icon: Icons.cake_outlined,
                     text: '${user.age} yrs  •  ${user.heightDisplay}',
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
 
                   // Location
                   _InfoRow(
@@ -993,7 +997,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
 
                   // Designation
                   if (user.designation.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     _InfoRow(
                       icon: Icons.work_outline,
                       text: user.designation,
@@ -1001,20 +1005,20 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                   ],
 
                   // Compatibility bar
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   _CompatibilityBar(percent: user.matchPercent),
-
-                  const Spacer(),
+                    ],
+                  ),
 
                   // Action buttons
                   Row(
                     children: [
-                      // Express Interest button
+                      // Like button
                       Expanded(
                         child: _ActionButton(
                           label: user.isLiked
                               ? 'Interested'
-                              : 'Express Interest',
+                              : 'Like',
                           icon: user.isLiked
                               ? Icons.favorite
                               : Icons.favorite_border,
