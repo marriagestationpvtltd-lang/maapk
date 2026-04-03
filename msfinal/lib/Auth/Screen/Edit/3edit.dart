@@ -32,8 +32,8 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
   final List<String> _maritalStatusOptions = [
     'Single',
     'Married',
+    'Widowed',
     'Divorced',
-    'Widowed'
   ];
 
   final List<String> _bloodGroupOptions = [

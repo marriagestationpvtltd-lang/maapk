@@ -53,8 +53,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
   final List<String> _maritalStatusOptions = [
     'Single',
     'Married',
+    'Widowed',
     'Divorced',
-    'Widowed'
   ];
 
   final List<String> _bloodGroupOptions = [
@@ -330,7 +330,6 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                               label: 'No Child',
                               value: 'No Child',
                               groupValue: _childStatus,
-                              icon: Icons.child_care,
                               onChanged: (value) {
                                 setState(() {
                                   _childStatus = value ?? '';
@@ -343,30 +342,12 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: EnhancedRadioOption<String>(
-                              label: 'One',
+                              label: 'One Child',
                               value: 'One',
                               groupValue: _childStatus,
-                              icon: Icons.child_friendly,
-                              onChanged: (value) {
-                                setState(() {
-                                  _childStatus = value ?? '';
-                                  if (_hasValidationErrors) {
-                                    _fieldErrors['childStatus'] = null;
-                                  }
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: EnhancedRadioOption<String>(
-                              label: 'Two +',
-                              value: 'Two +',
-                              groupValue: _childStatus,
-                              icon: Icons.family_restroom,
                               onChanged: (value) {
                                 setState(() {
                                   _childStatus = value ?? '';
@@ -378,6 +359,20 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      EnhancedRadioOption<String>(
+                        label: 'Two or More Children',
+                        value: 'Two +',
+                        groupValue: _childStatus,
+                        onChanged: (value) {
+                          setState(() {
+                            _childStatus = value ?? '';
+                            if (_hasValidationErrors) {
+                              _fieldErrors['childStatus'] = null;
+                            }
+                          });
+                        },
                       ),
                       if (_fieldErrors['childStatus'] != null) ...[
                         const SizedBox(height: 8),
