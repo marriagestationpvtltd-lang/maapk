@@ -994,6 +994,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
+                            onConfirm(List<String>.from(tempSelected));
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(

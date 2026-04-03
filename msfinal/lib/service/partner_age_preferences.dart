@@ -63,14 +63,14 @@ DateTime? _parseBirthDate(dynamic rawValue) {
 
 int _calculateAge(DateTime birthDate) {
   final today = DateTime.now();
-  var age = today.year - birthDate.year;
+  var calculatedAge = today.year - birthDate.year;
 
   final hasHadBirthdayThisYear = today.month > birthDate.month ||
       (today.month == birthDate.month && today.day >= birthDate.day);
 
   if (!hasHadBirthdayThisYear) {
-    age -= 1;
+    calculatedAge -= 1;
   }
 
-  return age;
+  return calculatedAge;
 }

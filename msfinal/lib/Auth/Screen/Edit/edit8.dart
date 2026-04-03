@@ -839,9 +839,10 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
 
   @override
   Widget build(BuildContext context) {
-    final ageDivisions = (_maxPreferredAgeLimit - _minPreferredAgeLimit).round() < 1
+    final rawAgeDivisions = (_maxPreferredAgeLimit - _minPreferredAgeLimit).round();
+    final ageDivisions = rawAgeDivisions < 1
         ? 1
-        : (_maxPreferredAgeLimit - _minPreferredAgeLimit).round();
+        : rawAgeDivisions;
 
     return Scaffold(
       backgroundColor: Colors.white,
