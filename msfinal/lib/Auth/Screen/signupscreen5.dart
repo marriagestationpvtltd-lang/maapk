@@ -443,6 +443,15 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                     ],
                   ),
 
+                  const SizedBox(height: 20),
+                  EnhancedTextField(
+                    label: "Family Contact Number",
+                    controller: _motherContactController,
+                    hint: "Enter family contact number",
+                    keyboardType: TextInputType.phone,
+                    prefixIcon: Icons.phone_rounded,
+                  ),
+
                   if (_motherStatus == "Lives with us") ...[
                     const SizedBox(height: 20),
                     EnhancedTextField(
@@ -455,14 +464,6 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                           : null,
                       prefixIcon: Icons.badge_rounded,
                       validator: (value) => value?.isEmpty == true ? '' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    EnhancedTextField(
-                      label: "Contact Number (Optional)",
-                      controller: _motherContactController,
-                      hint: "Enter mother's contact number",
-                      keyboardType: TextInputType.phone,
-                      prefixIcon: Icons.phone_rounded,
                     ),
                     const SizedBox(height: 20),
                     EnhancedDropdown<String>(
@@ -1113,8 +1114,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
         "motherstatus": _motherStatus ?? "",
         "mothercaste":
             _motherStatus == "Lives with us" ? (_motherCastController.text.trim()) : "",
-        "mothercontact":
-            _motherStatus == "Lives with us" ? (_motherContactController.text.trim()) : "",
+        "mothercontact": _motherContactController.text.trim(),
         "mothereducation": _motherStatus == "Lives with us" ? (_motherEducation ?? "") : "",
         "motheroccupation": _motherStatus == "Lives with us" ? (_motherOccupation ?? "") : "",
         "familyorigin": _selectedFamilyOrigin ?? "",
