@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
 import 'Chat/call_overlay_manager.dart';
+import 'Chat/ChatdetailsScreen.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
 import 'Startup/onboarding.dart';

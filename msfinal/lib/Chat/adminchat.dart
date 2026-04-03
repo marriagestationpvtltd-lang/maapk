@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
 import '../otherenew/othernew.dart';
@@ -56,6 +57,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   bool _showSuggestedMessages = true;
   bool _isFirstLoad = true;
   bool _profileCardSent = false; // Track if profile card was sent
+  String _currentUserImage = ''; // Store current user image
 
 // Updated color scheme with gradients
   final LinearGradient _primaryGradient = const LinearGradient(
@@ -76,6 +78,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserImage();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
       _messageFocusNode.requestFocus();
@@ -86,6 +89,21 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _sendProfileCard();
       });
+    }
+  }
+
+  Future<void> _loadUserImage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString != null) {
+        final userData = jsonDecode(userDataString);
+        setState(() {
+          _currentUserImage = userData['image']?.toString() ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user image: $e');
     }
   }
 
@@ -1203,8 +1221,10 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     builder: (context) => CallScreen(
                       currentUserId: widget.senderID,
                       currentUserName: widget.userName,
+                      currentUserImage: _currentUserImage,
                       otherUserId: _adminUserId,
                       otherUserName: _adminUserName,
+                      otherUserImage: '',
                     ),
                   ),
                 );
@@ -1220,8 +1240,10 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     builder: (context) => VideoCallScreen(
                       currentUserId: widget.senderID,
                       currentUserName: widget.userName,
+                      currentUserImage: _currentUserImage,
                       otherUserId: _adminUserId,
                       otherUserName: _adminUserName,
+                      otherUserImage: '',
                     ),
                   ),
                 );
