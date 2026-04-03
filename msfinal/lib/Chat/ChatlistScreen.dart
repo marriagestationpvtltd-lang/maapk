@@ -1199,41 +1199,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 6,
-                            children: [
-                              _buildLocationChip(
-                                locationLabel,
-                                highlight: hasLocation,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A)
-                                      .withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(Icons.chat_bubble_outline_rounded,
-                                        size: 14, color: Color(0xFF0F172A)),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'Tap to continue chat',
-                                      style: TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          // Removed location chip and "Tap to continue chat" message as per user request
                         ],
                       ),
                     ),

@@ -1141,24 +1141,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   constraints: const BoxConstraints(maxWidth: 280),
                   decoration: BoxDecoration(
-                    color: isMine ? const Color(0xFFFFE8E8) : Colors.white,
+                    color: isMine ? const Color(0xFFFFE5E8) : Colors.white,
+                    border: Border.all(
+                      color: isMine ? const Color(0xFFF90E18).withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+                      width: 1.5,
+                    ),
                     borderRadius: isMine
                         ? const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
+                      topLeft: Radius.circular(18),
+                      topRight: Radius.circular(18),
+                      bottomLeft: Radius.circular(18),
                       bottomRight: Radius.circular(4),
                     )
                         : const BorderRadius.only(
                       topLeft: Radius.circular(4),
-                      topRight: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
+                      topRight: Radius.circular(18),
+                      bottomLeft: Radius.circular(18),
+                      bottomRight: Radius.circular(18),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 4,
+                        color: isMine
+                          ? const Color(0xFFF90E18).withOpacity(0.08)
+                          : Colors.black.withOpacity(0.05),
+                        blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
