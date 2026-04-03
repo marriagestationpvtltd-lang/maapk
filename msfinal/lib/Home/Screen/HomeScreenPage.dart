@@ -44,7 +44,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   List<Map<String, dynamic>> _otherServices = [];
   bool _loading = true;
 
-late int userid;
+  int userid = 0;
+  String _userId = '';
 
 
   bool _isCheckingStatus = false;
@@ -301,6 +302,13 @@ String usertye = '';
 
  // int _currentIndex = 0;
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
   void loadMasterData() async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
@@ -319,6 +327,8 @@ String usertye = '';
         userimage = user.profilePicture;
         pageno = user.pageno;
         name = "${user.firstName} ${user.lastName}";
+        _userId = userId?.toString() ?? '';
+        userid = userId ?? 0;
        // docstatus = user.docStatus;
       });
     } catch (e) {
@@ -388,7 +398,7 @@ String usertye = '';
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
-                      height: MediaQuery.of(context).size.height * 0.58,
+                      height: MediaQuery.of(context).size.height * 0.63,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
@@ -500,6 +510,14 @@ String usertye = '';
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  '${_getGreeting()}! 👋',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
                   name.isNotEmpty ? name : 'Welcome',
                   style: const TextStyle(
                     fontSize: 15,
@@ -512,6 +530,26 @@ String usertye = '';
                 ),
                 Row(
                   children: [
+                    if (_userId.isNotEmpty) ...[
+                      Text(
+                        'MS: $_userId',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFF90E18),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 3,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     Container(
                       width: 6,
                       height: 6,
@@ -739,11 +777,16 @@ String usertye = '';
   }
 
   Widget _buildStatsBanner() {
+    final int matchCount = _matchedProfilesApi.length;
+    final int premiumCount = _premiumMembers.length;
+    final int profilePercent = ((pageno ?? 0) * 10).clamp(0, 100);
+    final int servicesCount = _otherServices.length;
+
     final stats = [
-      {'icon': Icons.people_rounded, 'value': '10,000+', 'label': 'Members', 'color': const Color(0xFF6C63FF)},
-      {'icon': Icons.favorite_rounded, 'value': '5,000+', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
-      {'icon': Icons.celebration_rounded, 'value': '2,500+', 'label': 'Married', 'color': const Color(0xFF4CAF50)},
-      {'icon': Icons.verified_rounded, 'value': '1,200+', 'label': 'Verified', 'color': const Color(0xFF2196F3)},
+      {'icon': Icons.favorite_rounded, 'value': '$matchCount', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
+      {'icon': Icons.star_rounded, 'value': '$premiumCount', 'label': 'Premium', 'color': const Color(0xFFFFD700)},
+      {'icon': Icons.person_rounded, 'value': '$profilePercent%', 'label': 'Profile', 'color': const Color(0xFF4CAF50)},
+      {'icon': Icons.handshake_rounded, 'value': '$servicesCount', 'label': 'Services', 'color': const Color(0xFF2196F3)},
     ];
 
     return Container(
