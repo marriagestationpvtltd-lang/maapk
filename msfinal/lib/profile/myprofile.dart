@@ -8,19 +8,12 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Auth/Screen/Edit/3edit.dart';
-import '../Auth/Screen/Edit/Community.dart';
-import '../Auth/Screen/Edit/Personal.dart';
 import '../Auth/Screen/Edit/edit5.dart';
 import '../Auth/Screen/Edit/edit6.dart';
 import '../Auth/Screen/Edit/edit7.dart';
 import '../Auth/Screen/Edit/edit8.dart';
-import '../Auth/Screen/signupscreen2.dart';
-import '../Auth/Screen/signupscreen5.dart';
-import '../Auth/Screen/signupscreen6.dart';
-import '../Auth/Screen/signupscreen9.dart';
 import '../Auth/SuignupModel/signup_model.dart';
 import '../DeleteAccount/deleteAccointScreen.dart';
-import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../Startup/onboarding.dart';
 import '../otherenew/blocked_users_screen.dart';
@@ -32,61 +25,18 @@ class MatrimonyProfilePage extends StatefulWidget {
 
 class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Map<String, dynamic>? profileData;
-  String usertype = '';
   bool isLoading = true;
   bool isProfileVerified = false;
   bool isShortlisted = false;
   String memberType = 'Free'; // Can be 'Free', 'Premium', 'Gold', 'Platinum'
   int _profilePictureTimestamp = DateTime.now().millisecondsSinceEpoch;
+  String? _activePackageName;
+  String? _activePackageExpiry;
 
   @override
   void initState() {
     super.initState();
     fetchProfileData();
-    loadMasterData();
-  }
-
-  Future<UserMasterData> fetchUserMasterData(String userId) async {
-    final url = Uri.parse(
-      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed: ${response.statusCode}");
-    }
-
-    final res = json.decode(response.body);
-
-    if (res['success'] != true) {
-      throw Exception(res['message'] ?? "API error");
-    }
-
-    return UserMasterData.fromJson(res['data']);
-  }
-
-  void loadMasterData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    final userData = jsonDecode(userDataString!);
-    final userId = int.tryParse(userData["id"].toString());
-    try {
-
-      UserMasterData user = await fetchUserMasterData(userId.toString());
-
-      print("Name: ${user.firstName} ${user.lastName}");
-      print("Usertype: ${user.usertype}");
-      print("Page No: ${user.pageno}");
-      print("Profile: ${user.profilePicture}");
-      setState(() {
-        usertype = user.usertype;
-
-        // docstatus = user.docStatus;
-      });
-    } catch (e) {
-      print("Error: $e");
-    }
   }
 
   Future<void> fetchProfileData() async {
@@ -107,6 +57,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
+          await _fetchActivePackage(userId.toString());
           setState(() {
             profileData = data['data'];
             isProfileVerified = profileData?['personalDetail']?['isVerified'] == 1;
@@ -148,6 +99,31 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     }
   }
 
+  Future<void> _fetchActivePackage(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://digitallami.com/Api2/user_package.php?userid=$userId'),
+      );
+
+      if (response.statusCode != 200) {
+        return;
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] == true &&
+          data['data'] != null &&
+          (data['data'] as List).isNotEmpty) {
+        final latest = (data['data'] as List).first;
+        if (!mounted) return;
+        setState(() {
+          _activePackageName = latest['package_name']?.toString();
+          final expiry = latest['expiredate']?.toString() ?? '';
+          _activePackageExpiry = expiry.length >= 10 ? expiry.substring(0, 10) : expiry;
+        });
+      }
+    } catch (_) {}
+  }
+
   String _getMemberType(String userType) {
     switch (userType.toLowerCase()) {
       case 'premium':
@@ -175,6 +151,47 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     // Add timestamp to prevent caching
     return '$baseUrl?t=$_profilePictureTimestamp';
+  }
+
+  Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+
+  String _stringValue(dynamic value) {
+    if (value == null) return '';
+    return value.toString().trim();
+  }
+
+  bool _isMissing(dynamic value) {
+    final normalized = _stringValue(value).toLowerCase();
+    return normalized.isEmpty ||
+        normalized == 'null' ||
+        normalized == 'n/a' ||
+        normalized == 'not specified' ||
+        normalized == '0';
+  }
+
+  String _displayValue(dynamic value, {String fallback = 'Not provided'}) {
+    return _isMissing(value) ? fallback : _stringValue(value);
+  }
+
+  String _firstFilled(List<dynamic> values, {String fallback = ''}) {
+    for (final value in values) {
+      if (!_isMissing(value)) {
+        return _stringValue(value);
+      }
+    }
+    return fallback;
+  }
+
+  int _countFilledFields(List<dynamic> values) {
+    return values.where((value) => !_isMissing(value)).length;
+  }
+
+  String _joinNonEmpty(List<String> values, {String separator = ', '}) {
+    return values.where((value) => value.trim().isNotEmpty).join(separator);
   }
 
   void _showMoreOptions(BuildContext context) {
@@ -444,9 +461,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
 
   void _showLogoutConfirmation(BuildContext context) {
-    final model = context.read<SignupModel>();
-
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -533,8 +547,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     }
 
     if (profileData == null) {
-      final model = context.read<SignupModel>();
-
       return Scaffold(
         body: Center(
           child: Column(
@@ -560,43 +572,32 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       );
     }
 
-    final personalDetail = profileData!['personalDetail'];
-    final familyDetail = profileData!['familyDetail'];
-    final lifestyle = profileData!['lifestyle'];
-    final partner = profileData!['partner'];
+    final personalDetail = _asMap(profileData!['personalDetail']);
+    final familyDetail = _asMap(profileData!['familyDetail']);
+    final lifestyle = _asMap(profileData!['lifestyle']);
+    final partner = _asMap(profileData!['partner']);
 
-    return
-      Scaffold(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FC),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header with Gradient
-            _buildHeader(personalDetail),
-if(usertype == 'free') ...[  _buildMemberTypeSection(),],
-            // Member Type & Upgrade Section
-
-
-            // Profile Info Section
+            _buildHeader(personalDetail, lifestyle, familyDetail, model),
+            _buildCompletionSection(
+              personalDetail: personalDetail,
+              familyDetail: familyDetail,
+              lifestyle: lifestyle,
+              partner: partner,
+            ),
+            _buildMemberTypeSection(),
+            _buildPackageDetailsSection(),
             _buildProfileInfo(personalDetail),
-
-            // About Me Section
-            _buildAboutMe(personalDetail),
-
-            // Personal Details Section
-            _buildPersonalDetails(personalDetail),
-
-            // Professional Details Section
+            _buildAboutMe(personalDetail, lifestyle, familyDetail),
+            _buildPersonalDetails(personalDetail, lifestyle, model),
             _buildProfessionalDetails(personalDetail),
-
-            // Family Details Section
             _buildFamilyDetails(familyDetail),
-
-            // Lifestyle Section
             _buildLifestyle(lifestyle),
-
-            // Partner Preferences
             _buildPartnerPreferences(partner),
-
             SizedBox(height: 20),
           ],
         ),
@@ -604,7 +605,30 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
     );
   }
 
-  Widget _buildHeader(Map<String, dynamic> personalDetail) {
+  Widget _buildHeader(
+    Map<String, dynamic> personalDetail,
+    Map<String, dynamic> lifestyle,
+    Map<String, dynamic> familyDetail,
+    SignupModel model,
+  ) {
+    final completion = _calculateProfileCompletion(
+      personalDetail: personalDetail,
+      familyDetail: familyDetail,
+      lifestyle: lifestyle,
+      partner: _asMap(profileData?['partner']),
+    );
+    final primaryLocation = _joinNonEmpty([
+      _firstFilled([personalDetail['city']]),
+      _firstFilled([personalDetail['country']]),
+    ]);
+    final profileSubtitle = _joinNonEmpty([
+      _displayValue(
+        _firstFilled([personalDetail['designation'], personalDetail['degree']]),
+        fallback: '',
+      ),
+      primaryLocation,
+    ], separator: ' • ');
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -701,14 +725,14 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
                   ],
                 ),
                 SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${personalDetail['firstName'] ?? ''} ${personalDetail['lastName'] ?? ''}, ${_calculateAge(personalDetail['birthDate'])}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.center,
+                   children: [
+                     Text(
+                       '${_displayValue(personalDetail['firstName'], fallback: '')} ${_displayValue(personalDetail['lastName'], fallback: '')}, ${_calculateAge(personalDetail['birthDate'])}',
+                       style: TextStyle(
+                         color: Colors.white,
+                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -716,31 +740,72 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
                     if (isProfileVerified)
                       Icon(Icons.verified, color: Colors.white, size: 20),
                   ],
-                ),
-                Text(
-                  '${personalDetail['designation'] ?? ''}, ${personalDetail['city'] ?? ''}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (personalDetail['religionName'] != null)
-                      _buildInfoBadge(personalDetail['religionName'], Icons.person),
-                    SizedBox(width: 15),
-                    if (personalDetail['communityName'] != null)
-                      _buildInfoBadge(personalDetail['communityName'], Icons.castle),
-                    SizedBox(width: 15),
-                    if (personalDetail['degree'] != null)
-                      _buildInfoBadge(personalDetail['degree'], Icons.school),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                 ),
+                 if (profileSubtitle.isNotEmpty)
+                   Text(
+                     profileSubtitle,
+                     style: TextStyle(
+                       color: Colors.white.withOpacity(0.9),
+                       fontSize: 14,
+                     ),
+                     textAlign: TextAlign.center,
+                   ),
+                 SizedBox(height: 10),
+                 Wrap(
+                   alignment: WrapAlignment.center,
+                   spacing: 10,
+                   runSpacing: 10,
+                   children: [
+                     if (!_isMissing(personalDetail['religionName']))
+                       _buildInfoBadge(_stringValue(personalDetail['religionName']), Icons.person),
+                     if (!_isMissing(personalDetail['communityName']))
+                       _buildInfoBadge(_stringValue(personalDetail['communityName']), Icons.castle),
+                     if (!_isMissing(personalDetail['degree']))
+                       _buildInfoBadge(_stringValue(personalDetail['degree']), Icons.school),
+                     if (!_isMissing(model.gender))
+                       _buildInfoBadge(_stringValue(model.gender), Icons.wc),
+                   ],
+                 ),
+                 SizedBox(height: 16),
+                 Container(
+                   width: double.infinity,
+                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withOpacity(0.14),
+                     borderRadius: BorderRadius.circular(18),
+                     border: Border.all(color: Colors.white.withOpacity(0.18)),
+                   ),
+                   child: Row(
+                     children: [
+                       Expanded(
+                         child: _buildHeaderMetric(
+                           'Profile Complete',
+                           '$completion%',
+                           Icons.auto_graph_rounded,
+                         ),
+                       ),
+                       Container(width: 1, height: 42, color: Colors.white24),
+                       Expanded(
+                         child: _buildHeaderMetric(
+                           'Member Type',
+                           memberType,
+                           Icons.workspace_premium_rounded,
+                         ),
+                       ),
+                       Container(width: 1, height: 42, color: Colors.white24),
+                       Expanded(
+                         child: _buildHeaderMetric(
+                           'Plan',
+                           _activePackageName ?? 'Free',
+                           Icons.receipt_long_rounded,
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+               ],
+             ),
+           ),
         ],
       ),
     );
@@ -763,122 +828,173 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
 
   Widget _buildMemberTypeSection() {
     Color memberColor;
-    String memberIcon;
+    IconData memberIcon;
 
     switch(memberType) {
       case 'Premium':
         memberColor = Colors.amber[700]!;
-        memberIcon = '👑';
+        memberIcon = Icons.workspace_premium_rounded;
         break;
       case 'Gold':
         memberColor = Colors.amber;
-        memberIcon = '⭐';
+        memberIcon = Icons.star_rounded;
         break;
       case 'Platinum':
         memberColor = Colors.blueGrey;
-        memberIcon = '💎';
+        memberIcon = Icons.diamond_rounded;
         break;
       default:
         memberColor = Colors.grey;
-        memberIcon = '👤';
+        memberIcon = Icons.person_rounded;
     }
 
     return Container(
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(
+          colors: [
+            memberColor.withOpacity(0.95),
+            Color.lerp(memberColor, Colors.black, 0.2)!,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+            color: memberColor.withOpacity(0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
-                  color: memberColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: memberColor.withOpacity(0.3)),
+                  color: Colors.white.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Center(
-                  child: Text(
-                    memberIcon,
-                    style: TextStyle(fontSize: 24),
-                  ),
+                child: Icon(
+                  memberIcon,
+                  color: Colors.white,
+                  size: 28,
                 ),
               ),
               SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$memberType Member',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$memberType Member',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    _getMemberBenefits(memberType),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                    SizedBox(height: 4),
+                    Text(
+                      _getMemberBenefits(memberType),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-         Container(
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: TextButton(
-              onPressed: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context) => SubscriptionPage(),));
-              },
-              child: Text(
-                'UPGRADE',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _getMemberBenefitList(memberType)
+                .map(
+                  (benefit) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      benefit,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _activePackageName == null
+                      ? 'You are currently on the $memberType membership.'
+                      : 'Current package: $_activePackageName',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-          ),]
-
-
+              SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SubscriptionPage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: memberColor,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: Text(
+                  memberType == 'Free' ? 'Upgrade' : 'Change Plan',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   String _getMemberBenefits(String type) {
+    return _getMemberBenefitList(type).join(', ');
+  }
+
+  List<String> _getMemberBenefitList(String type) {
     switch(type) {
       case 'Premium':
-        return 'Unlimited Chats, Profile Boost, Verified Badge';
+        return ['Unlimited Chats', 'Profile Boost', 'Verified Badge'];
       case 'Gold':
-        return 'Priority Listing, Advanced Search';
+        return ['Priority Listing', 'Advanced Search', 'Better Visibility'];
       case 'Platinum':
-        return 'All Features + Personal Matchmaking';
+        return ['All Features', 'Personal Matchmaking', 'Priority Support'];
       default:
-        return 'Basic Features Only';
+        return ['Basic Features', 'Standard Visibility'];
     }
   }
 
@@ -902,13 +1018,452 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
     );
   }
 
+  Widget _buildHeaderMetric(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _calculateProfileCompletion({
+    required Map<String, dynamic> personalDetail,
+    required Map<String, dynamic> familyDetail,
+    required Map<String, dynamic> lifestyle,
+    required Map<String, dynamic> partner,
+  }) {
+    final fields = [
+      personalDetail['firstName'],
+      personalDetail['lastName'],
+      personalDetail['birthDate'],
+      personalDetail['height_name'],
+      personalDetail['maritalStatusName'],
+      personalDetail['motherTongue'],
+      personalDetail['city'],
+      personalDetail['country'],
+      personalDetail['religionName'],
+      personalDetail['communityName'],
+      personalDetail['degree'],
+      personalDetail['designation'],
+      personalDetail['annualincome'],
+      personalDetail['aboutMe'],
+      familyDetail['familytype'],
+      familyDetail['familybackground'],
+      familyDetail['fatheroccupation'],
+      familyDetail['motheroccupation'],
+      familyDetail['familyorigin'],
+      lifestyle['diet'],
+      lifestyle['smoke'],
+      lifestyle['drinks'],
+      partner['minage'],
+      partner['maxage'],
+      partner['maritalstatus'],
+      partner['religion'],
+      partner['qualification'],
+      partner['proffession'],
+    ];
+
+    final completed = _countFilledFields(fields);
+    return ((completed / fields.length) * 100).round();
+  }
+
+  List<_ProfileReminder> _buildMissingSections({
+    required Map<String, dynamic> personalDetail,
+    required Map<String, dynamic> familyDetail,
+    required Map<String, dynamic> lifestyle,
+    required Map<String, dynamic> partner,
+  }) {
+    final reminders = <_ProfileReminder>[];
+
+    final basicMissing = _countMissing([
+      personalDetail['birthDate'],
+      personalDetail['height_name'],
+      personalDetail['maritalStatusName'],
+      personalDetail['motherTongue'],
+      personalDetail['city'],
+      personalDetail['country'],
+    ]);
+    if (basicMissing > 0) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Complete your basic profile',
+          subtitle: '$basicMissing important detail${basicMissing > 1 ? 's are' : ' is'} still missing.',
+          icon: Icons.person_outline_rounded,
+          onTap: _editBasicInfo,
+        ),
+      );
+    }
+
+    if (_isMissing(personalDetail['aboutMe'])) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Add your profile introduction',
+          subtitle: 'Use the auto-generated About section and update it anytime.',
+          icon: Icons.auto_awesome_rounded,
+          onTap: () => _editAboutMe(context, _generateAboutMe(personalDetail, lifestyle, familyDetail)),
+        ),
+      );
+    }
+
+    final professionalMissing = _countMissing([
+      personalDetail['degree'],
+      personalDetail['designation'],
+      personalDetail['annualincome'],
+    ]);
+    if (professionalMissing > 0) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Update professional details',
+          subtitle: '$professionalMissing professional field${professionalMissing > 1 ? 's are' : ' is'} pending.',
+          icon: Icons.work_outline_rounded,
+          onTap: _editProfessionalDetails,
+        ),
+      );
+    }
+
+    final familyMissing = _countMissing([
+      familyDetail['familytype'],
+      familyDetail['familybackground'],
+      familyDetail['fatheroccupation'],
+      familyDetail['motheroccupation'],
+      familyDetail['familyorigin'],
+    ]);
+    if (familyMissing > 0) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Finish family details',
+          subtitle: '$familyMissing family detail${familyMissing > 1 ? 's are' : ' is'} incomplete.',
+          icon: Icons.family_restroom_rounded,
+          onTap: _editFamilyDetails,
+        ),
+      );
+    }
+
+    final lifestyleMissing = _countMissing([
+      lifestyle['diet'],
+      lifestyle['smoke'],
+      lifestyle['drinks'],
+    ]);
+    if (lifestyleMissing > 0) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Fill lifestyle preferences',
+          subtitle: 'This helps show accurate profile and match preferences.',
+          icon: Icons.spa_outlined,
+          onTap: _editLifestyle,
+        ),
+      );
+    }
+
+    final partnerMissing = _countMissing([
+      partner['minage'],
+      partner['maxage'],
+      partner['maritalstatus'],
+      partner['religion'],
+      partner['qualification'],
+      partner['proffession'],
+    ]);
+    if (partnerMissing > 0) {
+      reminders.add(
+        _ProfileReminder(
+          title: 'Complete partner preference',
+          subtitle: '$partnerMissing preference field${partnerMissing > 1 ? 's are' : ' is'} missing.',
+          icon: Icons.favorite_border_rounded,
+          onTap: _editPartnerPreferences,
+        ),
+      );
+    }
+
+    return reminders;
+  }
+
+  int _countMissing(List<dynamic> values) {
+    return values.where(_isMissing).length;
+  }
+
+  Widget _buildCompletionSection({
+    required Map<String, dynamic> personalDetail,
+    required Map<String, dynamic> familyDetail,
+    required Map<String, dynamic> lifestyle,
+    required Map<String, dynamic> partner,
+  }) {
+    final completion = _calculateProfileCompletion(
+      personalDetail: personalDetail,
+      familyDetail: familyDetail,
+      lifestyle: lifestyle,
+      partner: partner,
+    );
+    final reminders = _buildMissingSections(
+      personalDetail: personalDetail,
+      familyDetail: familyDetail,
+      lifestyle: lifestyle,
+      partner: partner,
+    );
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF90E18).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  color: Color(0xFFF90E18),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Profile completion',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      reminders.isEmpty
+                          ? 'Your profile looks complete.'
+                          : 'We found ${reminders.length} section${reminders.length > 1 ? 's' : ''} that still need attention.',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$completion%',
+                style: const TextStyle(
+                  color: Color(0xFFF90E18),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: completion / 100,
+              backgroundColor: const Color(0xFFF5D8DA),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFFF90E18)),
+            ),
+          ),
+          if (reminders.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...reminders.map(
+              (reminder) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FD),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFF90E18).withOpacity(0.1),
+                    child: Icon(reminder.icon, color: const Color(0xFFF90E18)),
+                  ),
+                  title: Text(
+                    reminder.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(reminder.subtitle),
+                  trailing: TextButton(
+                    onPressed: reminder.onTap,
+                    child: const Text('Fill now'),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPackageDetailsSection() {
+    final hasPackage = !_isMissing(_activePackageName);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF90E18).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.receipt_long_rounded, color: Color(0xFFF90E18)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Purchased package details',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SubscriptionPage()),
+                  );
+                },
+                child: const Text('Change'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryTile(
+                  'Membership',
+                  '$memberType Member',
+                  Icons.workspace_premium_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSummaryTile(
+                  'Current Package',
+                  hasPackage ? _stringValue(_activePackageName) : 'Free Plan',
+                  Icons.sell_rounded,
+                ),
+              ),
+            ],
+          ),
+          if (hasPackage || !_isMissing(_activePackageExpiry)) ...[
+            const SizedBox(height: 10),
+            _buildSummaryTile(
+              'Validity',
+              _displayValue(_activePackageExpiry, fallback: 'No expiry available'),
+              Icons.event_available_rounded,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTile(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FD),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF90E18).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF90E18), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileInfo(Map<String, dynamic> personalDetail) {
     return Container(
-      margin: EdgeInsets.all(16),
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -955,39 +1510,26 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
             ],
           ),
           SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Text(
-                'Profile ID: ${personalDetail['memberid'] ?? 'N/A'}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
+              _buildMiniStat('Profile ID', _displayValue(personalDetail['memberid'])),
+              _buildMiniStat('Height', _displayValue(personalDetail['height_name'])),
+              _buildMiniStat('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
+              _buildMiniStat('Mother Tongue', _displayValue(personalDetail['motherTongue'])),
+              _buildMiniStat(
+                'Location',
+                _displayValue(
+                  _joinNonEmpty([
+                    _firstFilled([personalDetail['city']]),
+                    _firstFilled([personalDetail['country']]),
+                  ]),
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  memberType,
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
+              _buildMiniStat('Privacy', _displayValue(personalDetail['privacy'])),
             ],
           ),
-          SizedBox(height: 15),
-          _buildInfoRow('Height', personalDetail['height_name'] ?? 'N/A'),
-          _buildInfoRow('Marital Status', personalDetail['maritalStatusName'] ?? 'N/A'),
-          _buildInfoRow('Mother Tongue', personalDetail['motherTongue'] ?? 'N/A'),
-          _buildInfoRow('Location', '${personalDetail['city'] ?? ''}, ${personalDetail['country'] ?? ''}'),
-          _buildInfoRow('Contact Privacy', 'Hidden'),
-          _buildInfoRow('Profile Created', '15 Jan 2024'),
-          _buildInfoRow('Last Active', 'Today, 10:30 AM'),
         ],
       ),
     );
@@ -1020,28 +1562,191 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
     );
   }
 
-  Widget _buildAboutMe(Map<String, dynamic> personalDetail) {
+  Widget _buildMiniStat(String label, String value) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FD),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutMe(
+    Map<String, dynamic> personalDetail,
+    Map<String, dynamic> lifestyle,
+    Map<String, dynamic> familyDetail,
+  ) {
+    final savedAbout = _stringValue(personalDetail['aboutMe']);
+    final generatedAbout = _generateAboutMe(personalDetail, lifestyle, familyDetail);
+    final showGenerated = savedAbout.isEmpty && generatedAbout.isNotEmpty;
+
     return _buildSection(
       title: 'About Me',
-      icon: Icons.person_outline,
+      icon: Icons.auto_awesome_rounded,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            personalDetail['aboutMe'] ?? 'No information provided',
+            showGenerated
+                ? generatedAbout
+                : _displayValue(savedAbout, fallback: 'No information provided'),
             style: TextStyle(
               color: Colors.grey[700],
               fontSize: 14,
               height: 1.5,
             ),
           ),
+          if (showGenerated) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF90E18).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Auto-generated from your filled profile data',
+                    style: TextStyle(
+                      color: Color(0xFFF90E18),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'You can use this text now and edit it later anytime.',
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: generatedAbout.isEmpty
+                        ? null
+                        : () => _saveAboutMe(generatedAbout),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF90E18),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Use auto-generated About'),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
-      onEdit: () => _editAboutMe(context, personalDetail['aboutMe'] ?? ''),
+      onEdit: () => _editAboutMe(
+        context,
+        savedAbout.isEmpty ? generatedAbout : savedAbout,
+      ),
     );
   }
 
-  Widget _buildPersonalDetails(Map<String, dynamic> personalDetail) {
+  String _generateAboutMe(
+    Map<String, dynamic> personalDetail,
+    Map<String, dynamic> lifestyle,
+    Map<String, dynamic> familyDetail,
+  ) {
+    final name = _joinNonEmpty([
+      _firstFilled([personalDetail['firstName']]),
+      _firstFilled([personalDetail['lastName']]),
+    ], separator: ' ');
+    final age = _calculateAge(personalDetail['birthDate']);
+    final location = _joinNonEmpty([
+      _firstFilled([personalDetail['city']]),
+      _firstFilled([personalDetail['country']]),
+    ]);
+    final profession = _firstFilled([personalDetail['designation']]);
+    final company = _firstFilled([personalDetail['companyname']]);
+    final education = _firstFilled([personalDetail['degree']]);
+    final religion = _firstFilled([personalDetail['religionName']]);
+    final community = _firstFilled([personalDetail['communityName']]);
+    final diet = _firstFilled([lifestyle['diet']]);
+    final familyOrigin = _firstFilled([familyDetail['familyorigin']]);
+    final familyBackground = _firstFilled([familyDetail['familybackground']]);
+
+    final sentences = <String>[];
+
+    final introBits = <String>[];
+    if (name.isNotEmpty) {
+      introBits.add(name);
+    }
+    if (age > 0) {
+      introBits.add('$age years old');
+    }
+    if (location.isNotEmpty) {
+      introBits.add('based in $location');
+    }
+    if (introBits.isNotEmpty) {
+      sentences.add('I am ${introBits.join(', ')}.');
+    }
+
+    final workBits = <String>[];
+    if (profession.isNotEmpty) {
+      workBits.add('working as $profession');
+    }
+    if (company.isNotEmpty) {
+      workBits.add('at $company');
+    }
+    if (education.isNotEmpty) {
+      workBits.add('with $education');
+    }
+    if (workBits.isNotEmpty) {
+      sentences.add('Professionally, I am ${workBits.join(' ')}.');
+    }
+
+    final personalBits = <String>[];
+    if (religion.isNotEmpty) {
+      personalBits.add(religion);
+    }
+    if (community.isNotEmpty) {
+      personalBits.add(community);
+    }
+    if (diet.isNotEmpty) {
+      personalBits.add('$diet lifestyle');
+    }
+    if (personalBits.isNotEmpty) {
+      sentences.add('My background reflects ${personalBits.join(', ')}.');
+    }
+
+    final familyBits = <String>[];
+    if (familyBackground.isNotEmpty) {
+      familyBits.add(familyBackground);
+    }
+    if (familyOrigin.isNotEmpty) {
+      familyBits.add('roots in $familyOrigin');
+    }
+    if (familyBits.isNotEmpty) {
+      sentences.add('Family is important to me and I value ${familyBits.join(' with ')}.');
+    }
+
+    return sentences.join(' ').trim();
+  }
+
+  Widget _buildPersonalDetails(
+    Map<String, dynamic> personalDetail,
+    Map<String, dynamic> lifestyle,
+    SignupModel model,
+  ) {
     return _buildSection(
       title: 'Personal Details',
       icon: Icons.favorite_border,
@@ -1049,17 +1754,16 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
         children: [
           _buildDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
           _buildDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
-          _buildDetailRow('Gender', 'Male'),
-          _buildDetailRow('Religion', personalDetail['religionName'] ?? 'N/A'),
-          _buildDetailRow('Caste', personalDetail['communityName'] ?? 'N/A'),
-          _buildDetailRow('Sub Caste', personalDetail['subCommunityName'] ?? 'N/A'),
-          _buildDetailRow('Gotra', 'Kashyapa'),
-          _buildDetailRow('Manglik', personalDetail['manglik'] ?? 'N/A'),
-          _buildDetailRow('Diet', 'Vegetarian'),
-          _buildDetailRow('Disability', personalDetail['Disability'] ?? 'None'),
-          _buildDetailRow('Blood Group', personalDetail['bloodGroup'] ?? 'N/A'),
-          _buildDetailRow('Birth Time', personalDetail['birthtime'] ?? 'N/A'),
-          _buildDetailRow('Birth Place', personalDetail['birthcity'] ?? 'N/A'),
+          _buildDetailRow('Gender', _displayValue(_firstFilled([personalDetail['gender'], model.gender]))),
+          _buildDetailRow('Religion', _displayValue(personalDetail['religionName'])),
+          _buildDetailRow('Caste', _displayValue(personalDetail['communityName'])),
+          _buildDetailRow('Sub Caste', _displayValue(personalDetail['subCommunityName'])),
+          _buildDetailRow('Manglik', _displayValue(personalDetail['manglik'])),
+          _buildDetailRow('Diet', _displayValue(lifestyle['diet'])),
+          _buildDetailRow('Disability', _displayValue(personalDetail['disability'], fallback: 'None')),
+          _buildDetailRow('Blood Group', _displayValue(personalDetail['bloodGroup'])),
+          _buildDetailRow('Birth Time', _displayValue(personalDetail['birthtime'])),
+          _buildDetailRow('Birth Place', _displayValue(personalDetail['birthcity'])),
         ],
       ),
       onEdit: () => _editPersonalDetails(),
@@ -1087,14 +1791,14 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
       icon: Icons.work_outline,
       content: Column(
         children: [
-          _buildDetailRow('Education', personalDetail['degree'] ?? 'N/A'),
-          _buildDetailRow('College', 'IIT Delhi'),
-          _buildDetailRow('Occupation', personalDetail['designation'] ?? 'N/A'),
-          _buildDetailRow('Employer', personalDetail['companyname'] ?? 'N/A'),
-          _buildDetailRow('Annual Income', personalDetail['annualincome'] ?? 'N/A'),
-          _buildDetailRow('Work Location', personalDetail['city'] ?? 'N/A'),
-          _buildDetailRow('Job Sector', 'IT/Software'),
-          _buildDetailRow('Experience', '5 Years'),
+          _buildDetailRow('Education', _displayValue(personalDetail['degree'])),
+          _buildDetailRow('Faculty', _displayValue(personalDetail['faculty'])),
+          _buildDetailRow('Education Type', _displayValue(personalDetail['educationtype'])),
+          _buildDetailRow('Occupation', _displayValue(personalDetail['designation'])),
+          _buildDetailRow('Employer', _displayValue(personalDetail['companyname'])),
+          _buildDetailRow('Working With', _displayValue(personalDetail['workingwith'])),
+          _buildDetailRow('Annual Income', _displayValue(personalDetail['annualincome'])),
+          _buildDetailRow('Work Location', _displayValue(personalDetail['city'])),
         ],
       ),
       onEdit: () => _editProfessionalDetails(),
@@ -1107,15 +1811,14 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
       icon: Icons.family_restroom,
       content: Column(
         children: [
-          _buildDetailRow('Family Type', familyDetail['familytype'] ?? 'N/A'),
-          _buildDetailRow('Family Status', familyDetail['familybackground'] ?? 'N/A'),
-          _buildDetailRow('Father\'s Occupation', familyDetail['fatheroccupation'] ?? 'N/A'),
-          _buildDetailRow('Mother\'s Occupation', familyDetail['motheroccupation'] ?? 'N/A'),
-          _buildDetailRow('No. of Brothers', '1 (Married)'),
-          _buildDetailRow('No. of Sisters', '1 (Unmarried)'),
-          _buildDetailRow('Native Place', familyDetail['familyorigin'] ?? 'N/A'),
-          _buildDetailRow('Family Values', 'Moderate'),
-          _buildDetailRow('Family Based In', 'Janakpur'),
+          _buildDetailRow('Family Type', _displayValue(familyDetail['familytype'])),
+          _buildDetailRow('Family Status', _displayValue(familyDetail['familybackground'])),
+          _buildDetailRow('Father Name', _displayValue(familyDetail['fathername'])),
+          _buildDetailRow('Father\'s Occupation', _displayValue(familyDetail['fatheroccupation'])),
+          _buildDetailRow('Mother\'s Occupation', _displayValue(familyDetail['motheroccupation'])),
+          _buildDetailRow('Family Origin', _displayValue(familyDetail['familyorigin'])),
+          _buildDetailRow('Mother Education', _displayValue(familyDetail['mothereducation'])),
+          _buildDetailRow('Father Education', _displayValue(familyDetail['fathereducation'])),
         ],
       ),
       onEdit: () => _editFamilyDetails(),
@@ -1266,12 +1969,53 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
     Navigator.push(context, MaterialPageRoute(builder: (context) => PersonalDetailsPagee()));
   }
 
-  Future<void> _editAboutMe(BuildContext context, String currentAboutMe) async {
-    final TextEditingController _controller = TextEditingController(text: currentAboutMe);
+  Future<void> _saveAboutMe(String aboutMe) async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
     final userData = jsonDecode(userDataString!);
     final userId = int.tryParse(userData["id"].toString());
+
+    try {
+      final response = await http.post(
+        Uri.parse("https://digitallami.com/Api2/aboutme.php"),
+        body: {
+          "userid": userId.toString(),
+          "aboutMe": aboutMe.trim(),
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update About Me');
+      }
+
+      setState(() {
+        if (profileData != null && profileData!['personalDetail'] != null) {
+          profileData!['personalDetail']['aboutMe'] = aboutMe.trim();
+        }
+      });
+
+      await fetchProfileData();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('About Me updated successfully!'),
+          backgroundColor: Color(0xFFD32F2F),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _editAboutMe(BuildContext context, String currentAboutMe) async {
+    final TextEditingController _controller = TextEditingController(text: currentAboutMe);
 
     await showDialog(
       context: context,
@@ -1336,52 +2080,8 @@ if(usertype == 'free') ...[  _buildMemberTypeSection(),],
                       isSaving = true;
                     });
 
-                    try {
-                      var response = await http.post(
-                        Uri.parse("https://digitallami.com/Api2/aboutme.php"),
-                        body: {
-                          "userid": userId.toString(),
-                          "aboutMe": _controller.text.trim(),
-                        },
-                      );
-
-                      if (response.statusCode == 200) {
-                        Navigator.pop(context);
-
-                        // Update local state immediately
-                        setState(() {
-                          if (profileData != null && profileData!['personalDetail'] != null) {
-                            profileData!['personalDetail']['aboutMe'] = _controller.text.trim();
-                          }
-                        });
-
-                        // Also refresh from server to ensure consistency
-                        await fetchProfileData();
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('About Me updated successfully!'),
-                            backgroundColor: Color(0xFFD32F2F),
-                          ),
-                        );
-                      } else {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to update About Me'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
+                    Navigator.pop(context);
+                    await _saveAboutMe(_controller.text.trim());
                   },
                   child: Text('Save', style: TextStyle(color: Colors.white)),
                 ),
@@ -1653,17 +2353,19 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
 
     if (lifestyle['smoke'] == 'Yes') {
       habitChips.add(_buildChip('Smoker (${lifestyle['smoketype']})', Icons.smoking_rooms, Colors.orange));
-    } else {
+    } else if (!_isMissing(lifestyle['smoke'])) {
       habitChips.add(_buildChip('Non-Smoker', Icons.smoke_free, Colors.green));
     }
 
     if (lifestyle['drinks'] == 'Yes') {
       habitChips.add(_buildChip('Drinker (${lifestyle['drinktype']})', Icons.local_bar, Colors.orange));
-    } else {
+    } else if (!_isMissing(lifestyle['drinks'])) {
       habitChips.add(_buildChip('Non-Drinker', Icons.no_drinks, Colors.green));
     }
 
-    habitChips.add(_buildChip(lifestyle['diet'] ?? 'Vegetarian', Icons.eco, Colors.green));
+    if (!_isMissing(lifestyle['diet'])) {
+      habitChips.add(_buildChip(_stringValue(lifestyle['diet']), Icons.eco, Colors.green));
+    }
 
     return _buildSection(
       title: 'Lifestyle',
@@ -1671,20 +2373,30 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Habits:',
-            style: TextStyle(
-              color: Colors.grey[800],
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
+          if (habitChips.isEmpty)
+            Text(
+              'No lifestyle information added yet.',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            )
+          else ...[
+            Text(
+              'Habits:',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: habitChips,
-          ),
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: habitChips,
+            ),
+          ],
         ],
       ),
       onEdit: () => _editLifestyle(),
@@ -1692,35 +2404,38 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
   }
 
   Widget _buildPartnerPreferences(Map<String, dynamic> partner) {
+    final ageText = !_isMissing(partner['minage']) && !_isMissing(partner['maxage'])
+        ? '${partner['minage']}-${partner['maxage']} Years'
+        : 'Not provided';
     return _buildSection(
       title: 'Partner Preferences',
       icon: Icons.search,
       content: Column(
         children: [
-          _buildPreferenceRow('Age', '${partner['minage']}-${partner['maxage']} Years'),
-          if (partner['minheight'] != null && partner['maxheight'] != null)
+          _buildPreferenceRow('Age', ageText),
+          if (!_isMissing(partner['minheight']) && !_isMissing(partner['maxheight']))
             _buildPreferenceRow('Height', '${partner['minheight']}-${partner['maxheight']}'),
-          _buildPreferenceRow('Marital Status', partner['maritalstatus'] ?? 'N/A'),
-          _buildPreferenceRow('Religion', partner['religion'] ?? 'N/A'),
-          _buildPreferenceRow('Caste', partner['caste'] ?? 'N/A'),
-          if (partner['community'] != null && partner['community'].toString().isNotEmpty)
-            _buildPreferenceRow('Community', partner['community'] ?? 'N/A'),
-          if (partner['mothertongue'] != null && partner['mothertongue'].toString().isNotEmpty)
-            _buildPreferenceRow('Mother Tongue', partner['mothertongue'] ?? 'N/A'),
-          _buildPreferenceRow('Education', partner['qualification'] ?? 'N/A'),
-          _buildPreferenceRow('Occupation', partner['proffession'] ?? 'N/A'),
-          _buildPreferenceRow('Income', partner['annualincome'] ?? 'N/A'),
-          if (partner['country'] != null && partner['country'].toString().isNotEmpty)
-            _buildPreferenceRow('Country', partner['country'] ?? 'N/A'),
-          if (partner['state'] != null && partner['state'].toString().isNotEmpty)
-            _buildPreferenceRow('State', partner['state'] ?? 'N/A'),
-          if (partner['district'] != null && partner['district'].toString().isNotEmpty)
-            _buildPreferenceRow('District', partner['district'] ?? 'N/A'),
-          if (partner['city'] != null && partner['city'].toString().isNotEmpty)
-            _buildPreferenceRow('City', partner['city'] ?? 'N/A'),
-          _buildPreferenceRow('Diet', partner['diet'] ?? 'N/A'),
-          _buildPreferenceRow('Family Values', partner['familytype'] ?? 'N/A'),
-          _buildPreferenceRow('Other Expectations', partner['otherexpectation'] ?? 'N/A'),
+          _buildPreferenceRow('Marital Status', _displayValue(partner['maritalstatus'])),
+          _buildPreferenceRow('Religion', _displayValue(partner['religion'])),
+          _buildPreferenceRow('Caste', _displayValue(partner['caste'])),
+          if (!_isMissing(partner['community']))
+            _buildPreferenceRow('Community', _displayValue(partner['community'])),
+          if (!_isMissing(partner['mothertongue']))
+            _buildPreferenceRow('Mother Tongue', _displayValue(partner['mothertongue'])),
+          _buildPreferenceRow('Education', _displayValue(partner['qualification'])),
+          _buildPreferenceRow('Occupation', _displayValue(partner['proffession'])),
+          _buildPreferenceRow('Income', _displayValue(partner['annualincome'])),
+          if (!_isMissing(partner['country']))
+            _buildPreferenceRow('Country', _displayValue(partner['country'])),
+          if (!_isMissing(partner['state']))
+            _buildPreferenceRow('State', _displayValue(partner['state'])),
+          if (!_isMissing(partner['district']))
+            _buildPreferenceRow('District', _displayValue(partner['district'])),
+          if (!_isMissing(partner['city']))
+            _buildPreferenceRow('City', _displayValue(partner['city'])),
+          _buildPreferenceRow('Diet', _displayValue(partner['diet'])),
+          _buildPreferenceRow('Family Values', _displayValue(partner['familytype'])),
+          _buildPreferenceRow('Other Expectations', _displayValue(partner['otherexpectation'])),
         ],
       ),
       onEdit: () => _editPartnerPreferences(),
@@ -1830,4 +2545,18 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
       ),
     );
   }
+}
+
+class _ProfileReminder {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  _ProfileReminder({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
 }
