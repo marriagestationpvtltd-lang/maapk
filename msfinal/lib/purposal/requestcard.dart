@@ -144,151 +144,227 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status display
-          _buildStatusText(),
+          // Colored header strip: request type + status chip
+          _buildCardHeader(),
 
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              // Profile Image
-              _buildProfileImage(),
-
-              const SizedBox(width: 12),
-
-              // User Details
-              Expanded(
-                child: _buildUserDetails(),
-              ),
-
-              const SizedBox(width: 8),
-
-              // Action Buttons
-              _buildActionButtons(),
-            ],
+          // Main content row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 14, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfileImage(),
+                const SizedBox(width: 14),
+                Expanded(child: _buildUserDetails()),
+                const SizedBox(width: 8),
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusText() {
-    // Determine if current user is sender
-    bool isSender = widget.data.senderId == widget.userid;
+  Widget _buildCardHeader() {
+    final type = widget.data.requestType ?? 'Request';
+    final typeColor = _getTypeColor(type);
+    final typeIcon = _getTypeIcon(type);
 
-    if (widget.data.status == 'pending' && isSender) {
-      return Text(
-        " Your ${widget.data.requestType ?? "Request"} Request ${widget.data.status}...",
-        style: TextStyle(
-          fontSize: 18,
-          color: Colors.orange,
-          fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: typeColor.withOpacity(0.07),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
-      );
+        border: Border(
+          bottom: BorderSide(
+            color: typeColor.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(typeIcon, color: typeColor, size: 16),
+              const SizedBox(width: 7),
+              Text(
+                '$type Request',
+                style: TextStyle(
+                  color: typeColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          _buildStatusChip(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip() {
+    final status = widget.data.status ?? 'pending';
+    Color chipColor;
+    String label;
+
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        chipColor = const Color(0xFF2E7D32);
+        label = 'Accepted';
+        break;
+      case 'rejected':
+        chipColor = const Color(0xFFC62828);
+        label = 'Rejected';
+        break;
+      default:
+        chipColor = const Color(0xFFF57C00);
+        label = 'Pending';
     }
 
-    if (widget.data.status == 'accepted' && isSender) {
-      return Text(
-        "Your ${widget.data.requestType ?? "Request"} Request ${widget.data.status}",
-        style: TextStyle(
-          color: Colors.green,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: chipColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: chipColor.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: chipColor,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: chipColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (widget.data.status == 'rejected' && isSender) {
-      return Text(
-        "Your ${widget.data.requestType ?? "Request"} Request ${widget.data.status}",
-        style: TextStyle(
-          color: Colors.red,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      );
+  Color _getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'photo':
+        return const Color(0xFF6A1B9A);
+      case 'chat':
+        return const Color(0xFF1565C0);
+      case 'profile':
+        return const Color(0xFF00695C);
+      default:
+        return const Color(0xFFD32F2F);
     }
+  }
 
-    if (!isSender && widget.data.status == 'accepted') {
-      return Text(
-        "You have ${widget.data.requestType ?? "Request"} Request ${widget.data.status}",
-        style: TextStyle(
-          color: Colors.blue,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      );
+  IconData _getTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'photo':
+        return Icons.photo_library_outlined;
+      case 'chat':
+        return Icons.chat_bubble_outline_rounded;
+      case 'profile':
+        return Icons.person_outline_rounded;
+      default:
+        return Icons.favorite_border_rounded;
     }
-
-    if (!isSender && widget.data.status == 'pending') {
-      return Text(
-        "${widget.data.requestType ?? "Request"} Request ${widget.data.status}",
-        style: TextStyle(
-          color: Colors.orange,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
   }
 
   Widget _buildUserDetails() {
-    // According to your PHP API, the data already contains the OTHER user's information
-    // So we can use the data directly from widget.data
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(
-              "MS: ${widget.data.memberid.toString() ?? 'N/A'}  ${widget.data.lastName ?? ''}".trim(),
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+            Flexible(
+              child: Text(
+                "MS: ${widget.data.memberid ?? ''} ${widget.data.lastName ?? ''}".trim(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: Color(0xFF1A1A2E),
+                  letterSpacing: 0.2,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (widget.data.verified ?? false)
               const Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: Icon(
-                  Icons.verified,
-                  color: Colors.red,
-                  size: 16,
+                  Icons.verified_rounded,
+                  color: Color(0xFF1976D2),
+                  size: 15,
                 ),
               ),
           ],
         ),
         const SizedBox(height: 6),
-        _buildDetailRow(Icons.location_on_outlined, widget.data.city ?? 'Kathmandu'),
+        _buildDetailRow(
+            Icons.location_on_outlined, widget.data.city ?? 'Kathmandu'),
         const SizedBox(height: 2),
-        _buildDetailRow(Icons.work_outline, widget.data.occupation ?? 'Fashion Designer'),
-        _buildDetailRow(Icons.person_outline, widget.data.maritalstatus ?? 'Single'),
+        _buildDetailRow(
+            Icons.work_outline, widget.data.occupation ?? 'N/A'),
+        _buildDetailRow(
+            Icons.favorite_border, widget.data.maritalstatus ?? 'Single'),
       ],
     );
   }
 
   Widget _buildDetailRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.black54),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(fontSize: 13, color: Colors.black54),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: Colors.grey.shade500),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w400,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -296,58 +372,20 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
     // For received pending requests (current user is receiver)
     if (_isReceiver && _isPending) {
       return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Accept Button
-          GestureDetector(
+          _actionButton(
+            label: 'Accept',
+            icon: Icons.check_rounded,
+            color: const Color(0xFF2E7D32),
             onTap: _handleAcceptRequest,
-            child: Container(
-              margin: EdgeInsets.only(bottom: 10),
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text(
-                    'Accept',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
-
-          // Reject Button
-          GestureDetector(
+          const SizedBox(height: 8),
+          _actionButton(
+            label: 'Reject',
+            icon: Icons.close_rounded,
+            color: Colors.grey.shade400,
             onTap: _handleRejectRequest,
-            child: Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.cancel_outlined, color: Colors.black54),
-                  SizedBox(width: 10),
-                  Text(
-                    'Reject',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       );
@@ -355,213 +393,165 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
 
     // For accepted chat requests
     if (widget.data.status == 'accepted' && widget.data.requestType == 'Chat') {
-      return Column(
-        children: [
-          GestureDetector(
-            onTap: _handleChatNavigation,
-            child: Container(
-              margin: EdgeInsets.only(bottom: 10),
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.chat_bubble, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text(
-                    'Chat',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      return _actionButton(
+        label: 'Chat',
+        icon: Icons.chat_bubble_outline_rounded,
+        color: const Color(0xFF1565C0),
+        onTap: _handleChatNavigation,
       );
     }
 
     // For accepted profile requests
     if (widget.data.status == 'accepted' && widget.data.requestType == 'Profile') {
-      return Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.person_outline, color: Colors.white),
-                SizedBox(width: 10),
-                Text(
-                  'Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      return _actionButton(
+        label: 'Profile',
+        icon: Icons.person_outline_rounded,
+        color: const Color(0xFF00695C),
+        onTap: () {},
       );
     }
 
     // For accepted photo requests
     if (widget.data.status == 'accepted' && widget.data.requestType == 'Photo') {
-      return Column(
-        children: [
-          GestureDetector(
-            onTap: (){
-             if(docstatus == "approved" && usertye == "paid") {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(
-                   builder: (context) => UserProfilePage(
-                     userId: int.parse(widget.data.memberid.toString()),
-                   ),
-                 ),
-               );
-             }
-             if (docstatus == "not_uploaded" || docstatus == "rejected" || docstatus == "pending") {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen()));
-             }
-
-             if (usertye == "free" && docstatus == "approved") {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => SubscriptionPage()));
-             }
-
-
-            },
-            child: Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(13),
+      return _actionButton(
+        label: 'Photos',
+        icon: Icons.photo_library_outlined,
+        color: const Color(0xFF6A1B9A),
+        onTap: () {
+          if (docstatus == "approved" && usertye == "paid") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: int.parse(widget.data.memberid.toString()),
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.photo_album, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text(
-                    'Photo',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+            );
+          }
+          if (docstatus == "not_uploaded" ||
+              docstatus == "rejected" ||
+              docstatus == "pending") {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => IDVerificationScreen()));
+          }
+          if (usertye == "free" && docstatus == "approved") {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => SubscriptionPage()));
+          }
+        },
       );
     }
 
     // For sent pending requests (current user is sender)
     if (widget.data.senderId == widget.userid && _isPending) {
-      return Column(
-        children: [
-          GestureDetector(
-            onTap: _handleCancelRequest,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.cancel_outlined, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      return _actionButton(
+        label: 'Cancel',
+        icon: Icons.cancel_outlined,
+        color: const Color(0xFFC62828),
+        onTap: _handleCancelRequest,
       );
     }
 
     return const SizedBox.shrink();
   }
 
-  Widget _buildProfileImage() {
-    final imageUrl = widget.data.profilePicture ?? "https://via.placeholder.com/150";
-
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(25),
-          child: Container(
-            width: 70,
-            height: 70,
-            color: Colors.grey[200],
-            child: Image.network(
-              imageUrl,
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 50,
-                  height: 50,
-                  color: Colors.grey[200],
-                  child: Icon(Icons.person, color: Colors.grey[400], size: 28),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  width: 50,
-                  height: 50,
-                  color: Colors.grey[200],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                          : null,
-                    ),
-                  ),
-                );
-              },
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
+          ],
         ),
-        if (widget.data.verified ?? false)
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.white, width: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 15),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    final imageUrl =
+        widget.data.profilePicture ?? "https://via.placeholder.com/150";
+    final type = widget.data.requestType ?? 'Request';
+    final typeColor = _getTypeColor(type);
+
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [typeColor.withOpacity(0.7), typeColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: typeColor.withOpacity(0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-      ],
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2.5),
+        child: ClipOval(
+          child: Image.network(
+            imageUrl,
+            width: 67,
+            height: 67,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: Colors.grey.shade200,
+              child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
+            ),
+            loadingBuilder: (_, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: Colors.grey.shade200,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: typeColor,
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 

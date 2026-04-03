@@ -237,36 +237,15 @@ class _ProposalsPageState extends State<ProposalsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F8FC),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 10),
-
-            const Center(
-              child: Text(
-                "Proposals",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // TABS - From screenshot: Received, Sent, Accepted
-            Container(
-              height: 40,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildTabItem("Received", 0),
-                  _buildTabItem("Sent", 1),
-                  _buildTabItem("Accepted", 2),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 10),
+            _buildHeader(),
+            const SizedBox(height: 4),
+            _buildTabBar(),
+            const SizedBox(height: 8),
 
             // PAGE VIEW FOR SWIPEABLE CONTENT
             Expanded(
@@ -274,23 +253,18 @@ class _ProposalsPageState extends State<ProposalsPage> {
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: [
-                  // Received Tab
                   _buildTabContent(
                     isLoading: loadingReceived,
                     isRefreshing: _refreshingReceived,
                     list: receivedList,
                     tabIndex: 0,
                   ),
-
-                  // Sent Tab
                   _buildTabContent(
                     isLoading: loadingSent,
                     isRefreshing: _refreshingSent,
                     list: sentList,
                     tabIndex: 1,
                   ),
-
-                  // Accepted Tab
                   _buildTabContent(
                     isLoading: loadingAccepted,
                     isRefreshing: _refreshingAccepted,
@@ -306,6 +280,108 @@ class _ProposalsPageState extends State<ProposalsPage> {
     );
   }
 
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.favorite_border_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Proposals',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              Text(
+                'Manage your connection requests',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.8),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: _refreshAllTabs,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            _buildTabItem('Received', 0,
+                loadingReceived ? null : receivedList.length),
+            _buildTabItem('Sent', 1,
+                loadingSent ? null : sentList.length),
+            _buildTabItem('Accepted', 2,
+                loadingAccepted ? null : acceptedList.length),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabContent({
     required bool isLoading,
     required bool isRefreshing,
@@ -313,30 +389,34 @@ class _ProposalsPageState extends State<ProposalsPage> {
     required int tabIndex,
   }) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (list.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              _getEmptyStateIcon(tabIndex),
-              size: 64,
-              color: Colors.grey,
+            CircularProgressIndicator(
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFFD32F2F)),
+              strokeWidth: 2.5,
             ),
             const SizedBox(height: 16),
             Text(
-              _getEmptyStateText(tabIndex),
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              'Loading...',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
       );
     }
 
+    if (list.isEmpty) {
+      return _buildEmptyState(tabIndex);
+    }
+
     return RefreshIndicator(
+      color: const Color(0xFFD32F2F),
       onRefresh: () async {
         setState(() {
           if (tabIndex == 0) _refreshingReceived = true;
@@ -355,7 +435,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
       child: ShimmerLoading(
         isLoading: isRefreshing,
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: list.length,
           itemBuilder: (context, index) {
             return RequestCardDynamic(
@@ -363,7 +443,6 @@ class _ProposalsPageState extends State<ProposalsPage> {
               tabIndex: tabIndex,
               userid: userid,
               onActionComplete: () {
-                // Refresh this tab after action
                 _loadDataForTab(tabIndex);
               },
             );
@@ -373,56 +452,66 @@ class _ProposalsPageState extends State<ProposalsPage> {
     );
   }
 
-  IconData _getEmptyStateIcon(int tabIndex) {
-    switch (tabIndex) {
-      case 0:
-        return Icons.inbox_outlined;
-      case 1:
-        return Icons.send_outlined;
-      case 2:
-        return Icons.check_circle_outline;
-      default:
-        return Icons.inbox_outlined;
-    }
-  }
+  Widget _buildEmptyState(int tabIndex) {
+    final configs = [
+      _EmptyStateConfig(
+        icon: Icons.move_to_inbox_rounded,
+        title: 'No Received Requests',
+        subtitle: 'When someone sends you a request,\nit will appear here.',
+        color: const Color(0xFFD32F2F),
+      ),
+      _EmptyStateConfig(
+        icon: Icons.send_rounded,
+        title: 'No Sent Requests',
+        subtitle: 'Requests you\'ve sent to others\nwill appear here.',
+        color: const Color(0xFF1565C0),
+      ),
+      _EmptyStateConfig(
+        icon: Icons.check_circle_outline_rounded,
+        title: 'No Accepted Requests',
+        subtitle: 'Your accepted connections\nwill appear here.',
+        color: const Color(0xFF2E7D32),
+      ),
+    ];
 
-  String _getEmptyStateText(int tabIndex) {
-    switch (tabIndex) {
-      case 0:
-        return "No received proposals";
-      case 1:
-        return "No sent proposals";
-      case 2:
-        return "No accepted proposals";
-      default:
-        return "No proposals found";
-    }
-  }
+    final config = configs[tabIndex];
 
-  Widget _buildTabItem(String title, int index) {
-    final bool active = selectedTab == index;
-    return GestureDetector(
-      onTap: () => _onTabSelected(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: active ? Colors.red : Colors.black54,
-                fontSize: 16,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: config.color.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                config.icon,
+                size: 44,
+                color: config.color.withOpacity(0.7),
               ),
             ),
-            const SizedBox(height: 4),
-            Container(
-              height: 3,
-              width: 50,
-              decoration: BoxDecoration(
-                color: active ? Colors.red : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
+            const SizedBox(height: 20),
+            Text(
+              config.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              config.subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                height: 1.5,
               ),
             ),
           ],
@@ -430,5 +519,71 @@ class _ProposalsPageState extends State<ProposalsPage> {
       ),
     );
   }
+
+  Widget _buildTabItem(String title, int index, int? count) {
+    final bool active = selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onTabSelected(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFFD32F2F) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: active ? Colors.white : Colors.grey.shade600,
+                  fontSize: 13,
+                  fontWeight:
+                      active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              if (count != null && count > 0) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? Colors.white.withOpacity(0.25)
+                        : const Color(0xFFD32F2F).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: active ? Colors.white : const Color(0xFFD32F2F),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateConfig {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  const _EmptyStateConfig({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
 }
 
