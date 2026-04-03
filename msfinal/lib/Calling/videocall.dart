@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart'; // Add this import
-import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
@@ -182,6 +181,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         );
       },
       onEnd: _endCall,
+      onToggleMute: _toggleMute,
+      onToggleCamera: _toggleVideo,
+      isMicMuted: _micMuted,
+      isCameraEnabled: _cameraOn,
     );
     _syncOverlayState();
   }
@@ -196,17 +199,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     CallOverlayManager().updateCallState(
       statusText: statusText,
       duration: _duration,
+      isMicMuted: _micMuted,
+      isCameraEnabled: _cameraOn,
     );
   }
 
   Future<void> _minimizeCall() async {
-    CallOverlayManager().minimizeCall();
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: minimizedCallHostRouteName),
-        builder: (_) => ChatListScreen(),
-      ),
-    );
+    await openMinimizedCallHost(context);
   }
 
   // ================= START CALL =================
@@ -434,6 +433,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
+  Future<void> _toggleMute() async {
+    setState(() => _micMuted = !_micMuted);
+    if (_engineInitialized) {
+      await _engine.muteLocalAudioStream(_micMuted);
+    }
+    _syncOverlayState();
+  }
+
+  Future<void> _toggleVideo() async {
+    setState(() => _cameraOn = !_cameraOn);
+    if (_engineInitialized) {
+      await _engine.enableLocalVideo(_cameraOn);
+    }
+    _syncOverlayState();
+  }
+
   // ================= TOGGLE SPEAKER =================
   Future<void> _toggleSpeaker() async {
     setState(() => _speakerOn = !_speakerOn);
@@ -591,13 +606,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 ),
               ),
 
-            // Top info bar
-             Positioned(
-               top: 40,
-               left: 20,
-               child: Row(
-                 children: [
-                   Container(
+             // Top info bar
+              Positioned(
+                top: 40,
+                left: 20,
+                right: 20,
+                child: Row(
+                  children: [
+                    Container(
                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                      decoration: BoxDecoration(
                        color: Colors.black54,
@@ -620,22 +636,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                          ),
                        ],
                      ),
-                   ),
-                   const SizedBox(width: 12),
-                   Container(
-                     decoration: BoxDecoration(
-                       color: Colors.black54,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: IconButton(
-                       onPressed: _minimizeCall,
-                       icon: const Icon(Icons.minimize, color: Colors.white, size: 24),
-                       tooltip: 'Minimize call',
-                     ),
-                   ),
-                 ],
-               ),
-             ),
+                    ),
+                    const Spacer(),
+                    CallMinimizeButton(onPressed: _minimizeCall),
+                  ],
+                ),
+              ),
 
             // Bottom controls
             Positioned(
@@ -645,22 +651,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _controlButton(
-                    icon: _micMuted ? Icons.mic_off : Icons.mic,
-                    color: Colors.white,
-                    onPressed: _callActive ? () {
-                      setState(() => _micMuted = !_micMuted);
-                      _engine.muteLocalAudioStream(_micMuted);
-                    } : null,
-                  ),
-                  _controlButton(
-                    icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
-                    color: Colors.white,
-                    onPressed: _joined ? () {
-                      setState(() => _cameraOn = !_cameraOn);
-                      _engine.enableLocalVideo(_cameraOn);
-                    } : null,
-                  ),
+                   _controlButton(
+                     icon: _micMuted ? Icons.mic_off : Icons.mic,
+                     color: Colors.white,
+                     onPressed: _callActive ? _toggleMute : null,
+                   ),
+                   _controlButton(
+                     icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
+                     color: Colors.white,
+                     onPressed: _joined ? _toggleVideo : null,
+                   ),
                   _controlButton(
                     icon: Icons.call_end,
                     color: Colors.red,

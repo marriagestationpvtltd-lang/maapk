@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
@@ -23,6 +22,7 @@ class IncomingVideoCallScreen extends StatefulWidget {
 
 class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   late RtcEngine _engine;
+  bool _engineInitialized = false;
 
   int _localUid = 0;
   int? _remoteUid;
@@ -125,6 +125,10 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         );
       },
       onEnd: _endCall,
+      onToggleMute: _toggleMute,
+      onToggleCamera: _toggleVideo,
+      isMicMuted: _micMuted,
+      isCameraEnabled: _cameraOn,
     );
     _syncOverlayState();
   }
@@ -133,17 +137,13 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     CallOverlayManager().updateCallState(
       statusText: _callActive ? 'Connected' : 'Incoming call',
       duration: _duration,
+      isMicMuted: _micMuted,
+      isCameraEnabled: _cameraOn,
     );
   }
 
   Future<void> _minimizeCall() async {
-    CallOverlayManager().minimizeCall();
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: minimizedCallHostRouteName),
-        builder: (_) => ChatListScreen(),
-      ),
-    );
+    await openMinimizedCallHost(context);
   }
 
   // ================= ACCEPT CALL =================
@@ -198,6 +198,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         appId: AgoraTokenService.appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      _engineInitialized = true;
 
       print('👂 Setting up event handlers...');
       _engine.registerEventHandler(
@@ -360,8 +361,10 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    if (_joined) {
-      await _engine.leaveChannel();
+    if (_engineInitialized) {
+      if (_joined) {
+        await _engine.leaveChannel();
+      }
       await _engine.release();
     }
 
@@ -387,6 +390,22 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       await _engine.switchCamera();
       setState(() => _frontCamera = !_frontCamera);
     }
+  }
+
+  Future<void> _toggleMute() async {
+    setState(() => _micMuted = !_micMuted);
+    if (_engineInitialized) {
+      await _engine.muteLocalAudioStream(_micMuted);
+    }
+    _syncOverlayState();
+  }
+
+  Future<void> _toggleVideo() async {
+    setState(() => _cameraOn = !_cameraOn);
+    if (_engineInitialized && _isVideoCall) {
+      await _engine.enableLocalVideo(_cameraOn);
+    }
+    _syncOverlayState();
   }
 
   // ================= UI =================
@@ -605,17 +624,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         Positioned(
           top: 40,
           right: 20,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: IconButton(
-              onPressed: _minimizeCall,
-              icon: const Icon(Icons.minimize, color: Colors.white, size: 24),
-              tooltip: 'Minimize call',
-            ),
-          ),
+          child: CallMinimizeButton(onPressed: _minimizeCall),
         ),
 
         // Bottom controls
@@ -660,19 +669,13 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       _controlButton(
         icon: _micMuted ? Icons.mic_off : Icons.mic,
         color: Colors.white,
-        onPressed: () {
-          setState(() => _micMuted = !_micMuted);
-          _engine.muteLocalAudioStream(_micMuted);
-        },
+        onPressed: _toggleMute,
       ),
       if (_isVideoCall)
         _controlButton(
           icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
           color: Colors.white,
-          onPressed: () {
-            setState(() => _cameraOn = !_cameraOn);
-            _engine.enableLocalVideo(_cameraOn);
-          },
+          onPressed: _toggleVideo,
         ),
       _controlButton(
         icon: Icons.call_end,
@@ -691,7 +694,9 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         color: Colors.white,
         onPressed: () {
           setState(() => _speakerOn = !_speakerOn);
-          _engine.setEnableSpeakerphone(_speakerOn);
+          if (_engineInitialized) {
+            _engine.setEnableSpeakerphone(_speakerOn);
+          }
         },
       ),
     ],
