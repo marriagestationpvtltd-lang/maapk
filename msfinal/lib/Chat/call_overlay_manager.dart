@@ -4,6 +4,7 @@ import '../pushnotification/pushservice.dart';
 import '../Calling/incommingcall.dart';
 import '../Calling/incomingvideocall.dart';
 import '../navigation/app_navigation.dart';
+import '../Startup/MainControllere.dart';
 
 const String activeCallRouteName = '/active-call';
 const String minimizedCallHostRouteName = '/minimized-call-host';
@@ -23,9 +24,13 @@ class CallOverlayManager extends ChangeNotifier {
   String? _currentUserName;
   String _statusText = 'Calling...';
   Duration _duration = Duration.zero;
+  bool _isMicMuted = false;
+  bool _isCameraEnabled = true;
 
   VoidCallback? _onMaximize;
   VoidCallback? _onEnd;
+  VoidCallback? _onToggleMute;
+  VoidCallback? _onToggleCamera;
 
   bool get isCallActive => _isCallActive;
   bool get isMinimized => _isMinimized;
@@ -35,6 +40,9 @@ class CallOverlayManager extends ChangeNotifier {
   String get statusText => _statusText;
   Duration get duration => _duration;
   bool get isConnected => _duration > Duration.zero || _statusText == 'Connected';
+  bool get isMicMuted => _isMicMuted;
+  bool get isCameraEnabled => _isCameraEnabled;
+  bool get isVideoCall => _callType == 'video';
 
   void startCall({
     required String callType,
@@ -44,6 +52,10 @@ class CallOverlayManager extends ChangeNotifier {
     required String currentUserName,
     required VoidCallback onMaximize,
     required VoidCallback onEnd,
+    VoidCallback? onToggleMute,
+    VoidCallback? onToggleCamera,
+    bool isMicMuted = false,
+    bool isCameraEnabled = true,
   }) {
     _isCallActive = true;
     _isMinimized = false;
@@ -54,6 +66,10 @@ class CallOverlayManager extends ChangeNotifier {
     _currentUserName = currentUserName;
     _onMaximize = onMaximize;
     _onEnd = onEnd;
+    _onToggleMute = onToggleMute;
+    _onToggleCamera = onToggleCamera;
+    _isMicMuted = isMicMuted;
+    _isCameraEnabled = isCameraEnabled;
     notifyListeners();
   }
 
@@ -61,6 +77,8 @@ class CallOverlayManager extends ChangeNotifier {
     required String statusText,
     Duration? duration,
     bool? isMinimized,
+    bool? isMicMuted,
+    bool? isCameraEnabled,
   }) {
     if (!_isCallActive) {
       return;
@@ -71,6 +89,12 @@ class CallOverlayManager extends ChangeNotifier {
     }
     if (isMinimized != null) {
       _isMinimized = isMinimized;
+    }
+    if (isMicMuted != null) {
+      _isMicMuted = isMicMuted;
+    }
+    if (isCameraEnabled != null) {
+      _isCameraEnabled = isCameraEnabled;
     }
     notifyListeners();
   }
@@ -99,6 +123,14 @@ class CallOverlayManager extends ChangeNotifier {
     reset();
   }
 
+  void toggleMute() {
+    _onToggleMute?.call();
+  }
+
+  void toggleCamera() {
+    _onToggleCamera?.call();
+  }
+
   void reset() {
     _isCallActive = false;
     _isMinimized = false;
@@ -109,9 +141,78 @@ class CallOverlayManager extends ChangeNotifier {
     _currentUserName = null;
     _statusText = 'Calling...';
     _duration = Duration.zero;
+    _isMicMuted = false;
+    _isCameraEnabled = true;
     _onMaximize = null;
     _onEnd = null;
+    _onToggleMute = null;
+    _onToggleCamera = null;
     notifyListeners();
+  }
+}
+
+Future<void> openMinimizedCallHost(BuildContext context) async {
+  CallOverlayManager().minimizeCall();
+  await Navigator.of(context).push(
+    MaterialPageRoute(
+      settings: const RouteSettings(name: minimizedCallHostRouteName),
+      builder: (_) => const MainControllerScreen(initialIndex: 0),
+    ),
+  );
+}
+
+class CallMinimizeButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const CallMinimizeButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C4DFF), Color(0xFF00C6FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C4DFF).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(22),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Minimize',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -146,98 +247,230 @@ class MinimizedCallOverlay extends StatelessWidget {
           right: 12,
           child: Material(
             color: Colors.transparent,
-            child: GestureDetector(
-              onTap: manager.maximizeCall,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF075E54),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1F1C2C), Color(0xFF2B5876)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: const BoxDecoration(
-                            color: Colors.white24,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            manager.callType == 'video' ? Icons.videocam : Icons.call,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.28),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: manager.maximizeCall,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Row(
                             children: [
-                              Text(
-                                manager.otherUserName ?? 'Unknown',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  manager.isVideoCall ? Icons.videocam_rounded : Icons.call_rounded,
                                   color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                  size: 22,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                subtitle,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      manager.otherUserName ?? 'Unknown',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.10),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            manager.isConnected
+                                                ? Icons.fiber_manual_record_rounded
+                                                : Icons.wifi_calling_3_rounded,
+                                            size: 12,
+                                            color: manager.isConnected
+                                                ? const Color(0xFF52E5A3)
+                                                : const Color(0xFFFFD166),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              subtitle,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          onPressed: manager.maximizeCall,
-                          icon: const Icon(Icons.open_in_full, color: Colors.white, size: 20),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 12),
+                      _OverlayIconButton(
+                        icon: Icons.open_in_full_rounded,
+                        color: const Color(0xFF00C2FF),
+                        onPressed: manager.maximizeCall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _OverlayActionButton(
+                          icon: manager.isMicMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                          label: manager.isMicMuted ? 'Unmute' : 'Mute',
+                          color: manager.isMicMuted
+                              ? const Color(0xFFFFB703)
+                              : const Color(0xFF5D9CEC),
+                          onPressed: manager.toggleMute,
                         ),
-                        const SizedBox(width: 12),
-                        IconButton(
-                          onPressed: manager.endCall,
-                          icon: const Icon(Icons.call_end, color: Colors.white, size: 20),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                      ),
+                      if (manager.isVideoCall) ...[
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _OverlayActionButton(
+                            icon: manager.isCameraEnabled
+                                ? Icons.videocam_rounded
+                                : Icons.videocam_off_rounded,
+                            label: manager.isCameraEnabled ? 'Camera on' : 'Camera off',
+                            color: manager.isCameraEnabled
+                                ? const Color(0xFF8E7CFF)
+                                : const Color(0xFF6C757D),
+                            onPressed: manager.toggleCamera,
+                          ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(99),
-                      child: LinearProgressIndicator(
-                        minHeight: 4,
-                        backgroundColor: Colors.white24,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _OverlayActionButton(
+                          icon: Icons.call_end_rounded,
+                          label: 'End',
+                          color: const Color(0xFFFF5A5F),
+                          onPressed: manager.endCall,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _OverlayIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _OverlayIconButton({
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(0.18),
+      shape: const CircleBorder(),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: color, size: 20),
+        tooltip: 'Maximize call',
+      ),
+    );
+  }
+}
+
+class _OverlayActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _OverlayActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

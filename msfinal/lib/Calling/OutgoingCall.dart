@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart'; // Add this import
-import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
@@ -133,6 +132,8 @@ class _CallScreenState extends State<CallScreen> {
         );
       },
       onEnd: _endCall,
+      onToggleMute: _toggleMute,
+      isMicMuted: _micMuted,
     );
     _syncOverlayState();
   }
@@ -144,17 +145,20 @@ class _CallScreenState extends State<CallScreen> {
     CallOverlayManager().updateCallState(
       statusText: statusText,
       duration: _duration,
+      isMicMuted: _micMuted,
     );
   }
 
   Future<void> _minimizeCall() async {
-    CallOverlayManager().minimizeCall();
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: minimizedCallHostRouteName),
-        builder: (_) => ChatListScreen(),
-      ),
-    );
+    await openMinimizedCallHost(context);
+  }
+
+  Future<void> _toggleMute() async {
+    setState(() => _micMuted = !_micMuted);
+    if (_engineInitialized) {
+      await _engine.muteLocalAudioStream(_micMuted);
+    }
+    _syncOverlayState();
   }
   // ================= PLAY RINGTONE =================
   Future<void> _playRingtone() async {
@@ -458,15 +462,11 @@ class _CallScreenState extends State<CallScreen> {
               children: [
                 Align(
                   alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16, bottom: 24),
-                    child: IconButton(
-                      onPressed: _minimizeCall,
-                      icon: const Icon(Icons.minimize, color: Colors.white, size: 32),
-                      tooltip: 'Minimize call',
-                    ),
-                  ),
-                ),
+                   child: Padding(
+                     padding: const EdgeInsets.only(right: 16, bottom: 24),
+                     child: CallMinimizeButton(onPressed: _minimizeCall),
+                   ),
+                 ),
                 // Ringing animation when call is ringing
                 if (_isCallRinging && widget.isOutgoingCall)
                   _buildRingingAnimation(),
@@ -499,17 +499,14 @@ class _CallScreenState extends State<CallScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     // Mute button (only enabled when call is active)
-                    IconButton(
-                      icon: Icon(
-                        _micMuted ? Icons.mic_off : Icons.mic,
-                        color: _callActive ? Colors.white : Colors.white30,
-                        size: 36,
-                      ),
-                      onPressed: _callActive ? () {
-                        setState(() => _micMuted = !_micMuted);
-                        _engine.muteLocalAudioStream(_micMuted);
-                      } : null,
-                    ),
+                     IconButton(
+                       icon: Icon(
+                         _micMuted ? Icons.mic_off : Icons.mic,
+                         color: _callActive ? Colors.white : Colors.white30,
+                         size: 36,
+                       ),
+                       onPressed: _callActive ? _toggleMute : null,
+                     ),
                     // End call button
                     IconButton(
                       icon: const Icon(Icons.call_end,
