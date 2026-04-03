@@ -1617,30 +1617,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
 
 
-      @override
+  @override
   Widget build(BuildContext context) {
-    return CallOverlayWrapper(
-      child: Scaffold(
-        backgroundColor: const Color(0xFFECE5DD),
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFECE5DD),
-                    child: _buildMessagesList(),
-                  ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFECE5DD),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: Container(
+                  color: const Color(0xFFECE5DD),
+                  child: _buildMessagesList(),
                 ),
-                _bottomSection(),
-              ],
-            ),
+              ),
+              _bottomSection(),
+            ],
+          ),
 
-            if (showActionOverlay) _fullScreenActionOverlay(),
-            if (showDeletePopup) _deletePopupOverlay(),
-          ],
-        ),
+          if (showActionOverlay) _fullScreenActionOverlay(),
+          if (showDeletePopup) _deletePopupOverlay(),
+        ],
       ),
     );
   }
@@ -1694,6 +1692,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
                   builder: (context) => CallScreen(
                     currentUserId: widget.currentUserId,
                     currentUserName: widget.currentUserName,
@@ -1712,6 +1711,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
                   builder: (context) => VideoCallScreen(
                     currentUserId: widget.currentUserId,
                     currentUserName: widget.currentUserName,
