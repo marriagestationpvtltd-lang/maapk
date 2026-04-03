@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Auth/Screen/signupscreen10.dart';
 import '../../Auth/SuignupModel/signup_model.dart';
 import '../../Chat/ChatlistScreen.dart';
+import '../../liked/liked.dart';
 import '../../Models/masterdata.dart';
 import 'package:http/http.dart' as http;
 
@@ -22,7 +23,6 @@ import '../../online/onlineservice.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../profile/myprofile.dart';
 import '../../purposal/purposalScreen.dart';
-import '../../pushnotification/pushservice.dart';
 import '../../service/Service_chat.dart';
 import 'machprofilescreen.dart';
 
@@ -167,73 +167,6 @@ late int userid;
         _isLoading = false;
       });
       print('Error fetching matched profiles: $e');
-    }
-  }
-  Future<void> sendRequest(int receiverId, String requestType) async {
-    try {
-      // Get sender ID from shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      if (userDataString == null) {
-        throw Exception('User data not found');
-      }
-
-      final userData = jsonDecode(userDataString);
-      final senderId = userData["id"];
-
-      // Prepare the payload
-      final payload = {
-        "sender_id": senderId,
-        "receiver_id": receiverId,
-        "request_type": requestType,
-      };
-
-      // Make API call
-      final url = Uri.parse('https://digitallami.com/Api2/send_request.php');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      );
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-
-        if (result['success'] == true) {
-          bool success = await NotificationService.sendRequestNotification(
-            recipientUserId: receiverId.toString(),       // ID of the user receiving the request
-            senderName: "MS:${senderId} ${userData['lastName']}",       // Name of the sender
-            senderId: senderId.toString(),              // ID of the sender
-          );
-
-          if(success) {
-            print("Request notification sent!");
-          } else {
-            print("Failed to send notification.");
-          }
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Request sent successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          throw Exception(result['message'] ?? 'Failed to send request');
-        }
-      } else {
-        throw Exception('Failed to send request: ${response.statusCode}');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      print('Error sending request: $e');
     }
   }
 
@@ -438,6 +371,20 @@ String usertye = '';
                   const SizedBox(height: 16),
                   const ImageBannerSlider(),
                   const SizedBox(height: 20),
+                  _buildStatsBanner(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildSectionHeader('Quick Actions', showSeeAll: false),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildQuickActions(),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildSectionHeader('Suggested Profiles', showSeeAll: false),
+                  ),
+                  const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
@@ -787,6 +734,163 @@ String usertye = '';
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatsBanner() {
+    final stats = [
+      {'icon': Icons.people_rounded, 'value': '10,000+', 'label': 'Members', 'color': const Color(0xFF6C63FF)},
+      {'icon': Icons.favorite_rounded, 'value': '5,000+', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
+      {'icon': Icons.celebration_rounded, 'value': '2,500+', 'label': 'Married', 'color': const Color(0xFF4CAF50)},
+      {'icon': Icons.verified_rounded, 'value': '1,200+', 'label': 'Verified', 'color': const Color(0xFF2196F3)},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: stats.map((stat) {
+          final color = stat['color'] as Color;
+          return Column(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(stat['icon'] as IconData, color: color, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                stat['value'] as String,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                stat['label'] as String,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    final actions = [
+      {
+        'icon': Icons.search_rounded,
+        'label': 'Search',
+        'gradient': [const Color(0xFF6C63FF), const Color(0xFF4834D4)],
+        'onTap': () {
+          if (docstatus == 'approved') {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => SearchPage()));
+          } else {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => IDVerificationScreen()));
+          }
+        },
+      },
+      {
+        'icon': Icons.send_rounded,
+        'label': 'Proposals',
+        'gradient': [const Color(0xFFF90E18), const Color(0xFFD00D15)],
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => ProposalsPage())),
+      },
+      {
+        'icon': Icons.favorite_rounded,
+        'label': 'Favorites',
+        'gradient': [const Color(0xFFE91E63), const Color(0xFFC2185B)],
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => FavoritePeoplePage())),
+      },
+      {
+        'icon': Icons.chat_bubble_rounded,
+        'label': 'Messages',
+        'gradient': [const Color(0xFF2196F3), const Color(0xFF1565C0)],
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => ChatListScreen())),
+      },
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: actions.map((action) {
+          final gradient = action['gradient'] as List<Color>;
+          final onTap = action['onTap'] as VoidCallback;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: onTap,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: gradient[0].withOpacity(0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      action['icon'] as IconData,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      action['label'] as String,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1159,167 +1263,6 @@ String usertye = '';
       ),
     );
   }
-  void showRequestTypeDialog(int receiverId, String receiverName) {
-    String selectedRequestType = 'Profile'; // Default selection
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(
-                'Send Request to $receiverName',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Select Request Type:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-
-                  // Request Type Options
-                  _buildRequestTypeOption(
-                    'Profile',
-                    'View Full Profile Details',
-                    Icons.person_outline,
-                    selectedRequestType == 'Profile',
-                        () => setState(() => selectedRequestType = 'Profile'),
-                  ),
-                  SizedBox(height: 12),
-
-                  _buildRequestTypeOption(
-                    'Photo',
-                    'Request Profile Photos',
-                    Icons.photo_library_outlined,
-                    selectedRequestType == 'Photo',
-                        () => setState(() => selectedRequestType = 'Photo'),
-                  ),
-                  SizedBox(height: 12),
-
-                  _buildRequestTypeOption(
-                    'Chat',
-                    'Start a Conversation',
-                    Icons.chat_bubble_outline,
-                    selectedRequestType == 'Chat',
-                        () => setState(() => selectedRequestType = 'Chat'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(context); // Close dialog
-                    await sendRequest(receiverId, selectedRequestType);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFEA4935),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'Send Request',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildRequestTypeOption(
-      String title,
-      String subtitle,
-      IconData icon,
-      bool isSelected,
-      VoidCallback onTap,
-      ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? Color(0xFFEA4935).withOpacity(0.1) : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Color(0xFFEA4935) : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isSelected ? Color(0xFFEA4935) : Colors.grey.shade300,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: isSelected ? Colors.white : Colors.grey.shade700,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Color(0xFFEA4935) : Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: Color(0xFFEA4935),
-                size: 24,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-
 
   Widget _buildPremiumMembers() {
     if (_premiumMembers.isEmpty) {

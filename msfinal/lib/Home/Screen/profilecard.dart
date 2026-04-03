@@ -519,215 +519,6 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     });
   }
 
-  void _showSendRequestDialog(
-      BuildContext context,
-      int receiverId,
-      String receiverName,
-      {String defaultRequestType = 'Photo'}) {
-
-    String dialogSelectedRequestType = defaultRequestType;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text(
-                'Send Request',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'To: $receiverName',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  const SizedBox(height: 12),
-
-                  _buildRequestTypeOption(
-                    context,
-                    setState,
-                    dialogSelectedRequestType,
-                    'Photo',
-                    Icons.photo_library_outlined,
-                    'Request More Photos',
-                        (newValue) {
-                      setState(() {
-                        dialogSelectedRequestType = newValue;
-                      });
-                    },
-                  ),
-                  _buildRequestTypeOption(
-                    context,
-                    setState,
-                    dialogSelectedRequestType,
-                    'Chat',
-                    Icons.chat_outlined,
-                    'Start a Conversation',
-                        (newValue) {
-                      setState(() {
-                        dialogSelectedRequestType = newValue;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await _sendRequest(receiverId, dialogSelectedRequestType);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Send Request'),
-                ),
-              ],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildRequestTypeOption(
-      BuildContext context,
-      StateSetter setState,
-      String currentSelection,
-      String value,
-      IconData icon,
-      String description,
-      Function(String) onSelected,
-      ) {
-    final isSelected = currentSelection == value;
-
-    return GestureDetector(
-      onTap: () {
-        onSelected(value);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.red : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.red : Colors.grey[300],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.grey[700],
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: isSelected ? Colors.red : Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: Colors.red,
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _sendRequest(int receiverId, String requestType) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      final userData = jsonDecode(userDataString!);
-      final userId = int.tryParse(userData["id"].toString());
-
-      final result = await requestService.sendRequest(
-        senderId: userId!,
-        receiverId: receiverId,
-        requestType: requestType,
-      );
-
-      if (result['success'] == true) {
-        bool success = await NotificationService.sendRequestNotification(
-          recipientUserId: receiverId.toString(),       // ID of the user receiving the request
-          senderName: "MS:${userId} ${userData['lastName']}",       // Name of the sender
-          senderId: userId.toString(),              // ID of the sender
-        );
-
-        if(success) {
-          print("Request notification sent!");
-        } else {
-          print("Failed to send notification.");
-        }
-
-        _showRequestSentPopup('Request sent successfully!');
-
-        // Refresh profiles to update the status
-        await _loadProfiles();
-      } else {
-        _showRequestSentPopup('Failed to send request: ${result['message']}');
-      }
-    } catch (e) {
-      _showRequestSentPopup('Error: $e');
-    }
-  }
-
   // NEW: Handle like action
   Future<void> _handleLikeAction(int index, MatchedUser user) async {
     if (_isProcessingLike) return; // Prevent multiple clicks
@@ -1050,13 +841,21 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                     user: user,
                     photos: photos,
                     matchService: matchService,
-                    onPhotoRequestTap: () {
+                    onPhotoRequestTap: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      final userDataString = prefs.getString('user_data');
+                      if (userDataString == null) return;
+                      final userData = jsonDecode(userDataString);
+                      final senderId = int.tryParse(userData["id"].toString());
                       if (docstatus == 'approved') {
-                        _showSendRequestDialog(
+                        Navigator.push(
                           context,
-                          user.userId,
-                          user.displayName,
-                          defaultRequestType: 'Photo',
+                          MaterialPageRoute(
+                            builder: (context) => ProfileLoader(
+                              userId: user.userId.toString(),
+                              myId: senderId.toString(),
+                            ),
+                          ),
                         );
                       } else {
                         Navigator.push(
@@ -1611,49 +1410,94 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
             ),
           ),
 
-        // Photo request overlay for blurred images
+        // Photo protected overlay for blurred images
         if (!widget.user.shouldShowClearImage)
           Positioned.fill(
             child: GestureDetector(
               onTap: widget.onPhotoRequestTap,
               child: Container(
-                color: Colors.black.withOpacity(0.3),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.55),
+                    ],
+                  ),
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: widget.onPhotoRequestTap,
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.9),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.lock,
-                          color: Colors.white,
-                          size: 36,
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.15),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.5),
+                          width: 1.5,
                         ),
                       ),
+                      child: const Icon(
+                        Icons.lock_outline_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     const Text(
                       'Photo Protected',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildPhotoRequestStatusMessage(),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'View profile to see photos',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: widget.onPhotoRequestTap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 22, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.person_outline_rounded,
+                                color: AppColors.primary, size: 16),
+                            const SizedBox(width: 7),
+                            Text(
+                              'View Profile',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1773,160 +1617,4 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
     }
   }
 
-  Widget _buildPhotoRequestStatusMessage() {
-    final status = widget.user.photoRequestStatus;
-
-    switch (status) {
-      case 'not_sent':
-        return Column(
-          children: [
-            Text(
-              'Tap the lock icon to request photo access',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.red.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: widget.onPhotoRequestTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 15,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.remove_red_eye_outlined,
-                        color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Request Photo Access',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      case 'pending':
-        return Column(
-          children: [
-            Text(
-              'Your photo request is pending approval',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.orange.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 15,
-                    spreadRadius: 1,
-                  ),
-                ],
-                border: Border.all(
-                  color: Colors.orange.shade300,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.hourglass_bottom,
-                      color: Colors.orange.shade600, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Awaiting Response',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      case 'rejected':
-        return Column(
-          children: [
-            Text(
-              'Your photo request was rejected',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 15,
-                    spreadRadius: 1,
-                  ),
-                ],
-                border: Border.all(
-                  color: Colors.grey.shade400,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.cancel, color: Colors.grey.shade600, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Request Rejected',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
 }
