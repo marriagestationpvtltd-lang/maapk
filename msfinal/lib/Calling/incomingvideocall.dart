@@ -723,7 +723,11 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   }
 
   Future<void> _startForegroundService() async {
-    if (_foregroundServiceStarted || _channel.isEmpty) return;
+    if (_channel.isEmpty) {
+      _foregroundServiceStarted = false;
+      return;
+    }
+    if (_foregroundServiceStarted) return;
     _foregroundServiceStarted = true;
     await CallForegroundServiceManager.startOngoingCall(
       callType: _isVideoCall ? 'video' : 'audio',
