@@ -115,13 +115,15 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         print("HTTP error: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error checking document status: $e");
-      // Show error snackbar
+      debugPrint("Error checking document status: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Failed to check document status: $e"),
+        const SnackBar(
+          content: Text(
+            "Unable to check document status right now. Please try again later.",
+          ),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
+          duration: Duration(seconds: 3),
         ),
       );
     } finally {
