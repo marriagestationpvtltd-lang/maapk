@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'tokengenerator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import 'call_foreground_service.dart';
@@ -65,6 +64,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         );
       },
       onEnd: _endCall,
+      onToggleMute: _toggleMute,
+      isMicMuted: _micMuted,
     );
     _syncOverlayState();
   }
@@ -74,17 +75,20 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     CallOverlayManager().updateCallState(
       statusText: statusText,
       duration: _duration,
+      isMicMuted: _micMuted,
     );
   }
 
   Future<void> _minimizeCall() async {
-    CallOverlayManager().minimizeCall();
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: minimizedCallHostRouteName),
-        builder: (_) => ChatListScreen(),
-      ),
-    );
+    await openMinimizedCallHost(context);
+  }
+
+  Future<void> _toggleMute() async {
+    setState(() => _micMuted = !_micMuted);
+    if (_engineInitialized) {
+      await _engine.muteLocalAudioStream(_micMuted);
+    }
+    _syncOverlayState();
   }
 
   Future<void> _initEngine() async {
@@ -222,16 +226,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
             children: [
               // Minimize button at the top
               Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16, top: 12),
-                  child: IconButton(
-                    onPressed: _minimizeCall,
-                    icon: const Icon(Icons.minimize, color: Colors.white, size: 32),
-                    tooltip: 'Minimize call',
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16, top: 12),
+                    child: CallMinimizeButton(onPressed: _minimizeCall),
                   ),
                 ),
-              ),
               Expanded(
                 child: Center(
                   child: Column(
@@ -253,25 +253,22 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           IconButton(
-                            icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
-                                color: Colors.white, size: 40),
-                            onPressed: () {
-                              setState(() => _micMuted = !_micMuted);
-                              _engine.muteLocalAudioStream(_micMuted);
-                            },
-                          ),
+                             icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
+                                 color: Colors.white, size: 40),
+                             onPressed: _toggleMute,
+                           ),
                           IconButton(
                             icon: const Icon(Icons.call_end, color: Colors.red, size: 60),
                             onPressed: _endCall,
                           ),
                           IconButton(
-                            icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
-                                color: Colors.white, size: 40),
-                            onPressed: () {
-                              setState(() => _speakerOn = !_speakerOn);
-                              _engine.setEnableSpeakerphone(_speakerOn);
-                            },
-                          ),
+                             icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
+                                 color: Colors.white, size: 40),
+                             onPressed: _engineInitialized ? () {
+                               setState(() => _speakerOn = !_speakerOn);
+                               _engine.setEnableSpeakerphone(_speakerOn);
+                             } : null,
+                           ),
                         ],
                       ),
                     ],
