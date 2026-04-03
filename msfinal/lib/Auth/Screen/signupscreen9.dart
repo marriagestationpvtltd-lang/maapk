@@ -58,7 +58,10 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   // Options data
   int _minimumPartnerAge = PartnerAgePreferenceBounds.minimumAllowedAge;
   int _maximumPartnerAge = 60;
-  List<String> _ageOptions = List.generate(40, (index) => (21 + index).toString());
+  List<String> _ageOptions = List.generate(
+    (60 - PartnerAgePreferenceBounds.minimumAllowedAge) + 1,
+    (index) => (PartnerAgePreferenceBounds.minimumAllowedAge + index).toString(),
+  );
 
   late final List<String> _heightOptions;
 
