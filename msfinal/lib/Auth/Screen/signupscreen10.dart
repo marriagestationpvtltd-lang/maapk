@@ -1485,7 +1485,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
           ],
         ),
         content: const Text(
-          'Please read and accept the privacy statement at the bottom of the form before submitting your document.',
+          'Please check the consent checkbox below the photo guidelines before submitting your document.',
           style: TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
