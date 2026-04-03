@@ -56,6 +56,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Uuid _uuid = Uuid();
 
+  final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
 
@@ -1371,7 +1372,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  onPressed: isEditing ? _editMessage : _sendMessage,
+                  onPressed: hasText ? (isEditing ? _editMessage : _sendMessage) : null,
                   icon: const Icon(
                     Icons.send,
                     color: Colors.white,
