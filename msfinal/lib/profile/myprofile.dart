@@ -57,13 +57,13 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
-          await _fetchActivePackage(userId.toString());
           setState(() {
             profileData = data['data'];
             isProfileVerified = profileData?['personalDetail']?['isVerified'] == 1;
             memberType = _getMemberType(profileData?['personalDetail']?['usertype'] ?? 'free');
             isLoading = false;
           });
+          _fetchActivePackage(userId.toString());
         } else {
           setState(() {
             isLoading = false;
@@ -120,8 +120,15 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           final expiry = latest['expiredate']?.toString() ?? '';
           _activePackageExpiry = expiry.length >= 10 ? expiry.substring(0, 10) : expiry;
         });
+      } else if (mounted) {
+        setState(() {
+          _activePackageName = null;
+          _activePackageExpiry = null;
+        });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Active package fetch failed: $e');
+    }
   }
 
   String _getMemberType(String userType) {
@@ -2017,80 +2024,84 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _editAboutMe(BuildContext context, String currentAboutMe) async {
     final TextEditingController _controller = TextEditingController(text: currentAboutMe);
 
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          bool isSaving = false;
+    try {
+      await showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setStateDialog) {
+            bool isSaving = false;
 
-          return AlertDialog(
-            title: Text(
-              "Edit About Me",
-              style: TextStyle(color: Color(0xFFD32F2F)),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Update your about me information"),
-                SizedBox(height: 20),
-                TextFormField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    labelText: "About Me",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFFD32F2F)),
+            return AlertDialog(
+              title: Text(
+                "Edit About Me",
+                style: TextStyle(color: Color(0xFFD32F2F)),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Update your about me information"),
+                  SizedBox(height: 20),
+                  TextFormField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      labelText: "About Me",
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFD32F2F)),
+                      ),
                     ),
+                    maxLines: 5,
+                    maxLength: 500,
                   ),
-                  maxLines: 5,
-                  maxLength: 500,
+                  if (isSaving)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: CircularProgressIndicator(color: Color(0xFFD32F2F)),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: Colors.grey)),
                 ),
-                if (isSaving)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: CircularProgressIndicator(color: Color(0xFFD32F2F)),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: TextButton(
+                    onPressed: isSaving ? null : () async {
+                      if (_controller.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Please enter some text'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setStateDialog(() {
+                        isSaving = true;
+                      });
+
+                      Navigator.pop(context);
+                      await _saveAboutMe(_controller.text.trim());
+                    },
+                    child: Text('Save', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: isSaving ? null : () => Navigator.pop(context),
-                child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextButton(
-                  onPressed: isSaving ? null : () async {
-                    if (_controller.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Please enter some text'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-
-                    setStateDialog(() {
-                      isSaving = true;
-                    });
-
-                    Navigator.pop(context);
-                    await _saveAboutMe(_controller.text.trim());
-                  },
-                  child: Text('Save', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+            );
+          },
+        ),
+      );
+    } finally {
+      _controller.dispose();
+    }
   }
 
   void _editPersonalDetails() {
