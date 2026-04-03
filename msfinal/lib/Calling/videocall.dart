@@ -236,7 +236,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       }
 
       _initializeOverlay();
-      await _startForegroundService();
 
       // ✅ TOKEN
       _token = await AgoraTokenService.getToken(
@@ -286,6 +285,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
             _syncOverlayState();
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             setState(() {

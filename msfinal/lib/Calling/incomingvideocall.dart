@@ -193,6 +193,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           onJoinChannelSuccess: (connection, elapsed) {
             print('✅ Joined channel successfully');
             setState(() => _joined = true);
+            unawaited(_startForegroundService());
           },
           onUserJoined: (connection, remoteUid, elapsed) {
             print('👤 Remote user joined: $remoteUid');
@@ -261,7 +262,6 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       print('✅ Call active');
       setState(() => _callActive = true);
       _initializeOverlay();
-      await _startForegroundService();
     } catch (e) {
       print('❌ Accept error: $e');
       debugPrint('Accept error $e');

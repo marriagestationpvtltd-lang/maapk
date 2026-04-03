@@ -236,7 +236,6 @@ class _CallScreenState extends State<CallScreen> {
       }
 
       _initializeOverlay();
-      await _startForegroundService();
 
       // Token
       _token = await AgoraTokenService.getToken(
@@ -283,6 +282,7 @@ class _CallScreenState extends State<CallScreen> {
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
             _syncOverlayState();
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             setState(() {

@@ -200,9 +200,9 @@ class CallForegroundService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "MarriageStation::CallWakeLock"
         ).apply {
-            // Hold the CPU for up to 60 minutes so long calls survive screen lock/background,
+            // Hold the CPU for up to 30 minutes so normal calls survive screen lock/background,
             // while still guaranteeing the lock is released even if cleanup is missed.
-            acquire(TimeUnit.HOURS.toMillis(1))
+            acquire(TimeUnit.MINUTES.toMillis(30))
             Log.d(TAG, "WakeLock acquired")
         }
     }

@@ -110,6 +110,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           print('✅ Active call joined');
           setState(() => _joined = true);
           _syncOverlayState();
+          unawaited(_startForegroundService());
         },
         onUserOffline: (conn, remoteUid, reason) {
           print('👋 Remote user left');
@@ -142,7 +143,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           publishMicrophoneTrack: true,
         ),
       );
-      await _startForegroundService();
 
     } catch (e) {
       print('❌ Init engine error: $e');

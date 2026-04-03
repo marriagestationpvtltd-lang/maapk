@@ -168,6 +168,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
             _joined = true;
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             _remoteUid = uid;
@@ -198,7 +199,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
       setState(() => _callActive = true);
       _initializeOverlay();
-      await _startForegroundService();
     } catch (e) {
       debugPrint('Accept error $e');
       await _end();
