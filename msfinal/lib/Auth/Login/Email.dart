@@ -1,14 +1,17 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 
 import '../../Home/Screen/HomeScreenPage.dart';
 import '../../Startup/MainControllere.dart';
 import '../../Startup/onboarding.dart';
 import '../../service/pagenocheck.dart';
+import '../../ReUsable/terms_dialog.dart';
 import '../Screen/signupscreen10.dart';
 import '../Screen/signupscreen2.dart';
 import '../Screen/signupscreen3.dart';
@@ -19,6 +22,7 @@ import '../Screen/signupscreen7.dart';
 import '../Screen/signupscreen8.dart';
 import '../Screen/signupscreen9.dart';
 import '../Screen/Signup.dart';
+import '../SuignupModel/signup_model.dart';
 import '../forgetpasswordscreen.dart';
 
 class PrefilledEmailScreen extends StatefulWidget {
@@ -35,9 +39,6 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  // Terms & Privacy Checkbox
-  bool _isTermsAccepted = false;
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -46,7 +47,6 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
   void initState() {
     super.initState();
     _loadSavedEmail();
-    _loadTermsAcceptance();
 
     // Initialize animations
     _animationController = AnimationController(
@@ -84,39 +84,6 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
     }
   }
 
-  void _loadTermsAcceptance() async {
-    final prefs = await SharedPreferences.getInstance();
-    final accepted = prefs.getBool('terms_accepted') ?? false;
-    setState(() {
-      _isTermsAccepted = accepted;
-    });
-  }
-
-  void _saveTermsAcceptance(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('terms_accepted', value);
-  }
-
-  Future<Map<String, dynamic>?> _loginUser(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/signin.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      return null;
-    } catch (e) {
-      print('Login error: $e');
-      return null;
-    }
-  }
 
   Future<void> _saveUserData(String token, Map<String, dynamic> userData) async {
     final prefs = await SharedPreferences.getInstance();
@@ -129,16 +96,27 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
     await prefs.setBool('is_logged_in', true);
   }
 
-  Future<void> _handleLogin() async {
-    // Check if terms are accepted
-    if (!_isTermsAccepted) {
-      setState(() {
-        _errorMessage = 'Please accept the Terms of Service and Privacy Policy to continue';
-        _isLoading = false;
-      });
-      return;
+  Future<Map<String, dynamic>?> _loginUser(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://digitallami.com/Api2/signin.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Login error: $e');
+      return null;
     }
+  }
 
+  Future<void> _handleLogin() async {
     setState(() {
       _errorMessage = null;
       _isLoading = true;
@@ -240,6 +218,140 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
       MaterialPageRoute(builder: (context) => screen),
           (route) => false,
     );
+  }
+
+  // ── Google Sign-In ──────────────────────────────────────────────────────────
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      // Sign out first to allow account picker every time
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User cancelled the picker
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      if (!mounted) return;
+
+      final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+      if (isNewUser) {
+        // New user – show T&C first
+        setState(() => _isLoading = false);
+        final accepted = await TermsConditionsBottomSheet.show(context);
+
+        if (!mounted) return;
+        if (!accepted) {
+          // User declined – sign out from Firebase/Google
+          await FirebaseAuth.instance.signOut();
+          await googleSignIn.signOut();
+          return;
+        }
+
+        // Pre-fill registration model with Google data
+        final firebaseUser = userCredential.user!;
+        final signupModel = context.read<SignupModel>();
+        final fullName = firebaseUser.displayName ?? '';
+        final nameParts = fullName.split(' ');
+        signupModel.setEmail(firebaseUser.email ?? '');
+        if (nameParts.isNotEmpty) signupModel.setFirstName(nameParts.first);
+        if (nameParts.length > 1) {
+          signupModel.setLastName(nameParts.sublist(1).join(' '));
+        }
+
+        _navigateTo(const IntroduceYourselfPage());
+      } else {
+        // Existing user – try backend Google sign-in endpoint
+        final firebaseUser = userCredential.user!;
+        final idToken = await firebaseUser.getIdToken();
+
+        final response = await http.post(
+          Uri.parse('https://digitallami.com/Api2/google_signin.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': firebaseUser.email,
+            'google_id': firebaseUser.uid,
+            'firebase_token': idToken,
+            'displayName': firebaseUser.displayName ?? '',
+          }),
+        );
+
+        if (!mounted) return;
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            final token = data['bearer_token'];
+            final userData = data['data'];
+            final userId = userData['id'];
+
+            await _saveUserData(token.toString(), userData);
+            final pageNo = await PageService.getPageNo(userId);
+
+            if (!mounted) return;
+            if (pageNo == null) {
+              _navigateTo(const OnboardingScreen());
+            } else {
+              _navigateBasedOnPageNo(pageNo);
+            }
+            return;
+          }
+        }
+
+        // Backend endpoint not available or user not found – treat as new user
+        setState(() => _isLoading = false);
+        final accepted = await TermsConditionsBottomSheet.show(context);
+        if (!mounted) return;
+
+        if (!accepted) {
+          await FirebaseAuth.instance.signOut();
+          await googleSignIn.signOut();
+          return;
+        }
+
+        final signupModel = context.read<SignupModel>();
+        final fullName = firebaseUser.displayName ?? '';
+        final nameParts = fullName.split(' ');
+        signupModel.setEmail(firebaseUser.email ?? '');
+        if (nameParts.isNotEmpty) signupModel.setFirstName(nameParts.first);
+        if (nameParts.length > 1) {
+          signupModel.setLastName(nameParts.sublist(1).join(' '));
+        }
+
+        _navigateTo(const IntroduceYourselfPage());
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message ?? 'Google sign-in failed. Please try again.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Google sign-in error: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Google sign-in failed. Please try again.';
+        _isLoading = false;
+      });
+    }
   }
 
   // URL Launcher function
@@ -518,70 +630,6 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
 
                   const SizedBox(height: 16),
 
-                  // Terms & Privacy Checkbox
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: Checkbox(
-                          value: _isTermsAccepted,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              _isTermsAccepted = value ?? false;
-                              _saveTermsAcceptance(_isTermsAccepted);
-                            });
-                          },
-                          activeColor: const Color(0xFFF90E18),
-                          checkColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                            children: [
-                              const TextSpan(text: 'I agree to the '),
-                              TextSpan(
-                                text: 'Terms of Service',
-                                style: const TextStyle(
-                                  color: Color(0xFFF90E18),
-                                  fontWeight: FontWeight.w500,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = () => _launchUrl('https://digitallami.com/terms-of-service'),
-                              ),
-                              const TextSpan(text: ' and '),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: const TextStyle(
-                                  color: Color(0xFFF90E18),
-                                  fontWeight: FontWeight.w500,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = () => _launchUrl('https://digitallami.com/privacy-policy'),
-                              ),
-                              const TextSpan(text: '. By continuing, you confirm that you have read and agree to these terms.'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
                   // Login Button with premium gradient and animation
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -635,6 +683,69 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
 
                   const SizedBox(height: 16),
 
+                  // Divider with "OR" label
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Continue with Google button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : _handleGoogleSignIn,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.grey.shade800,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/images/google.png',
+                            height: 22,
+                            width: 22,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.g_mobiledata,
+                              size: 26,
+                              color: Color(0xFF4285F4),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Continue with Google',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   // Register Link with premium styling
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -647,19 +758,17 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          if (!_isTermsAccepted) {
-                            setState(() {
-                              _errorMessage = 'Please accept the Terms of Service and Privacy Policy to create an account';
-                            });
-                            return;
+                        onTap: () async {
+                          final accepted = await TermsConditionsBottomSheet.show(context);
+                          if (!mounted) return;
+                          if (accepted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const IntroduceYourselfPage(),
+                              ),
+                            );
                           }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const IntroduceYourselfPage(),
-                            ),
-                          );
                         },
                         child: const Text(
                           'Create Account',
