@@ -691,30 +691,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 ),
                 const SizedBox(height: 3),
                 if (messageType == 'text')
-                    Text(
-                      message,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: _lightTextColor),
-                    )
-                  else if (messageType == 'image')
-                    Row(
-                      children: [
-                        Icon(Icons.image, size: 15, color: _accentColor),
-                        const SizedBox(width: 4),
-                        Text('Photo',
-                            style: TextStyle(fontSize: 13, color: _lightTextColor)),
-                      ],
-                    )
-                  else if (messageType == 'voice')
-                    Row(
-                      children: [
-                        Icon(Icons.mic, size: 15, color: _accentColor),
-                        const SizedBox(width: 4),
-                        Text('Voice message',
-                            style: TextStyle(fontSize: 13, color: _lightTextColor)),
-                      ],
-                    ),
+                  Text(
+                    message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: _lightTextColor),
+                  )
+                else if (messageType == 'image')
+                  Row(
+                    children: [
+                      Icon(Icons.image, size: 15, color: _accentColor),
+                      const SizedBox(width: 4),
+                      Text('Photo',
+                          style: TextStyle(fontSize: 13, color: _lightTextColor)),
+                    ],
+                  )
+                else if (messageType == 'voice')
+                  Row(
+                    children: [
+                      Icon(Icons.mic, size: 15, color: _accentColor),
+                      const SizedBox(width: 4),
+                      Text('Voice message',
+                          style: TextStyle(fontSize: 13, color: _lightTextColor)),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -2025,13 +2025,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             icon: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
           ),
           GestureDetector(
-            onTap: (){
-              Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileScreen(userId: widget.receiverId,),));
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileScreen(userId: widget.receiverId),
+                ),
+              );
             },
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: NetworkImage(
-                  widget.receiverImage),
+              backgroundImage: NetworkImage(widget.receiverImage),
             ),
           ),
           const SizedBox(width: 10),
