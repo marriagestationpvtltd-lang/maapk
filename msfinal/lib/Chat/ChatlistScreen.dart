@@ -12,10 +12,8 @@ import '../Package/PackageScreen.dart';
 import '../online/onlineservice.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
-import '../service/Service_chat.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
-import 'adminchat.dart';
 
 class ChatListScreen extends StatefulWidget {
   ChatListScreen({super.key});
@@ -38,11 +36,41 @@ class _ChatListScreenState extends State<ChatListScreen> {
   int _totalUnreadCount = 0;
   int _totalUnreadConversations = 0;
 
+  int _displayCount = 10;
+  bool _isLoadingMore = false;
+  int _cachedTotalRooms = 0;
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
     OnlineStatusService().start();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _displayCount < _cachedTotalRooms) {
+      setState(() => _isLoadingMore = true);
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _displayCount += 10;
+            _isLoadingMore = false;
+          });
+        }
+      });
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -568,37 +596,53 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
         // Update state if changed
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && (_totalUnreadCount != totalUnread || _totalUnreadConversations != unreadConversations)) {
+          if (mounted &&
+              (_totalUnreadCount != totalUnread ||
+                  _totalUnreadConversations != unreadConversations ||
+                  _cachedTotalRooms != chatRooms.length)) {
             setState(() {
               _totalUnreadCount = totalUnread;
               _totalUnreadConversations = unreadConversations;
+              _cachedTotalRooms = chatRooms.length;
             });
           }
         });
 
-        // Build the list with pinned chats at top
+        if (chatRooms.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No conversations yet',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final displayedRooms = chatRooms.take(_displayCount).toList();
+
+        // Build the chat list with pagination
         return Container(
           color: Colors.white,
           child: ListView.separated(
-            itemCount: chatRooms.length + 2, // +2 for Admin and AstroTalk pinned chats
+            controller: _scrollController,
+            itemCount: displayedRooms.length + (_isLoadingMore ? 1 : 0),
             separatorBuilder: (_, __) => const Divider(indent: 72, height: 1, color: Color(0xFFE0E0E0)),
             itemBuilder: (context, index) {
-            // First item: Admin Support (pinned)
-            if (index == 0) {
-              return _buildPinnedAdminChat();
+            // Loading indicator at the bottom
+            if (index == displayedRooms.length) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator(color: Color(0xFFF90E18))),
+              );
             }
 
-            // Second item: AstroTalk (pinned)
-            if (index == 1) {
-              return _buildPinnedAstroTalkChat();
-            }
-
-            // Regular chats start from index 2
-            final chatIndex = index - 2;
-            if (chatIndex >= chatRooms.length) {
-              return const SizedBox.shrink();
-            }
-            final chatRoom = chatRooms[chatIndex];
+            final chatRoom = displayedRooms[index];
             final data = chatRoom.data() as Map<String, dynamic>;
 
             final participants = List<String>.from(data['participants'] ?? []);
@@ -843,183 +887,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     } catch (e) {
       print('Error debugging: $e');
     }
-  }
-
-  // Build pinned Admin Support chat item
-  Widget _buildPinnedAdminChat() {
-    return Container(
-      color: Colors.amber.shade50,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AdminChatScreen(
-                senderID: userId,
-                userName: "Admin Support",
-              ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Pin icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFE84C3D), Color(0xFFEE6A7B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: const [
-                    BoxShadow(blurRadius: 6, color: Colors.black12)
-                  ],
-                ),
-                child: const Icon(Icons.support_agent, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              // Chat Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.push_pin,
-                          size: 16,
-                          color: Color(0xFFE84C3D),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Admin Support',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFE84C3D),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Get help with your account and app',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.normal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.grey,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Build pinned AstroTalk chat item
-  Widget _buildPinnedAstroTalkChat() {
-    return Container(
-      color: Colors.purple.shade50,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ServiceChatPage(
-                senderId: userId,
-                receiverId: '2',
-                name: 'MS Astrologer',
-                exp: '5 years',
-                cat: 'Jyotish',
-              ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Astro icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6B46C1), Color(0xFF9F7AEA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: const [
-                    BoxShadow(blurRadius: 6, color: Colors.black12)
-                  ],
-                ),
-                child: const Icon(Icons.stars, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              // Chat Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.push_pin,
-                          size: 16,
-                          color: Color(0xFF6B46C1),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Astro Talk',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B46C1),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Chat with our astrology experts',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.normal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.grey,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void showUpgradeDialog(BuildContext context) {
