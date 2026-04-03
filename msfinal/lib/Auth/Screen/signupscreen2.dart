@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
+import '../../ReUsable/smart_scroll_behavior.dart';
 import '../../service/personal_details_api.dart';
 import '../../service/updatepage.dart';
 
@@ -17,7 +18,8 @@ class PersonalDetailsPage extends StatefulWidget {
   State<PersonalDetailsPage> createState() => _PersonalDetailsPageState();
 }
 
-class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTickerProviderStateMixin {
+class _PersonalDetailsPageState extends State<PersonalDetailsPage>
+    with SingleTickerProviderStateMixin, SmartScrollBehavior {
   // Form state
   String? _selectedMaritalStatus;
   String? _selectedHeight;
@@ -30,6 +32,12 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTi
   String? _selectedBloodGroup;
   String? _selectedComplexion;
   String? _selectedBodyType;
+
+  // Focus node for disability field
+  late FocusNode _disabilityFocus;
+
+  // Global key for disability field
+  final GlobalKey _disabilityKey = GlobalKey();
 
   // Validation
   bool _hasValidationErrors = false;
@@ -81,6 +89,12 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTi
   void initState() {
     super.initState();
 
+    // Initialize focus node
+    _disabilityFocus = FocusNode();
+
+    // Register field for smart scrolling
+    registerField(_disabilityFocus, _disabilityKey);
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -97,6 +111,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTi
   @override
   void dispose() {
     _disabilityController.dispose();
+    _disabilityFocus.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -222,6 +237,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTi
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: RegistrationStepContainer(
+            scrollController: scrollController,
             onContinue: _isSubmitting ? null : _validateAndSubmit,
             onBack: () => Navigator.pop(context),
             continueText: 'Continue',
@@ -740,13 +756,17 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> with SingleTi
                 // Disability description
                 if (_hasDisability) ...[
                   const SizedBox(height: 16),
-                  EnhancedTextField(
-                    label: 'Disability Description',
-                    hint: 'Please describe your disability',
-                    controller: _disabilityController,
-                    prefixIcon: Icons.info_outline,
-                    maxLines: 3,
-                    onChanged: (value) {},
+                  Container(
+                    key: _disabilityKey,
+                    child: EnhancedTextField(
+                      label: 'Disability Description',
+                      hint: 'Please describe your disability',
+                      controller: _disabilityController,
+                      focusNode: _disabilityFocus,
+                      prefixIcon: Icons.info_outline,
+                      maxLines: 3,
+                      onChanged: (value) {},
+                    ),
                   ),
                 ],
 
