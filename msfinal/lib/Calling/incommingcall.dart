@@ -24,6 +24,7 @@ class IncomingCallScreen extends StatefulWidget {
 
 class _IncomingCallScreenState extends State<IncomingCallScreen> {
   late RtcEngine _engine;
+  bool _engineInitialized = false;
 
   int _localUid = 0;
   int? _remoteUid;
@@ -161,6 +162,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         appId: AgoraTokenService.appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      _engineInitialized = true;
 
       _engine.registerEventHandler(
         RtcEngineEventHandler(
@@ -287,6 +289,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
     if (_joined) {
       await _engine.leaveChannel();
+    }
+    if (_engineInitialized) {
       await _engine.release();
     }
     await _stopForegroundService();
