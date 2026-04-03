@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
+import 'call_foreground_service.dart';
 
 class ActiveCallScreen extends StatefulWidget {
   final String channel;
@@ -33,9 +34,11 @@ class ActiveCallScreen extends StatefulWidget {
 
 class _ActiveCallScreenState extends State<ActiveCallScreen> {
   late RtcEngine _engine;
+  bool _engineInitialized = false;
   bool _joined = false;
   bool _micMuted = false;
   bool _speakerOn = false;
+  bool _foregroundServiceStarted = false;
   Timer? _callTimer;
   Duration _duration = Duration.zero;
   int _callStartTime = 0;
@@ -99,6 +102,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         appId: AgoraTokenService.appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      _engineInitialized = true;
 
       // Event handlers
       _engine.registerEventHandler(RtcEngineEventHandler(
@@ -106,6 +110,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           print('✅ Active call joined');
           setState(() => _joined = true);
           _syncOverlayState();
+          unawaited(_startForegroundService());
         },
         onUserOffline: (conn, remoteUid, reason) {
           print('👋 Remote user left');
@@ -159,7 +164,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
     _callTimer?.cancel();
     if (_joined) await _engine.leaveChannel();
-    await _engine.release();
+    if (_engineInitialized) await _engine.release();
+    await _stopForegroundService();
 
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -175,7 +181,29 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   void dispose() {
     _callTimer?.cancel();
+    unawaited(_stopForegroundService());
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (widget.channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'audio',
+      otherUserName: widget.recipientName,
+      callId: widget.channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 
   @override

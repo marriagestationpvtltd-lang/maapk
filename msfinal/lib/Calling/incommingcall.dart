@@ -12,6 +12,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class IncomingCallScreen extends StatefulWidget {
   final Map<String, dynamic> callData;
@@ -23,6 +24,7 @@ class IncomingCallScreen extends StatefulWidget {
 
 class _IncomingCallScreenState extends State<IncomingCallScreen> {
   late RtcEngine _engine;
+  bool _engineInitialized = false;
 
   int _localUid = 0;
   int? _remoteUid;
@@ -37,6 +39,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   bool _micMuted = false;
   bool _speakerOn = true;
   bool _processing = false;
+  bool _foregroundServiceStarted = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -150,7 +153,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       _ringTimer?.cancel();
 
       if (!(await Permission.microphone.request()).isGranted) {
-        _end();
+        await _end();
         return;
       }
 
@@ -175,11 +178,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         appId: AgoraTokenService.appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      _engineInitialized = true;
 
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
             _joined = true;
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             _remoteUid = uid;
@@ -196,6 +201,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
       await _engine.enableAudio();
       await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine.setEnableSpeakerphone(_speakerOn);
 
       await _engine.joinChannel(
         token: token,
@@ -211,7 +217,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       _initializeOverlay();
     } catch (e) {
       debugPrint('Accept error $e');
-      _end();
+      await _end();
     } finally {
       _processing = false;
     }
@@ -236,7 +242,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       recipientUid: '0',
       channelName: _channel,
     );
-    _end();
+    await _end();
   }
 
   // ================= MISSED =================
@@ -255,7 +261,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= DECLINE CALL =================
@@ -271,7 +277,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
     }
 
-    _end();
+    await _end();
   }
 
   // ================= END =================
@@ -299,13 +305,17 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
     if (_joined) {
       await _engine.leaveChannel();
+    }
+    if (_engineInitialized) {
       await _engine.release();
     }
+    await _stopForegroundService();
 
-    _end();
+    await _end();
   }
 
-  void _end() {
+  Future<void> _end() async {
+    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -439,5 +449,26 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'audio',
+      otherUserName: _callerName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
+    }
   }
 }

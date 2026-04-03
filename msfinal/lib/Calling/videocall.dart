@@ -11,6 +11,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String currentUserId;
@@ -55,6 +56,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _ending = false;
   bool _remoteAccepted = false;
   bool _isCallRinging = true; // Add ringing state
+  bool _foregroundServiceStarted = false;
 
   Timer? _timeoutTimer;
   Timer? _callTimer;
@@ -283,6 +285,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
             _syncOverlayState();
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             setState(() {
@@ -331,7 +334,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     } catch (e) {
       debugPrint("Video call init error: $e");
-      _exit();
+      await _exit();
     }
   }
 
@@ -362,6 +365,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     // Always stop ringtone when ending call
     await _stopRingtone();
+    await _stopForegroundService();
 
     // Update call history
     if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
@@ -416,13 +420,35 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     CallOverlayManager().reset();
 
-    _exit();
+    await _exit();
   }
 
-  void _exit() {
+  Future<void> _exit() async {
+    await _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'video',
+      otherUserName: widget.otherUserName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
     }
   }
 
@@ -746,6 +772,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _timeoutTimer?.cancel();
     _responseSubscription?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 }

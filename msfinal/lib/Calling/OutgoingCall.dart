@@ -11,6 +11,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class CallScreen extends StatefulWidget {
   final String currentUserId;
@@ -52,6 +53,7 @@ class _CallScreenState extends State<CallScreen> {
   bool _speakerOn = false;
   bool _ending = false;
   bool _isCallRinging = true; // New state for ringing
+  bool _foregroundServiceStarted = false;
 
   Timer? _timeoutTimer;
   Timer? _callTimer;
@@ -280,6 +282,7 @@ class _CallScreenState extends State<CallScreen> {
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
             _syncOverlayState();
+            unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
             setState(() {
@@ -327,7 +330,7 @@ class _CallScreenState extends State<CallScreen> {
       });
     } catch (e) {
       debugPrint('Init error: $e');
-      _exit();
+      await _exit();
     }
   }
 
@@ -356,6 +359,7 @@ class _CallScreenState extends State<CallScreen> {
     _responseSubscription?.cancel();
 
     await _stopRingtone();
+    await _stopForegroundService();
 
     // If the call was never answered, notify the receiver to dismiss their incoming call screen
     if (!_callActive && widget.isOutgoingCall && _channel.isNotEmpty) {
@@ -389,10 +393,32 @@ class _CallScreenState extends State<CallScreen> {
   }
 
 
-  void _exit() {
+  Future<void> _exit() async {
+    await _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_channel.isEmpty) return;
+    if (_foregroundServiceStarted) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'audio',
+      otherUserName: widget.otherUserName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    try {
+      await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
+    } catch (e) {
+      debugPrint('Error stopping call foreground service: $e');
     }
   }
 
@@ -520,6 +546,16 @@ class _CallScreenState extends State<CallScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    _callTimer?.cancel();
+    _responseSubscription?.cancel();
+    _ringtonePlayer.dispose();
+    unawaited(_stopForegroundService());
+    super.dispose();
+  }
+
   // ================= RINGING ANIMATION =================
   Widget _buildRingingAnimation() {
     return Container(
@@ -545,13 +581,4 @@ class _CallScreenState extends State<CallScreen> {
 
   String _format(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
-
-  @override
-  void dispose() {
-    _callTimer?.cancel();
-    _timeoutTimer?.cancel();
-    _responseSubscription?.cancel();
-    _ringtonePlayer.dispose(); // Dispose audio player
-    super.dispose();
-  }
 }
