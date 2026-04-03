@@ -376,6 +376,14 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
   }
 
   @override
+  void didUpdateWidget(ProfileSwipeUI oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId && widget.userId != 0) {
+      _loadProfiles();
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
