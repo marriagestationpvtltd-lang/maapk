@@ -1274,16 +1274,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           value: progressValue,
                           minHeight: 3,
                           backgroundColor: Colors.grey.withOpacity(0.25),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            isMine ? const Color(0xFFF90E18) : const Color(0xFFF90E18),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFFF90E18),
                           ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         displayTime,
-                        style: TextStyle(
-                          color: isMine ? Colors.black54 : Colors.black54,
+                        style: const TextStyle(
+                          color: Colors.black54,
                           fontSize: 11,
                         ),
                       ),
