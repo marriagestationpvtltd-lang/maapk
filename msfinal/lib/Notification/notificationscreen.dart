@@ -327,7 +327,7 @@ class _MatrimonyNotificationPageState
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${requestType.toString().trim()} reminder sent successfully.'),
+        content: Text('${requestType.trim()} reminder sent successfully.'),
         backgroundColor: Colors.green,
       ),
     );
