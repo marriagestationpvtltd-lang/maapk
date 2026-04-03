@@ -545,7 +545,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 String usertye = '';
   String userimage = '';
   var  pageno;
-  var docstatus = 'not_uploaded';
   String name = '';
 
  // int _currentIndex = 0;
