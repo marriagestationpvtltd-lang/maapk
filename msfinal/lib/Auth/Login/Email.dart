@@ -744,7 +744,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
+                        borderRadius: AppDimensions.borderRadiusRound,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

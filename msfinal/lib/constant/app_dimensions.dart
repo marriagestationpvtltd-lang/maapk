@@ -81,6 +81,7 @@ class AppDimensions {
   static const BorderRadius borderRadiusMD = BorderRadius.all(Radius.circular(radiusMD));
   static const BorderRadius borderRadiusLG = BorderRadius.all(Radius.circular(radiusLG));
   static const BorderRadius borderRadiusXL = BorderRadius.all(Radius.circular(radiusXL));
+  static const BorderRadius borderRadiusRound = BorderRadius.all(Radius.circular(radiusRound));
 
   // Icon Sizes
   static const double iconSizeXS = 16;

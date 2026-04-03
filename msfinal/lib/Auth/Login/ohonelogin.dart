@@ -94,7 +94,7 @@ class MobileLoginScreen extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  borderRadius: AppDimensions.borderRadiusMD,
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withOpacity(0.3),
@@ -106,7 +106,7 @@ class MobileLoginScreen extends StatelessWidget {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                    borderRadius: AppDimensions.borderRadiusMD,
                     onTap: () {
                       // Your login logic here
                     },
