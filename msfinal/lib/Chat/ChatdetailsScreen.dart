@@ -21,6 +21,7 @@ import '../otherenew/othernew.dart';
 import '../otherenew/service.dart';
 import '../pushnotification/pushservice.dart';
 import '../webrtc/webrtc.dart';
+import 'call_overlay_manager.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatRoomId;
@@ -1615,31 +1616,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(60),
-                  ),
-                  child: Container(
-                    color: Colors.white,
-                    child: _buildMessagesList(),
+    return CallOverlayWrapper(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(60),
+                    ),
+                    child: Container(
+                      color: Colors.white,
+                      child: _buildMessagesList(),
+                    ),
                   ),
                 ),
-              ),
-              _bottomSection(),
-            ],
-          ),
+                _bottomSection(),
+              ],
+            ),
 
-          if (showActionOverlay) _fullScreenActionOverlay(),
-          if (showDeletePopup) _deletePopupOverlay(),
-        ],
+            if (showActionOverlay) _fullScreenActionOverlay(),
+            if (showDeletePopup) _deletePopupOverlay(),
+          ],
+        ),
       ),
     );
   }

@@ -15,6 +15,7 @@ import '../purposal/purposalservice.dart';
 import '../service/Service_chat.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
+import 'call_overlay_manager.dart';
 
 class ChatListScreen extends StatefulWidget {
   ChatListScreen({super.key});
@@ -439,30 +440,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Chat', style: TextStyle(color: Colors.black87)),
+    return CallOverlayWrapper(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Chat', style: TextStyle(color: Colors.black87)),
 
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Column(
-        children: [
-          _buildChatRequestsSection(),
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: const Text('Your Chats', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-          ),
-          Expanded(
-            child: _buildChatListWithDebug(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _debugFirebaseData,
-        child: const Icon(Icons.bug_report),
+          iconTheme: const IconThemeData(color: Colors.black87),
+        ),
+        body: Column(
+          children: [
+            _buildChatRequestsSection(),
+            Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: const Text('Your Chats', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
+            ),
+            Expanded(
+              child: _buildChatListWithDebug(),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _debugFirebaseData,
+          child: const Icon(Icons.bug_report),
+        ),
       ),
     );
   }
