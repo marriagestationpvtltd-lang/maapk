@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../Home/Screen/HomeScreenPage.dart';
@@ -46,6 +44,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   PaymentMethod _selectedMethod = PaymentMethod.khalti;
   bool _isProcessing = false;
+  bool _isActivating = false;
   String _paymentStatus = '';
   bool _showWebView = false;
   String? _paymentUrl;
@@ -617,40 +616,58 @@ class _PaymentPageState extends State<PaymentPage> {
           },
           onPageFinished: (String url) {
             print('Page finished loading: $url');
-
-            // Check if the loaded URL is success.php
-            if (url.contains('success.php')) {
-              _handlePaymentSuccess(url);
-            }
-
-            // Also check the page content for success indicators
-            _checkForSuccessIndicators();
+            _handleUrlChange(url);
           },
           onWebResourceError: (WebResourceError error) {
             print('WebView error: ${error.description}');
           },
           onNavigationRequest: (NavigationRequest request) {
             print('Navigation request to: ${request.url}');
-
-            // Check if navigation is to success.php
-            if (request.url.contains('success.php')) {
-              _handlePaymentSuccess(request.url);
-            }
-
+            _handleUrlChange(request.url);
             return NavigationDecision.navigate;
           },
           onUrlChange: (UrlChange change) {
-            print('URL changed from ${change.url} to ${change.url}');
-
-            // Check if the new URL contains success.php
-            if (change.url?.contains('success.php') == true) {
-              _handlePaymentSuccess(change.url!);
+            if (change.url != null) {
+              print('URL changed to: ${change.url}');
+              _handleUrlChange(change.url!);
             }
           },
         ),
       )
       ..loadRequest(Uri.parse(cleanUrl));
   }
+
+  void _handleUrlChange(String url) {
+    final lowerUrl = url.toLowerCase();
+    if (lowerUrl.contains('success.php') || lowerUrl.contains('success=true')) {
+      _handlePaymentSuccess(url);
+    } else if (lowerUrl.contains('cancel.php') ||
+        lowerUrl.contains('cancelled') ||
+        lowerUrl.contains('failed.php') ||
+        lowerUrl.contains('failure.php') ||
+        lowerUrl.contains('payment_failed') ||
+        lowerUrl.contains('paymentfailed') ||
+        lowerUrl.contains('declined')) {
+      _handlePaymentCancel();
+    }
+  }
+
+  void _handlePaymentCancel() {
+    if (!mounted) return;
+    setState(() {
+      _showWebView = false;
+      _paymentStatus = 'Payment was cancelled.';
+      _isProcessing = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Payment cancelled. Your package has not been activated.'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<Map<String, dynamic>> purchasePackage({
     required int userId,
     required String paidBy,
@@ -683,24 +700,13 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  void buyPackage( int userid , String paidby) async {
-    final result = await purchasePackage(
-      userId: userid,
-      paidBy: paidby,
-      packageId: widget.packageId,
-    );
-
-    if (result["status"] == "success") {
-      print("✅ Package Purchased");
-      print(result);
-    } else {
-      print("❌ Failed: ${result["message"]}");
-    }
-  }
-
-
-
   void _handlePaymentSuccess(String url) async {
+    // Guard against multiple calls for the same payment event
+    if (_isActivating) return;
+    setState(() {
+      _isActivating = true;
+    });
+
     print('Payment success detected! URL: $url');
 
     try {
@@ -732,13 +738,16 @@ class _PaymentPageState extends State<PaymentPage> {
         _showPaymentSuccessDialog();
 
         Future.delayed(const Duration(seconds: 2), () {
-          _restartApp(context);
+          if (mounted) _restartApp(context);
         });
       } else {
         throw Exception(result["message"] ?? "Package activation failed");
       }
     } catch (e) {
       print("❌ Error after payment success: $e");
+      setState(() {
+        _isActivating = false;
+      });
 
       _showErrorDialog(
           "Payment succeeded but package activation failed.\nPlease contact support."
@@ -756,54 +765,6 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
           (route) => false,
     );
-  }
-
-  void _checkForSuccessIndicators() async {
-    try {
-      // Run JavaScript to check for success indicators in the page
-      final result = await _webViewController.runJavaScriptReturningResult(
-          '''
-        // Check for common success indicators
-        let successTexts = [
-          'payment successful',
-          'transaction successful',
-          'payment completed',
-          'thank you for your payment',
-          'payment approved',
-          'success.php'
-        ];
-        
-        let pageContent = document.body.innerText.toLowerCase();
-        let currentUrl = window.location.href.toLowerCase();
-        
-        let isSuccess = false;
-        
-        // Check URL
-        if (currentUrl.includes('success.php')) {
-          isSuccess = true;
-        }
-        
-        // Check page content
-        for (let text of successTexts) {
-          if (pageContent.includes(text) || currentUrl.includes(text)) {
-            isSuccess = true;
-            break;
-          }
-        }
-        
-        // Return result
-        isSuccess;
-        '''
-      );
-
-      print('Success check result: $result');
-
-      if (result == true || result == 'true') {
-        _handlePaymentSuccess('Detected from page content');
-      }
-    } catch (e) {
-      print('Error checking for success indicators: $e');
-    }
   }
 
   void _showPaymentSuccessDialog() {
