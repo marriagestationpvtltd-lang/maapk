@@ -69,6 +69,8 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
   void initState() {
     super.initState();
     _initializeNepaliDate();
+    // Set Nepal as default country
+    _selectedCountryOfBirth = 'Nepal';
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -601,16 +603,14 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: EnhancedDropdown<String>(
-                          label: 'Year',
-                          value: _selectedYear,
+                        child: TypingDropdown<String>(
+                          title: 'Year',
+                          selectedItem: _selectedYear,
                           items: _isAD ? _yearOptions : _nepaliYears,
                           itemLabel: (item) => item,
                           hint: 'Year',
+                          showError: submitted,
                           onChanged: _handleYearChange,
-                          hasError: submitted && _errors['year']!.isNotEmpty,
-                          errorText: _errors['year'],
-                          isRequired: true,
                         ),
                       ),
                     ],

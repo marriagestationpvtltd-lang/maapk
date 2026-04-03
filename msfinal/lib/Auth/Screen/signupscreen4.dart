@@ -93,6 +93,14 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
       _countryMap[name] = id;
     }
 
+    // Set Nepal as default country
+    if (_countryOptions.contains('Nepal') && _selectedTemporaryCountry == null) {
+      _selectedTemporaryCountry = 'Nepal';
+      _selectedPermanentCountry = 'Nepal';
+      final nepalId = _countryMap['Nepal']!;
+      loadStates(nepalId);
+    }
+
     setState(() {});
   }
 
@@ -294,17 +302,13 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                   const SizedBox(height: 20),
 
                   // Country
-                  EnhancedDropdown<String>(
-                    label: 'Country',
-                    value: _selectedTemporaryCountry,
+                  TypingDropdown<String>(
+                    title: 'Country',
+                    selectedItem: _selectedTemporaryCountry,
                     items: _countryOptions,
                     itemLabel: (item) => item,
                     hint: 'Select country',
-                    isRequired: true,
-                    hasError: submitted && _selectedTemporaryCountry == null,
-                    errorText: submitted && _selectedTemporaryCountry == null
-                        ? 'Please select country'
-                        : null,
+                    showError: submitted,
                     onChanged: (value) async {
                       setState(() {
                         _selectedTemporaryCountry = value;
@@ -319,7 +323,6 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                         await loadStates(countryId);
                       }
                     },
-                    prefixIcon: Icons.public_rounded,
                   ),
                   const SizedBox(height: 20),
 
@@ -327,17 +330,13 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: EnhancedDropdown<String>(
-                          label: 'State / Province',
-                          value: _selectedTemporaryState,
+                        child: TypingDropdown<String>(
+                          title: 'State / Province',
+                          selectedItem: _selectedTemporaryState,
                           items: _stateOptions,
                           itemLabel: (item) => item,
                           hint: 'Select state',
-                          isRequired: true,
-                          hasError: submitted && _selectedTemporaryState == null,
-                          errorText: submitted && _selectedTemporaryState == null
-                              ? 'Required'
-                              : null,
+                          showError: submitted,
                           onChanged: (value) async {
                             setState(() {
                               _selectedTemporaryState = value;
@@ -350,28 +349,22 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                               await loadCities(stateId);
                             }
                           },
-                          prefixIcon: Icons.map_rounded,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: EnhancedDropdown<String>(
-                          label: 'City',
-                          value: _selectedTemporaryCity,
+                        child: TypingDropdown<String>(
+                          title: 'City',
+                          selectedItem: _selectedTemporaryCity,
                           items: _cityOptions,
                           itemLabel: (item) => item,
                           hint: 'Select city',
-                          isRequired: true,
-                          hasError: submitted && _selectedTemporaryCity == null,
-                          errorText: submitted && _selectedTemporaryCity == null
-                              ? 'Required'
-                              : null,
+                          showError: submitted,
                           onChanged: (value) {
                             setState(() {
                               _selectedTemporaryCity = value;
                             });
                           },
-                          prefixIcon: Icons.location_city_rounded,
                         ),
                       ),
                     ],
@@ -572,17 +565,13 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
 
                   if (!_sameAsPermanent) ...[
                     // Country
-                    EnhancedDropdown<String>(
-                      label: 'Country',
-                      value: _selectedPermanentCountry,
+                    TypingDropdown<String>(
+                      title: 'Country',
+                      selectedItem: _selectedPermanentCountry,
                       items: _countryOptions,
                       itemLabel: (item) => item,
                       hint: 'Select country',
-                      isRequired: true,
-                      hasError: submitted && _selectedPermanentCountry == null,
-                      errorText: submitted && _selectedPermanentCountry == null
-                          ? 'Please select country'
-                          : null,
+                      showError: submitted,
                       onChanged: (value) async {
                         setState(() {
                           _selectedPermanentCountry = value;
@@ -593,7 +582,6 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                           await loadStates(countryId);
                         }
                       },
-                      prefixIcon: Icons.public_rounded,
                     ),
                     const SizedBox(height: 20),
 
@@ -601,17 +589,13 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: EnhancedDropdown<String>(
-                            label: 'State / Province',
-                            value: _selectedPermanentState,
+                          child: TypingDropdown<String>(
+                            title: 'State / Province',
+                            selectedItem: _selectedPermanentState,
                             items: _stateOptions,
                             itemLabel: (item) => item,
                             hint: 'Select state',
-                            isRequired: true,
-                            hasError: submitted && _selectedPermanentState == null,
-                            errorText: submitted && _selectedPermanentState == null
-                                ? 'Required'
-                                : null,
+                            showError: submitted,
                             onChanged: (value) async {
                               setState(() {
                                 _selectedPermanentState = value;
@@ -622,28 +606,22 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                                 await loadCities(stateId);
                               }
                             },
-                            prefixIcon: Icons.map_rounded,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: EnhancedDropdown<String>(
-                            label: 'City',
-                            value: _selectedPermanentCity,
+                          child: TypingDropdown<String>(
+                            title: 'City',
+                            selectedItem: _selectedPermanentCity,
                             items: _cityOptions,
                             itemLabel: (item) => item,
                             hint: 'Select city',
-                            isRequired: true,
-                            hasError: submitted && _selectedPermanentCity == null,
-                            errorText: submitted && _selectedPermanentCity == null
-                                ? 'Required'
-                                : null,
+                            showError: submitted,
                             onChanged: (value) {
                               setState(() {
                                 _selectedPermanentCity = value;
                               });
                             },
-                            prefixIcon: Icons.location_city_rounded,
                           ),
                         ),
                       ],
