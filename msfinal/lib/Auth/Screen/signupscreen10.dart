@@ -32,6 +32,9 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
   bool _isCheckingStatus = false;
   bool _isUploading = false;
 
+  // Privacy consent
+  bool _hasConsented = false;
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -322,6 +325,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
                 _selectedDocumentType = null;
                 _documentNumberController.clear();
                 _selectedImage = null;
+                _hasConsented = false;
               });
             },
             style: ElevatedButton.styleFrom(
@@ -435,63 +439,8 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
             ),
             const SizedBox(height: 16),
 
-            // Info Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    AppColors.primary.withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.security_rounded,
-                      color: AppColors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Secure & Private',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Your documents are encrypted and stored securely',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Privacy & Security Notice Card
+            _buildPrivacyNoticeCard(),
             const SizedBox(height: 32),
 
             // Document Type Section
@@ -621,7 +570,268 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
               ),
             ),
 
+            const SizedBox(height: 24),
+
+            // Consent Checkbox Card
+            _buildConsentCard(),
+
             const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrivacyNoticeCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withOpacity(0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: AppColors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Document Privacy & Security',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Your data is protected under our privacy policy',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.white,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Body
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'How your document is used:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildPrivacyPoint(
+                  Icons.verified_user_outlined,
+                  'Verification Only',
+                  'Your document is used exclusively to verify your identity. It is not used for any other purpose.',
+                  const Color(0xFF1565C0),
+                ),
+                _buildPrivacyPoint(
+                  Icons.no_photography_outlined,
+                  'No Third-Party Sharing',
+                  'Your document will never be shared with third parties, advertisers, or external organizations.',
+                  AppColors.success,
+                ),
+                _buildPrivacyPoint(
+                  Icons.lock_outline_rounded,
+                  'Encrypted Storage',
+                  'All uploaded documents are encrypted using industry-standard security protocols.',
+                  AppColors.warning,
+                ),
+                _buildPrivacyPoint(
+                  Icons.delete_sweep_outlined,
+                  'Deletion on Request',
+                  'You may request deletion of your document at any time by contacting our support team.',
+                  AppColors.primary,
+                ),
+
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1565C0).withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF1565C0).withOpacity(0.15),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Color(0xFF1565C0),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'The document you upload is strictly for identity verification. '
+                          'It will not be used for any commercial, marketing, or other purpose.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivacyPoint(IconData icon, String title, String description, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConsentCard() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _hasConsented = !_hasConsented;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _hasConsented
+              ? AppColors.success.withOpacity(0.06)
+              : AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hasConsented
+                ? AppColors.success.withOpacity(0.5)
+                : AppColors.border,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: _hasConsented ? AppColors.success : AppColors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _hasConsented ? AppColors.success : AppColors.border,
+                  width: 2,
+                ),
+              ),
+              child: _hasConsented
+                  ? const Icon(Icons.check, size: 16, color: AppColors.white)
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'I understand that the document I am uploading is used solely for identity verification. '
+                'It will not be used for any commercial, marketing, or other purpose, '
+                'and will be kept strictly confidential.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1084,6 +1294,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
                     _selectedDocumentType = null;
                     _documentNumberController.clear();
                     _selectedImage = null;
+                    _hasConsented = false;
                   });
                 },
                 icon: const Icon(Icons.upload),
@@ -1228,7 +1439,8 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
   bool _canContinue() {
     return _selectedDocumentType != null &&
         _documentNumberController.text.isNotEmpty &&
-        _selectedImage != null;
+        _selectedImage != null &&
+        _hasConsented;
   }
 
   void _validateAndSubmit() {
@@ -1247,7 +1459,47 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
       return;
     }
 
+    if (!_hasConsented) {
+      _showConsentReminder();
+      return;
+    }
+
     _uploadDocument();
+  }
+
+  void _showConsentReminder() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.privacy_tip_outlined, color: Color(0xFF1565C0), size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Privacy Consent Required',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Please check the consent checkbox below the photo guidelines before submitting your document.',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1565C0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Understood', style: TextStyle(color: AppColors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _skipVerification() {
