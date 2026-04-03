@@ -215,8 +215,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   // SEND MESSAGE (with reply support)
 // SEND MESSAGE (with reply support)
   Future<void> _sendMessage() async {
-    final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    final messageText = _messageController.text.trim();
+    if (messageText.isEmpty) return;
 
     try {
       final timestamp = DateTime.now();
@@ -227,7 +227,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'messageId': messageId,
         'senderId': widget.currentUserId,
         'receiverId': widget.receiverId,
-        'message': message,
+        'message': messageText,
         'messageType': 'text',
         'timestamp': timestamp,
         'isRead': false,
@@ -238,7 +238,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         recipientUserId: widget.receiverId.toString(),
         senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
         senderId: widget.currentUserId.toString(),
-        message: message,
+        message: messageText,
       );
 
       // Add reply data if replying to a message
@@ -274,7 +274,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       // Update chat room last message
       await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'lastMessage': message,
+        'lastMessage': messageText,
         'lastMessageType': 'text',
         'lastMessageTime': timestamp,
         'lastMessageSenderId': widget.currentUserId,

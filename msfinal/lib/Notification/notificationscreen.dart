@@ -38,7 +38,7 @@ class _MatrimonyNotificationPageState
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
 
-    if (userDataString?.isEmpty ?? true) {
+    if (userDataString == null || userDataString.isEmpty) {
       if (!mounted) return;
       setState(() {
         _notifications = [];
@@ -465,6 +465,12 @@ class _MatrimonyNotificationPageState
         notification['sender_id']?.toString();
   }
 
+  bool _shouldShowReminderAction(Map<String, dynamic> notification) {
+    return notification['type'] == 'request_sent' &&
+        (notification['request_status']?.toString().toLowerCase() ?? 'pending') ==
+            'pending';
+  }
+
   String _cleanName(String? value, {String? fallbackId}) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isNotEmpty) {
@@ -578,10 +584,7 @@ class _MatrimonyNotificationPageState
                                 final reminderAvailable =
                                     NotificationInboxService.canSendReminder(notif);
                                 final showReminderAction =
-                                    notif['type'] == 'request_sent' &&
-                                        (notif['request_status']?.toString().toLowerCase() ??
-                                                'pending') ==
-                                            'pending';
+                                    _shouldShowReminderAction(notif);
 
                                 return Dismissible(
                                   key: Key(notif['id'].toString()),
