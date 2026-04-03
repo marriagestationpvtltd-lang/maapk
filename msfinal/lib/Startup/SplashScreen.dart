@@ -27,6 +27,8 @@ import '../service/pagenocheck.dart';
 import '../webrtc/webrtc.dart';
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
+import '../service/connectivity_service.dart';
+import '../screens/no_internet_screen.dart';
 import 'MainControllere.dart';
 import 'onboarding.dart';
 
@@ -57,6 +59,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAppVersion() async {
     try {
+      // Check internet connectivity first
+      final connectivityService = Provider.of<ConnectivityService>(context, listen: false);
+      final hasInternet = await connectivityService.checkConnectivity();
+
+      if (!hasInternet) {
+        setState(() {
+          _errorMessage = 'कृपया तपाईंको इन्टरनेट जडान जाँच गर्नुहोस्';
+          _isCheckingVersion = false;
+        });
+        // Navigate to no internet screen
+        _showNoInternetScreen();
+        return;
+      }
+
       final response = await http.get(
         Uri.parse('https://digitallami.com/app.php'),
       ).timeout(const Duration(seconds: 10));
@@ -444,6 +460,22 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
+  void _showNoInternetScreen() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NoInternetScreen(
+          onRetry: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const SplashScreen()),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -463,25 +495,37 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo Container with shadow
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+              // Logo Container with shadow and better animation
+              TweenAnimationBuilder(
+                tween: Tween<double>(begin: 0.8, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutBack,
+                builder: (context, double scale, child) {
+                  return Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.2),
+                            blurRadius: 30,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: const Image(
+                        image: AssetImage('assets/images/Mslogo.gif'),
+                        height: 140,
+                        width: 140,
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                  ],
-                ),
-                child: const Image(
-                  image: AssetImage('assets/images/Mslogo.gif'),
-                  height: 120,
-                  width: 120,
-                ),
+                  );
+                },
               ),
               AppSpacing.verticalXL,
               // App Name
