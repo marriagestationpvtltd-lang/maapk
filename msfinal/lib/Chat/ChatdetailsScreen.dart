@@ -19,6 +19,8 @@ import 'dart:async';
 
 import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
+import '../Calling/call_history_model.dart';
+import '../Calling/call_history_service.dart';
 import '../otherenew/othernew.dart';
 import '../otherenew/service.dart';
 import '../pushnotification/pushservice.dart';
@@ -104,6 +106,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<Map<String, dynamic>> _cachedMessages = [];
   bool _isFirstLoad = true;
 
+  // Lazy loading variables
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+  static const int _messagesPerPage = 20;
+  DocumentSnapshot? _lastDocument;
+
+  // Call history variables
+  List<CallHistory> _callHistory = [];
+  bool _showCallHistory = false;
+
   @override
   void initState() {
     super.initState();
@@ -160,6 +172,45 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     });
 
     _checkBlockStatus(); // Add this line
+    _loadCallHistory(); // Load call history
+
+    // Add scroll listener for lazy loading
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels <=
+            _scrollController.position.minScrollExtent + 200 &&
+        !_isLoadingMore &&
+        _hasMoreMessages) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadCallHistory() async {
+    try {
+      // Get call history between current user and receiver
+      final allCalls = await CallHistoryService.getCallHistoryPaginated(
+        userId: widget.currentUserId,
+        limit: 100,
+      );
+
+      // Filter calls for this specific chat
+      final filteredCalls = allCalls.where((call) {
+        return (call.callerId == widget.currentUserId &&
+                call.recipientId == widget.receiverId) ||
+            (call.recipientId == widget.currentUserId &&
+                call.callerId == widget.receiverId);
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _callHistory = filteredCalls;
+        });
+      }
+    } catch (e) {
+      print('Error loading call history: $e');
+    }
 
   }
   Future<void> _checkBlockStatus() async {
@@ -1593,6 +1644,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           .doc(widget.chatRoomId)
           .collection('messages')
           .orderBy('timestamp', descending: true)
+          .limit(_messagesPerPage)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -1603,9 +1655,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           if (_isFirstLoad) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFF90E18)),
-            );
+            return _buildSkeletonLoader();
           } else {
             return _buildMessagesFromCache();
           }
@@ -1614,13 +1664,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         final messages = snapshot.data!.docs;
         _isFirstLoad = false;
 
+        // Update last document for pagination
+        if (messages.isNotEmpty) {
+          _lastDocument = messages.last;
+        }
+
         // Convert to list and REVERSE to get ascending order (oldest first)
         _cachedMessages = messages.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
           return data;
         }).toList().reversed.toList(); // REVERSE the list
 
-        if (_cachedMessages.isEmpty) {
+        if (_cachedMessages.isEmpty && _callHistory.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1645,8 +1700,121 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       },
     );
   }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final moreMessages = await _firestore
+          .collection('chatRooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .startAfterDocument(_lastDocument!)
+          .limit(_messagesPerPage)
+          .get();
+
+      if (moreMessages.docs.isEmpty) {
+        setState(() {
+          _hasMoreMessages = false;
+          _isLoadingMore = false;
+        });
+        return;
+      }
+
+      _lastDocument = moreMessages.docs.last;
+
+      final newMessages = moreMessages.docs.map((doc) {
+        return doc.data() as Map<String, dynamic>;
+      }).toList();
+
+      setState(() {
+        // Add new messages at the beginning (they are older)
+        _cachedMessages.insertAll(0, newMessages.reversed);
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      print('Error loading more messages: $e');
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  Widget _buildSkeletonLoader() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        final isLeft = index % 2 == 0;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment:
+                isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: [
+              Container(
+                constraints: BoxConstraints(maxWidth: 280),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 150 + (index * 20.0) % 80,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 100,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
   Widget _buildMessagesFromCache() {
     final List<Widget> messageWidgets = [];
+
+    // Add loading indicator at the top if loading more
+    if (_isLoadingMore) {
+      messageWidgets.add(
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF90E18)),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Add call history section at the top if there are calls
+    if (_callHistory.isNotEmpty) {
+      messageWidgets.add(_buildCallHistorySection());
+    }
 
     // Group messages by date
     final Map<String, List<Map<String, dynamic>>> groupedMessages = {};
@@ -1710,6 +1878,250 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         return messageWidgets[index];
       },
     );
+  }
+
+  Widget _buildCallHistorySection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20, top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with toggle button
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showCallHistory = !_showCallHistory;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF90E18).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.history, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'कल हिस्ट्री',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_callHistory.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _showCallHistory
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Call history list
+          if (_showCallHistory) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: _callHistory.take(10).map((call) {
+                  return _buildCallHistoryItem(call);
+                }).toList(),
+              ),
+            ),
+            if (_callHistory.length > 10)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text(
+                    '... र ${_callHistory.length - 10} थप कलहरू',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCallHistoryItem(CallHistory call) {
+    final isIncoming = call.isIncoming(widget.currentUserId);
+
+    // Status icon based on call type and direction
+    IconData statusIcon;
+    Color statusColor;
+
+    if (call.status == CallStatus.missed && isIncoming) {
+      statusIcon = Icons.call_missed;
+      statusColor = Colors.red;
+    } else if (call.status == CallStatus.declined) {
+      statusIcon = Icons.call_end;
+      statusColor = Colors.red;
+    } else if (call.status == CallStatus.cancelled) {
+      statusIcon = Icons.call_missed_outgoing;
+      statusColor = Colors.orange;
+    } else if (isIncoming) {
+      statusIcon = Icons.call_received;
+      statusColor = Colors.green;
+    } else {
+      statusIcon = Icons.call_made;
+      statusColor = Colors.green;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Call type icon
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              call.callType == CallType.video ? Icons.videocam : Icons.call,
+              color: statusColor,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Call details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(statusIcon, size: 14, color: statusColor),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        isIncoming ? 'आगमन कल' : 'बहिर्गमन कल',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _formatCallDateTime(call.startTime),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Duration or status
+          if (call.status == CallStatus.completed)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                call.getFormattedDuration(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.green,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                call.getStatusText(widget.currentUserId),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: statusColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCallDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays == 0) {
+      return 'आज ${DateFormat('HH:mm').format(dateTime)}';
+    } else if (difference.inDays == 1) {
+      return 'हिजो ${DateFormat('HH:mm').format(dateTime)}';
+    } else if (difference.inDays < 7) {
+      final dayNames = ['आइत', 'सोम', 'मंगल', 'बुध', 'बिहि', 'शुक्र', 'शनि'];
+      return '${dayNames[dateTime.weekday % 7]} ${DateFormat('HH:mm').format(dateTime)}';
+    } else {
+      return DateFormat('yyyy/MM/dd HH:mm').format(dateTime);
+    }
   }
 
 // Helper method to sort date keys chronologically with Today at the bottom
