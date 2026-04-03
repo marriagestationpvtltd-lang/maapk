@@ -1,6 +1,9 @@
-// introduce_yourself_page.dart
+// Professional Redesigned Introduce Yourself Page - Step 1
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../constant/app_colors.dart';
+import '../../ReUsable/registration_progress.dart';
+import '../../ReUsable/enhanced_form_fields.dart';
 import '../SuignupModel/signup_model.dart';
 import 'SignupScreen1.dart';
 
@@ -11,27 +14,34 @@ class IntroduceYourselfPage extends StatefulWidget {
   State<IntroduceYourselfPage> createState() => _IntroduceYourselfPageState();
 }
 
-class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> {
-  // chips options
-  final List<String> _profileForOptions = [
-    'Myself',
-    'Son',
-    'Daughter',
-    'Sister',
-    'Friend',
-    'Relative',
-    'Brother',
+class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> with SingleTickerProviderStateMixin {
+  // Profile options
+  final List<Map<String, dynamic>> _profileForOptions = [
+    {'label': 'Myself', 'icon': Icons.person},
+    {'label': 'Son', 'icon': Icons.boy},
+    {'label': 'Daughter', 'icon': Icons.girl},
+    {'label': 'Sister', 'icon': Icons.woman},
+    {'label': 'Brother', 'icon': Icons.man},
+    {'label': 'Friend', 'icon': Icons.people},
+    {'label': 'Relative', 'icon': Icons.family_restroom},
   ];
+
   String _selectedProfileFor = 'Myself';
 
-  // gender radio
-  String _gender = 'Male';
+  // Gender options
+  final List<Map<String, dynamic>> _genderOptions = [
+    {'label': 'Male', 'icon': Icons.male, 'value': 'Male'},
+    {'label': 'Female', 'icon': Icons.female, 'value': 'Female'},
+    {'label': 'Other', 'icon': Icons.transgender, 'value': 'Other'},
+  ];
+
+  String _gender = '';
 
   // Validation
-  bool _isValid = true;
+  bool _hasValidationError = false;
   String _errorMessage = '';
 
-  // mapping to numeric profileForId expected by API
+  // Mapping to numeric profileForId expected by API
   final Map<String, int> _profileForMap = {
     'Myself': 1,
     'Son': 2,
@@ -42,303 +52,53 @@ class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> {
     'Brother': 7,
   };
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
-    // push initial defaults into provider after first frame so context is available
+
+    // Initialize animation
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+
+    _animationController.forward();
+
+    // Push initial defaults into provider after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final model = context.read<SignupModel>();
       model.setProfileForId(_profileForMap[_selectedProfileFor] ?? 1);
-      model.setGender(_gender);
+      _autoSelectGender();
+      if (_gender.isNotEmpty) {
+        model.setGender(_gender);
+      }
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Top-left back icon
-            Positioned(
-              left: 12,
-              top: 12,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Image(
-                  image: AssetImage('assets/images/back.png'),
-                  height: 30,
-                  width: 30,
-                ),
-              ),
-            ),
-
-            // Page content with SingleChildScrollView
-            Positioned.fill(
-              top: 0,
-              left: 10,
-              right: 10,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 56, bottom: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Illustration
-                    Center(
-                      child: SizedBox(
-                        child: ClipRect(
-                          child: Image.asset(
-                            'assets/images/signup.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              // fallback network image if asset not found
-                              return Image.network(
-                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=9f7b2c0f2a6c7f0d5bfc4c57f7d8a8a5',
-                                fit: BoxFit.cover,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Title
-                    Text(
-                      'Introduce Yourself',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 26,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Subtitle
-                    Text(
-                      'Fill out the rest of the details so people can\nknow all details about you.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54,
-                        fontSize: 14,
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // "This Profile Is For *"
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'This Profile Is For $_selectedProfileFor',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          // small underline accent
-                          Container(
-                            width: 40,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Wrap of choice chips
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _profileForOptions.map((option) {
-                        final bool selected = _selectedProfileFor == option;
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedProfileFor = option;
-                              _autoSelectGender();
-                              _validateForm();
-                            });
-
-                            // update provider: profileForId and gender
-                            final model = context.read<SignupModel>();
-                            model.setProfileForId(_profileForMap[option] ?? 1);
-
-                            // after auto-select we might have updated _gender; set it to provider
-                            if (_gender.isNotEmpty) model.setGender(_gender);
-                          },
-                          child: Container(
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
-                            decoration: BoxDecoration(
-                              gradient: selected
-                                  ? const LinearGradient(
-                                colors: [Color(0xFFE53935), Color(0xFFEC407A)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                                  : null,
-                              color: selected ? null : Colors.white,
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: selected ? Colors.transparent : Colors.grey.shade300,
-                                width: 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: selected ? Colors.redAccent.withOpacity(0.25) : Colors.grey.withOpacity(0.18),
-                                  offset: const Offset(0, 4),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              option,
-                              style: TextStyle(
-                                color: selected ? Colors.white : Colors.black87,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Radio selection big cards
-                    _buildBigRadioOption(
-                      context,
-                      title: 'Male',
-                      icon: Icons.person,
-                      value: 'Male',
-                    ),
-                    const SizedBox(height: 10),
-                    _buildBigRadioOption(
-                      context,
-                      title: 'Female',
-                      icon: Icons.person_outline,
-                      value: 'Female',
-                    ),
-                    const SizedBox(height: 10),
-                    _buildBigRadioOption(
-                      context,
-                      title: 'Other / Not To Say',
-                      icon: Icons.not_interested,
-                      value: 'Other',
-                    ),
-
-                    // Error message
-                    if (!_isValid)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          _errorMessage,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-
-                    const SizedBox(height: 10),
-
-                    // Continue button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 80,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_validateForm()) {
-                            // handle continue
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Selected: $_selectedProfileFor, Gender: $_gender'),
-                              ),
-                            );
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => YourDetailsPage()));
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          elevation: 6,
-                          backgroundColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shadowColor: Colors.black38,
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE53935), Color(0xFFEC407A)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Continue',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // bottom indicator (just visual)
-                    Container(
-                      width: 140,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   // Auto-select gender based on profile selection
   void _autoSelectGender() {
-    if (_selectedProfileFor == 'Son' || _selectedProfileFor == 'Brother') {
-      _gender = 'Male';
-    } else if (_selectedProfileFor == 'Daughter' || _selectedProfileFor == 'Sister') {
-      _gender = 'Female';
-    } else {
-      // Clear gender selection for Myself, Friend, Relative
-      _gender = ''; // or set to a default value like 'Not Selected'
-    }
+    setState(() {
+      if (_selectedProfileFor == 'Son' || _selectedProfileFor == 'Brother') {
+        _gender = 'Male';
+      } else if (_selectedProfileFor == 'Daughter' || _selectedProfileFor == 'Sister') {
+        _gender = 'Female';
+      }
+      // For Myself, Friend, Relative - keep the previously selected gender or empty
+    });
   }
 
   // Validate form
@@ -346,118 +106,280 @@ class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> {
     bool isValid = true;
     String errorMessage = '';
 
-    // Check if gender is selected for profiles that require it
+    // Check if gender is selected
+    if (_gender.isEmpty) {
+      isValid = false;
+      errorMessage = 'Please select a gender';
+    }
+
+    // Additional validation for specific profiles
     if ((_selectedProfileFor == 'Son' || _selectedProfileFor == 'Brother') && _gender != 'Male') {
       isValid = false;
       errorMessage = 'Please select Male gender for $_selectedProfileFor';
     } else if ((_selectedProfileFor == 'Daughter' || _selectedProfileFor == 'Sister') && _gender != 'Female') {
       isValid = false;
       errorMessage = 'Please select Female gender for $_selectedProfileFor';
-    } else if ((_selectedProfileFor == 'Myself' || _selectedProfileFor == 'Friend' || _selectedProfileFor == 'Relative') &&
-        (_gender.isEmpty || _gender == '')) {
-      isValid = false;
-      errorMessage = 'Please select a gender for $_selectedProfileFor';
     }
 
     setState(() {
-      _isValid = isValid;
+      _hasValidationError = !isValid;
       _errorMessage = errorMessage;
     });
 
     return isValid;
   }
 
-  Widget _buildBigRadioOption(BuildContext context,
-      {required String title, required IconData icon, required String value}) {
-    final bool selected = _gender == value;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _gender = value;
-          _validateForm();
-        });
-        // update provider gender
-        context.read<SignupModel>().setGender(value);
-      },
-      child: Container(
-        margin: const EdgeInsets.all(5),
-        height: 60,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5C8C8).withOpacity(0.65),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.redAccent.withOpacity(0.12),
-              offset: const Offset(0, 6),
-              blurRadius: 12,
-            ),
-          ],
+  void _handleContinue() {
+    if (_validateForm()) {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const YourDetailsPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOutCubic;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var offsetAnimation = animation.drive(tween);
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
         ),
-        child: Row(
-          children: [
-            // circular icon background
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE53935), Color(0xFFEC407A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: RegistrationStepContainer(
+            onContinue: _handleContinue,
+            continueText: 'Continue',
+            canContinue: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with progress
+                RegistrationStepHeader(
+                  title: 'Introduce Yourself',
+                  subtitle: 'Let\'s start by getting to know who you are creating this profile for.',
+                  currentStep: 1,
+                  totalSteps: 11,
+                  onBack: () => Navigator.pop(context),
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.redAccent.withOpacity(0.16),
-                    offset: const Offset(0, 6),
-                    blurRadius: 8,
+
+                const SizedBox(height: 32),
+
+                // Illustration Card
+                Center(
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.1),
+                          AppColors.primaryLight.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowLight,
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/signup.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.favorite_rounded,
+                                size: 80,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Section: Profile For
+                SectionHeader(
+                  title: 'This Profile Is For',
+                  subtitle: 'Select who you are creating this profile for',
+                  icon: Icons.person_pin,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Profile selection chips
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _profileForOptions.map((option) {
+                    final bool selected = _selectedProfileFor == option['label'];
+                    return EnhancedChipOption(
+                      label: option['label'] as String,
+                      icon: option['icon'] as IconData,
+                      isSelected: selected,
+                      onTap: () {
+                        setState(() {
+                          _selectedProfileFor = option['label'] as String;
+                          _autoSelectGender();
+                          _hasValidationError = false;
+                        });
+
+                        // Update provider
+                        final model = context.read<SignupModel>();
+                        model.setProfileForId(_profileForMap[option['label']] ?? 1);
+                        if (_gender.isNotEmpty) {
+                          model.setGender(_gender);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Section: Gender
+                SectionHeader(
+                  title: 'Select Gender',
+                  subtitle: 'Choose the appropriate gender',
+                  icon: Icons.wc,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Gender selection
+                ..._genderOptions.map((option) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: EnhancedRadioOption<String>(
+                      label: option['label'] as String,
+                      icon: option['icon'] as IconData,
+                      value: option['value'] as String,
+                      groupValue: _gender,
+                      onChanged: (value) {
+                        setState(() {
+                          _gender = value ?? '';
+                          _hasValidationError = false;
+                        });
+                        // Update provider
+                        context.read<SignupModel>().setGender(value ?? '');
+                      },
+                    ),
+                  );
+                }).toList(),
+
+                // Error message
+                if (_hasValidationError && _errorMessage.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.error.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppColors.error,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage,
+                            style: const TextStyle(
+                              color: AppColors.error,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-              child: Center(
-                child: Icon(icon, color: Colors.white),
-              ),
-            ),
 
-            const SizedBox(width: 16),
+                const SizedBox(height: 24),
 
-            // title
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-
-            // radio circle
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? Colors.redAccent : Colors.black45,
-                  width: 1.5,
-                ),
-              ),
-              child: selected
-                  ? Center(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.redAccent,
+                // Info card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.secondary.withOpacity(0.1),
+                        AppColors.secondaryLight.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.secondary.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline,
+                          color: AppColors.secondary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Your information is secure and will only be visible to verified users.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              )
-                  : const SizedBox.shrink(),
+
+                const SizedBox(height: 24),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
