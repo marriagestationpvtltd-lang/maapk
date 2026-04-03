@@ -35,6 +35,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   List<ProposalModel> _pendingChatRequests = [];
   bool _requestsLoading = true;
+  int _totalUnreadCount = 0;
+  int _totalUnreadConversations = 0;
 
   @override
   void initState() {
@@ -443,24 +445,61 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return CallOverlayWrapper(
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFF075E54),
           elevation: 0,
-          title: const Text('Chat', style: TextStyle(color: Colors.black87)),
-
-          iconTheme: const IconThemeData(color: Colors.black87),
+          title: Row(
+            children: [
+              const Text('Chats', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              if (_totalUnreadConversations > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$_totalUnreadConversations',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
-        body: Column(
-          children: [
-            _buildChatRequestsSection(),
-            Container(
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: const Text('Your Chats', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-            ),
-            Expanded(
-              child: _buildChatListWithDebug(),
-            ),
-          ],
+        body: Container(
+          color: const Color(0xFFECE5DD),
+          child: Column(
+            children: [
+              _buildChatRequestsSection(),
+              if (_totalUnreadCount > 0)
+                Container(
+                  color: const Color(0xFF25D366).withOpacity(0.1),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.message, color: Color(0xFF25D366), size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$_totalUnreadCount unread messages in $_totalUnreadConversations conversations',
+                        style: const TextStyle(
+                          color: Color(0xFF075E54),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: _buildChatListWithDebug(),
+              ),
+            ],
+          ),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _debugFirebaseData,
@@ -490,16 +529,39 @@ class _ChatListScreenState extends State<ChatListScreen> {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF075E54)));
         }
 
         final chatRooms = snapshot.data!.docs;
 
+        // Calculate total unread count and conversations
+        int totalUnread = 0;
+        int unreadConversations = 0;
+        for (var chatRoom in chatRooms) {
+          final data = chatRoom.data() as Map<String, dynamic>;
+          final unreadCount = Map<String, int>.from(data['unreadCount'] ?? {});
+          final myUnread = unreadCount[userId] ?? 0;
+          totalUnread += myUnread;
+          if (myUnread > 0) unreadConversations++;
+        }
+
+        // Update state if changed
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && (_totalUnreadCount != totalUnread || _totalUnreadConversations != unreadConversations)) {
+            setState(() {
+              _totalUnreadCount = totalUnread;
+              _totalUnreadConversations = unreadConversations;
+            });
+          }
+        });
+
         // Build the list with pinned chats at top
-        return ListView.separated(
-          itemCount: chatRooms.length + 2, // +2 for Admin and AstroTalk pinned chats
-          separatorBuilder: (_, __) => const Divider(indent: 72, height: 0),
-          itemBuilder: (context, index) {
+        return Container(
+          color: Colors.white,
+          child: ListView.separated(
+            itemCount: chatRooms.length + 2, // +2 for Admin and AstroTalk pinned chats
+            separatorBuilder: (_, __) => const Divider(indent: 72, height: 1, color: Color(0xFFE0E0E0)),
+            itemBuilder: (context, index) {
             // First item: Admin Support (pinned)
             if (index == 0) {
               return _buildPinnedAdminChat();
@@ -609,15 +671,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
               },
               child: Container(
+                color: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    // Profile Image
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundImage: NetworkImage(
-                        "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg"
-                      ),
+                    // Profile Image with online status
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.grey[300],
+                          backgroundImage: NetworkImage(
+                            participantImages[otherParticipantId] ??
+                            "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg"
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(width: 12),
@@ -630,14 +699,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-
                               // Other Person's Name
                               Expanded(
                                 child: Text(
-                                  otherPersonName, // This should show "Uttam Acharya"
-                                  style: const TextStyle(
+                                  otherPersonName,
+                                  style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: (unreadCount[userId] ?? 0) > 0
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: Colors.black87,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -648,26 +719,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 formattedTime,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: (unreadCount[userId] ?? 0) > 0
+                                      ? const Color(0xFF25D366)
+                                      : Colors.grey[600],
+                                  fontWeight: (unreadCount[userId] ?? 0) > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
 
                           Row(
                             children: [
-
                               // Message Preview
                               Expanded(
                                 child: Text(
                                   messagePreview,
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[700],
+                                    color: (unreadCount[userId] ?? 0) > 0
+                                        ? Colors.black87
+                                        : Colors.grey[600],
                                     fontWeight: (unreadCount[userId] ?? 0) > 0
-                                        ? FontWeight.w600
+                                        ? FontWeight.w500
                                         : FontWeight.normal,
                                   ),
                                   maxLines: 1,
@@ -681,17 +758,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   margin: const EdgeInsets.only(left: 8),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 8,
-                                    vertical: 2,
+                                    vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF25D366),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
                                     '${unreadCount[userId]}',
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
