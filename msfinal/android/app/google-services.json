@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "257951661233",
+    "firebase_url": "https://digitallami1-default-rtdb.firebaseio.com",
+    "project_id": "digitallami1",
+    "storage_bucket": "digitallami1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257951661233:android:d2224f58389ceacc407690",
+        "android_client_info": {
+          "package_name": "com.Marriage.Station"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "257951661233-oe1utlnq76julbk4q96ib3l0v8kjdvq1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtajZVIzbj6hPmHI75FQnpLV2AoAkDVIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "257951661233-oe1utlnq76julbk4q96ib3l0v8kjdvq1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257951661233:android:c92a05bb28e1beb6407690",
+        "android_client_info": {
+          "package_name": "com.digitallami.appz"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "257951661233-oe1utlnq76julbk4q96ib3l0v8kjdvq1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtajZVIzbj6hPmHI75FQnpLV2AoAkDVIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "257951661233-oe1utlnq76julbk4q96ib3l0v8kjdvq1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

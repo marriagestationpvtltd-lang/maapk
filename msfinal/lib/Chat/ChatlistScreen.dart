@@ -1,0 +1,608 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../Auth/Screen/signupscreen10.dart';
+import '../Models/chatservice.dart';
+import '../Models/masterdata.dart';
+import '../Package/PackageScreen.dart';
+import '../online/onlineservice.dart';
+import '../service/Service_chat.dart';
+import 'ChatdetailsScreen.dart';
+import 'adminchat.dart';
+
+class ChatListScreen extends StatefulWidget {
+  ChatListScreen({super.key});
+
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+  String usertye = '';
+  String userimage = '';
+  var pageno;
+  String userId = '';
+  String name = '';
+  bool isLoading = true;
+  String docstatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    OnlineStatusService().start();
+
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+
+      if (userDataString == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final userData = jsonDecode(userDataString);
+      final rawId = userData["id"];
+      final userIdString = rawId.toString().trim();
+
+      UserMasterData user = await fetchUserMasterData(userIdString);
+
+      if (mounted) {
+        setState(() {
+          usertye = user.usertype;
+          userimage = user.profilePicture;
+          pageno = user.pageno;
+          userId = user.id?.toString() ?? userIdString;
+          name = user.firstName;
+          isLoading = false;
+          docstatus = user.docStatus;
+        });
+      }
+
+      print('=== USER DATA LOADED ===');
+      print('userId: $userId');
+      print('name: $name');
+
+    } catch (e) {
+      print('Error loading user data: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Future<UserMasterData> fetchUserMasterData(String userId) async {
+    final url = Uri.parse(
+      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
+    );
+
+    final response = await http.get(url);
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed: ${response.statusCode}");
+    }
+
+    final res = json.decode(response.body);
+
+    if (res['success'] != true) {
+      throw Exception(res['message'] ?? "API error");
+    }
+
+    return UserMasterData.fromJson(res['data']);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Chat', style: TextStyle(color: Colors.black87)),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (userId.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Chat', style: TextStyle(color: Colors.black87)),
+        ),
+        body: const Center(
+          child: Text('Unable to load user data'),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Chat', style: TextStyle(color: Colors.black87)),
+
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
+      body: Column(
+        children: [
+          _buildTopIcons(),
+          const Divider(height: 1),
+          Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: const Text('Your Chat', style: TextStyle(color: Colors.black54)),
+          ),
+          Expanded(
+            child: _buildChatListWithDebug(),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _debugFirebaseData,
+        child: const Icon(Icons.bug_report),
+      ),
+    );
+  }
+
+  Widget _buildChatListWithDebug() {
+    final FirebaseService _firebaseService = FirebaseService();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firebaseService.getUserChatRooms(userId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text('Error: ${snapshot.error}'),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final chatRooms = snapshot.data!.docs;
+
+        if (chatRooms.isEmpty) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text(
+                'No chats yet',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ],
+          );
+        }
+
+        return ListView.separated(
+          itemCount: chatRooms.length,
+          separatorBuilder: (_, __) => const Divider(indent: 72, height: 0),
+          itemBuilder: (context, index) {
+            final chatRoom = chatRooms[index];
+            final data = chatRoom.data() as Map<String, dynamic>;
+
+            final participants = List<String>.from(data['participants'] ?? []);
+            final participantNames = Map<String, String>.from(data['participantNames'] ?? {});
+            final participantImages = Map<String, String>.from(data['participantImages'] ?? {});
+            final unreadCount = Map<String, int>.from(data['unreadCount'] ?? {});
+            final lastMessage = data['lastMessage'] ?? '';
+            final lastMessageTime = (data['lastMessageTime'] as Timestamp).toDate();
+            final lastMessageType = data['lastMessageType'] ?? 'text';
+            final lastMessageSenderId = data['lastMessageSenderId'] ?? '';
+
+            print('\n=== Building Chat Item $index ===');
+            print('Participants: $participants');
+            print('Participant Names: $participantNames');
+            print('My userId: $userId');
+            print('My name from master data: $name');
+
+            // Find the OTHER participant (not me)
+            String otherParticipantId = '';
+            String otherPersonName = '';
+
+            for (var participantId in participants) {
+              if (participantId.trim() != userId.trim()) {
+                otherParticipantId = participantId;
+
+                // Get name from Firebase data
+                otherPersonName = participantNames[otherParticipantId] ?? 'Unknown';
+
+                // DEBUG: Check if the name matches what we expect
+                print('Found other participant: ID=$otherParticipantId, Name from Firebase=$otherPersonName');
+
+                break;
+              }
+            }
+
+            // If no other participant found, show error
+            if (otherParticipantId.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: const Text(
+                  'Error: Could not find other participant',
+                  style: TextStyle(color: Colors.red),
+                ),
+              );
+            }
+
+            // Determine if last message was sent by me
+            final isLastMessageFromMe = lastMessageSenderId == userId;
+
+            // Prepare message preview
+            String messagePreview = '';
+
+            if (lastMessageType == 'image') {
+              messagePreview = isLastMessageFromMe ? 'You: 📷 Photo' : '📷 Photo';
+            } else if (lastMessageType == 'voice') {
+              messagePreview = isLastMessageFromMe ? 'You: 🎤 Voice message' : '🎤 Voice message';
+            } else {
+              messagePreview = isLastMessageFromMe ? 'You: $lastMessage' : lastMessage;
+            }
+
+            // Format time
+            String formattedTime = DateFormat('hh:mm a').format(lastMessageTime);
+
+            return InkWell(
+              onTap: () {
+                print('\n=== NAVIGATING TO CHAT ===');
+                print('My ID: $userId, My Name: $name');
+                print('Other Person ID: $otherParticipantId, Other Person Name: $otherPersonName');
+                if (docstatus == "approved" && usertye == "paid") {   Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatDetailScreen(
+                      chatRoomId: data['chatRoomId'] ?? chatRoom.id,
+                      receiverId: otherParticipantId,
+                      receiverName: otherPersonName, // Use name from Firebase
+                      receiverImage: participantImages[otherParticipantId] ??
+                          'https://via.placeholder.com/150',
+                      currentUserId: userId,
+                      currentUserName: name, // Your name from master data
+                      currentUserImage: userimage,
+                    ),
+                  ),
+                );}
+                if (docstatus == "not_uploaded" && usertye == 'free') {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen()));
+                }
+                if (usertye == "free" && docstatus == 'approved') {
+                  showUpgradeDialog(context);
+                }
+
+
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    // Profile Image
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: NetworkImage(
+                        "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg"
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Chat Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+
+                              // Other Person's Name
+                              Expanded(
+                                child: Text(
+                                  otherPersonName, // This should show "Uttam Acharya"
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                              // Time
+                              Text(
+                                formattedTime,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          Row(
+                            children: [
+
+                              // Message Preview
+                              Expanded(
+                                child: Text(
+                                  messagePreview,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                    fontWeight: (unreadCount[userId] ?? 0) > 0
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                              // Unread Count Badge
+                              if ((unreadCount[userId] ?? 0) > 0)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF25D366),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${unreadCount[userId]}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Debug function to check Firebase data
+  Future<void> _debugFirebaseData() async {
+    print('\n=== DEBUG FIREBASE DATA ===');
+    print('Current User ID: $userId');
+    print('Current User Name: $name');
+
+    try {
+      final chatRooms = await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      print('Total chat rooms found: ${chatRooms.docs.length}');
+
+      for (var doc in chatRooms.docs) {
+        final data = doc.data();
+        print('\n--- Chat Room: ${doc.id} ---');
+        print('Participants: ${data['participants']}');
+        print('Participant Names: ${data['participantNames']}');
+        print('Last Message: "${data['lastMessage']}"');
+        print('Last Message Type: ${data['lastMessageType']}');
+        print('Last Message Sender ID: "${data['lastMessageSenderId']}"');
+        print('Unread Count: ${data['unreadCount']}');
+
+        // Check who is who
+        final participants = List<String>.from(data['participants'] ?? []);
+        for (var participant in participants) {
+          print('  Participant $participant: ${data['participantNames']?[participant]}');
+        }
+      }
+    } catch (e) {
+      print('Error debugging: $e');
+    }
+  }
+
+  Widget _buildTopIcons() {
+    Widget single(String label, IconData icon) {
+      return Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE84C3D), Color(0xFFEE6A7B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black12)],
+            ),
+            child: Icon(icon, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 12))
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+              children: [
+            GestureDetector(
+              onTap: (){
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminChatScreen(senderID: userId, userName: "Admin",),));
+              },
+                child: single('Admin\nSupport', Icons.support_agent)),
+            const SizedBox(width: 12),
+                GestureDetector(
+                    onTap: (){
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceChatPage(senderId: userId, receiverId: '2', name: 'MS:', exp: '5 years', cat: 'jyotish',),));
+                    },
+                    child: single('Astro Talk', Icons.workspaces_rounded)),
+
+          ]),
+
+        ],
+      ),
+    );
+  }
+
+  void showUpgradeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFff0000),
+                  Color(0xFF2575FC),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Title
+                const Text(
+                  "Upgrade to Chat",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Description
+                const Text(
+                  "Unlock unlimited messaging and premium chat features by upgrading your plan.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Buttons
+                Row(
+                  children: [
+                    // Skip Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          "Skip",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Upgrade Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => SubscriptionPage(),));
+                          // Navigate to upgrade screen
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          "Upgrade",
+                          style: TextStyle(
+                            color: Color(0xFFff0000),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+}

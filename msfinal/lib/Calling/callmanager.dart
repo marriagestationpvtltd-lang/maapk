@@ -1,0 +1,66 @@
+// call_manager.dart
+import 'dart:async';
+import 'package:flutter/material.dart';
+
+class CallManager {
+  static final CallManager _instance = CallManager._internal();
+  factory CallManager() => _instance;
+  CallManager._internal();
+
+  // Stream for incoming calls
+  final StreamController<Map<String, dynamic>> _incomingCallController = StreamController.broadcast();
+  Stream<Map<String, dynamic>> get incomingCalls => _incomingCallController.stream;
+
+  // Stream for call responses
+  final StreamController<Map<String, dynamic>> _callResponseController = StreamController.broadcast();
+  Stream<Map<String, dynamic>> get callResponses => _callResponseController.stream;
+
+  // Current active call data
+  Map<String, dynamic>? _currentCallData;
+  Timer? _callTimeoutTimer;
+
+  // Trigger incoming call
+  void triggerIncomingCall(Map<String, dynamic> data) {
+    print('📱 CallManager: Incoming call triggered: $data');
+    _currentCallData = data;
+    _incomingCallController.add(data);
+
+    // Auto-reject after 60 seconds if not answered
+    _callTimeoutTimer = Timer(const Duration(seconds: 60), () {
+      if (_currentCallData != null) {
+        print('⏰ CallManager: Call timeout');
+        _currentCallData = null;
+      }
+    });
+  }
+
+  // Trigger call response
+  void triggerCallResponse(Map<String, dynamic> data) {
+    print('📱 CallManager: Call response triggered: $data');
+    _callResponseController.add(data);
+
+    // Clear current call data if rejected
+    if (data['type'] == 'call_response' && data['accepted'] == 'false') {
+      _currentCallData = null;
+    }
+  }
+
+  // Get current call data
+  Map<String, dynamic>? get currentCallData => _currentCallData;
+
+  // Clear call data
+  void clearCallData() {
+    _currentCallData = null;
+    _callTimeoutTimer?.cancel();
+    _callTimeoutTimer = null;
+  }
+
+  // Check if there's an active incoming call
+  bool hasActiveIncomingCall() => _currentCallData != null;
+
+  void dispose() {
+    _incomingCallController.close();
+    _callResponseController.close();
+    _callTimeoutTimer?.cancel();
+  }
+}
