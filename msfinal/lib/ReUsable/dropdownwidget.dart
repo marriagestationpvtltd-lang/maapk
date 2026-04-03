@@ -61,6 +61,7 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
   }
 
   void _openBottomSheet() {
+    FocusScope.of(context).unfocus();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

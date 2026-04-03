@@ -284,6 +284,7 @@ class EnhancedDropdown<T> extends StatelessWidget {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<T>(
                 value: value,
+                onTap: () => FocusScope.of(context).unfocus(),
                 hint: Text(
                   hint ?? 'Select $label',
                   style: const TextStyle(

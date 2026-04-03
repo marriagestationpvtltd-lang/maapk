@@ -729,9 +729,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
       builder: (context, model, child) {
         return Scaffold(
           backgroundColor: AppColors.background,
-          // Keyboard should not resize the scaffold — the action buttons stay at
-          // the bottom and the scroll area handles the keyboard inset independently.
-          resizeToAvoidBottomInset: false,
+          resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,

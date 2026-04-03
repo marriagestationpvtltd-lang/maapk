@@ -233,7 +233,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,

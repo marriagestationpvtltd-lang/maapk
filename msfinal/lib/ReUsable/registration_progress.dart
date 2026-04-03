@@ -309,13 +309,6 @@ class RegistrationStepContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Capture the keyboard inset at build time so the scroll area can always
-    // be scrolled to reveal any field that would otherwise be hidden behind
-    // the software keyboard.  The action buttons intentionally stay at the
-    // screen bottom and are covered by the keyboard — this keeps the content
-    // area focused and uncluttered while the keyboard is open.
-    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-
     return Consumer<SignupModel>(
       builder: (context, model, _) {
         return WillPopScope(
@@ -332,16 +325,14 @@ class RegistrationStepContainer extends StatelessWidget {
                 child: SingleChildScrollView(
                   controller: scrollController,
                   physics: scrollPhysics ?? const ClampingScrollPhysics(),
-                  // The extra bottom padding lets the user scroll the last
-                  // field above the keyboard so it is always reachable.
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + keyboardInset),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                   child: child,
                 ),
               ),
 
               // ---------------------------------------------------------------
-              // Action buttons — these stay fixed at the bottom of the screen.
-              // The keyboard slides over them; they are not pushed upward.
+              // Action buttons — always visible above the keyboard because the
+              // Scaffold uses resizeToAvoidBottomInset: true.
               // ---------------------------------------------------------------
               Container(
                 padding: const EdgeInsets.all(20),
