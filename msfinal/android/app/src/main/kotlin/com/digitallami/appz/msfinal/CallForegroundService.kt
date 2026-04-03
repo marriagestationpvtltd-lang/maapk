@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import io.flutter.Log
+import java.util.concurrent.TimeUnit
 
 class CallForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
@@ -201,7 +202,7 @@ class CallForegroundService : Service() {
         ).apply {
             // Hold the CPU for up to 60 minutes so long calls survive screen lock/background,
             // while still guaranteeing the lock is released even if cleanup is missed.
-            acquire(60 * 60 * 1000L)
+            acquire(TimeUnit.HOURS.toMillis(1))
             Log.d(TAG, "WakeLock acquired")
         }
     }
@@ -246,7 +247,6 @@ class CallForegroundService : Service() {
         }
 
         audioManager?.mode = AudioManager.MODE_NORMAL
-        audioManager?.isMicrophoneMute = false
         audioFocusRequest = null
     }
 
