@@ -186,7 +186,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
       setState(() => _isLoadingShortlist = true);
 
-      final url = Uri.parse('http://digitallami.com/Api2/likelist.php?user_id=$userId');
+      final url = Uri.https('digitallami.com', '/Api2/likelist.php', {'user_id': userId});
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
