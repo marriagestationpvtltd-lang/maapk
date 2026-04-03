@@ -1857,10 +1857,10 @@ String usertye = '';
                       left: 0,
                       right: 0,
                       child: Container(
-                        height: 80,
+                        height: 90,
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.transparent, Colors.black87],
+                            colors: [Colors.transparent, Colors.black],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
@@ -1883,7 +1883,10 @@ String usertye = '';
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                               shadows: [
-                                Shadow(color: Colors.black45, blurRadius: 4)
+                                Shadow(
+                                    color: Colors.black87,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 1))
                               ],
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -1892,13 +1895,13 @@ String usertye = '';
                             Row(
                               children: [
                                 const Icon(Icons.location_on,
-                                    size: 10, color: Colors.white70),
+                                    size: 12, color: Colors.white70),
                                 const SizedBox(width: 2),
                                 Expanded(
                                   child: Text(
                                     city,
                                     style: const TextStyle(
-                                        fontSize: 10, color: Colors.white70),
+                                        fontSize: 11, color: Colors.white70),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
