@@ -79,10 +79,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   void initState() {
     super.initState();
     _loadUserImage();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-      // Auto-focus removed - users will click when ready to type
-    });
+    // Initial scroll and keyboard focus will be handled after messages load
 
 // Automatically send profile card if provided (optional)
     if (widget.initialProfileData != null && !_profileCardSent) {
@@ -1306,6 +1303,14 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       setState(() {
                         _isFirstLoad = false;
+                      });
+                      // Scroll to bottom after messages are loaded
+                      _scrollToBottom();
+                      // Auto-focus keyboard after scroll completes
+                      Future.delayed(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          _messageFocusNode.requestFocus();
+                        }
                       });
                     });
                   }

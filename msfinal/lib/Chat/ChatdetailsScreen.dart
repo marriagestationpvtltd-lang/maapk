@@ -166,13 +166,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-      // Auto-focus keyboard when chat opens
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _messageFocusNode.requestFocus();
-        }
-      });
+      // Scroll and keyboard focus will be handled after messages are loaded
     });
 
     _checkBlockStatus(); // Add this line
