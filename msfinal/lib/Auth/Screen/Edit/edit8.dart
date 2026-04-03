@@ -2131,7 +2131,12 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
         return;
       }
 
-      final userData = jsonDecode(userDataString) as Map<String, dynamic>;
+      final decodedUserData = jsonDecode(userDataString);
+      if (decodedUserData is! Map<String, dynamic>) {
+        return;
+      }
+
+      final userData = decodedUserData;
       final userId = userData["id"]?.toString() ?? '';
 
       if (userId.isEmpty) {
