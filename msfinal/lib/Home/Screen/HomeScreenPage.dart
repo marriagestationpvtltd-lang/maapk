@@ -76,6 +76,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
   int userid = 0;
   String _userId = '';
+  String docstatus = 'not_uploaded';
 
   bool _isCheckingStatus = false;
 
@@ -171,7 +172,10 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       }
     } catch (e) {
       debugPrint('Failed to load notification count: $e');
-    } async {
+    }
+  }
+
+  Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
     // Clear cache so fresh data is fetched
     _cache.clear();
@@ -610,7 +614,7 @@ String usertye = '';
           appBar: _buildAppBar(),
           body: RefreshIndicator(
             color: const Color(0xFFF90E18),
-            onRefresh: _refreshAllData,
+            onRefresh: _refreshData,
             child: ShimmerLoading(
               isLoading: _isRefreshing,
               child: SingleChildScrollView(
