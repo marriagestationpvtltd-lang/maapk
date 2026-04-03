@@ -427,6 +427,19 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
+  String _searchTypeShortLabel(QuickSearchType type) {
+    switch (type) {
+      case QuickSearchType.phone:
+        return 'Phone';
+      case QuickSearchType.id:
+        return 'ID';
+      case QuickSearchType.email:
+        return 'Email';
+      case QuickSearchType.name:
+        return 'Name';
+    }
+  }
+
   String _searchTypeHint(QuickSearchType type) {
     switch (type) {
       case QuickSearchType.phone:
@@ -646,7 +659,7 @@ class _SearchPageState extends State<SearchPage>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _searchTypeLabel(type).split(' ').first,
+                          _searchTypeShortLabel(type),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
