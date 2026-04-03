@@ -14,7 +14,6 @@ import '../Package/PackageScreen.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import 'modelfile.dart';
-import 'package.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -27,6 +26,7 @@ ProfileScreen({super.key, required this.userId,});
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const String _requestBaseUrl = 'https://digitallami.com/request';
 
   bool _isBlocked = false;
   bool _isLoadingBlock = false;
@@ -271,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final myId = userData["id"].toString();
 
       final response = await http.post(
-        Uri.parse("https://digitallami.com/request/add_profile_view.php"),
+        Uri.parse("$_requestBaseUrl/add_profile_view.php"),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -282,17 +282,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       final result = jsonDecode(response.body);
-
-      print("Profile view response: $result");
+      debugPrint("Profile view response: $result");
 
     } catch (e) {
-      print("Error adding profile view: $e");
+      debugPrint("Error adding profile view: $e");
     }
   }
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
+      "${ProfileService.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);
@@ -339,12 +338,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
 
-      print('=== USER DATA LOADED ===');
-      print('userId: $userId');
-      print('name: $name');
-
     } catch (e) {
-      print('Error loading user data: $e');
+      debugPrint('Error loading user data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -382,9 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         final userProfile = Provider.of<UserProfile>(context, listen: false);
-        userProfile.updateFromResponse(profileResponse);
-        userProfile.otherMatchedProfiles = matchedProfiles;
-        userProfile.notifyListeners();
+        userProfile.updateProfileData(profileResponse, matchedProfiles);
       }
     } catch (e) {
       debugPrint('Error loading profile data: $e');
@@ -624,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PackageScreen(),
+                    builder: (context) => const SubscriptionPage(),
                   ),
                 );
               },
@@ -637,8 +630,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handlePhotoRequest(BuildContext context) async {
-    final userProfile = Provider.of<UserProfile>(context, listen: false);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -679,28 +670,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pop(context); // Remove loading
 
                   if (result['status'] == 'success') {
+                    await _refreshProfile(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Photo request sent successfully!'),
                         backgroundColor: Colors.green,
                       ),
                     );
-
-                    // Refresh profile data
-                    _refreshProfile(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Photo request sent successfully!'),
-                        backgroundColor: Colors.green,
+                      SnackBar(
+                        content: Text(
+                          result['message']?.toString().isNotEmpty == true
+                              ? result['message'].toString()
+                              : 'Unable to send photo request right now.',
+                        ),
+                        backgroundColor: Colors.red,
                       ),
                     );
-                   // throw Exception(result['message']);
                   }
                 } catch (e) {
                   Navigator.pop(context); // Remove loading
-
-
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to send photo request: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
               child: Text(
@@ -715,8 +711,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleChatRequest(BuildContext context) async {
-    final userProfile = Provider.of<UserProfile>(context, listen: false);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -757,29 +751,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pop(context); // Remove loading
 
                   if (result['status'] == 'success') {
+                    await _refreshProfile(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Chat request sent successfully!'),
                         backgroundColor: Colors.green,
                       ),
                     );
-
-                    // Refresh profile data
-                    _refreshProfile(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chat request sent successfully!'),
-                        backgroundColor: Colors.green,
+                      SnackBar(
+                        content: Text(
+                          result['message']?.toString().isNotEmpty == true
+                              ? result['message'].toString()
+                              : 'Unable to send chat request right now.',
+                        ),
+                        backgroundColor: Colors.red,
                       ),
                     );
                   }
                 } catch (e) {
                   Navigator.pop(context); // Remove loading
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chat request sent successfully!'),
-                      backgroundColor: Colors.green,
+                    SnackBar(
+                      content: Text('Failed to send chat request: $e'),
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -802,23 +798,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final myid = int.tryParse(userData["id"].toString());
     try {
       final service = ProfileService();
-
-      // Fetch main profile
-      final response = await service.fetchProfile(
-        myId: myid,
-        userId: widget.userId,
-      );
-
-      // Fetch matched profiles
-      final matchedProfiles = await service.fetchMatchedProfiles(
-        userId: myid.toString(), // Current user ID
-      );
+      final results = await Future.wait([
+        service.fetchProfile(
+          myId: myid,
+          userId: widget.userId,
+        ),
+        service.fetchMatchedProfiles(
+          userId: myid.toString(),
+        ),
+      ]);
+      final response = results[0] as ProfileResponse;
+      final matchedProfiles = results[1] as List<MatchedProfile>;
 
       // Update the profile with both sets of data
       final userProfile = Provider.of<UserProfile>(context, listen: false);
-      userProfile.updateFromResponse(response);
-      userProfile.otherMatchedProfiles = matchedProfiles;
-      userProfile.notifyListeners();
+      userProfile.updateProfileData(response, matchedProfiles);
 
       debugPrint('✅ Loaded ${matchedProfiles.length} matched profiles');
 
@@ -1968,7 +1962,7 @@ class _ContactInfoSection extends StatelessWidget {
                           Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const PackageScreen(),
+                                builder: (context) => const SubscriptionPage(),
                               )
                           );
                         },
@@ -2380,19 +2374,9 @@ class _ContactInfoSection extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-              print('\n=== NAVIGATING TO CHAT ===');
-              print('Current User ID: $currentUserId');
-              print('Current User Name: $currentUserName');
-              print('Other Person ID: $userId');
-              print('Other Person Name: $userName');
-              print('Document Status: $docStatus');
-              print('User Type: $userType');
-
               // ✅ VERIFIED DOCUMENT AND PAID MEMBER → Can chat
               if (docStatus == "approved" && userType == "paid") {
                 try {
-                  print('✅ Access granted: Verified document + Paid member');
-
                   // 🔥 Generate chatRoomId (sorted)
                   List<String> ids = [currentUserId, userId];
                   ids.sort();
@@ -2445,19 +2429,19 @@ class _ContactInfoSection extends StatelessWidget {
                             : "User $userId",
                         receiverImage: userProfile.avatarUrl.isNotEmpty
                             ? userProfile.avatarUrl
-                            : 'https://via.placeholder.com/150',
+                            : '',
                         currentUserId: currentUserId,
                         currentUserName: currentUserName.isNotEmpty
                             ? currentUserName
                             : "User $currentUserId",
                         currentUserImage: currentUserImage.isNotEmpty
                             ? currentUserImage
-                            : 'https://via.placeholder.com/150',
+                            : '',
                       ),
                     ),
                   );
                 } catch (e) {
-                  print("❌ Error navigating to chat: $e");
+                  debugPrint("Error navigating to chat: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Failed to open chat"),
@@ -2469,7 +2453,6 @@ class _ContactInfoSection extends StatelessWidget {
 
               // ❌ DOCUMENT NOT UPLOADED AND FREE MEMBER → Show ID Verification
               else if (docStatus == "not_uploaded" && userType == 'free') {
-                print('⚠️ Access denied: Document not uploaded + Free member');
                 Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -2480,31 +2463,26 @@ class _ContactInfoSection extends StatelessWidget {
 
               // ❌ FREE MEMBER BUT DOCUMENT APPROVED → Show Upgrade Dialog
               else if (userType == "free" && docStatus == 'approved') {
-                print('⚠️ Access denied: Free member with verified document - Show upgrade dialog');
                 _showUpgradeChatDialog(context);
               }
 
               // ❌ PAID MEMBER BUT DOCUMENT NOT APPROVED → Show Document Verification
               else if (userType == "paid" && docStatus != 'approved') {
-                print('⚠️ Access denied: Paid member but document not verified');
                 _showDocumentVerificationDialog(context);
               }
 
               // ❌ DOCUMENT PENDING → Show Pending Status
               else if (docStatus == "pending") {
-                print('⚠️ Access denied: Document verification pending');
                 _showDocumentPendingDialog(context);
               }
 
               // ❌ DOCUMENT REJECTED → Show Re-upload Option
               else if (docStatus == "rejected") {
-                print('⚠️ Access denied: Document rejected');
                 _showDocumentRejectedDialog(context);
               }
 
               // ❌ ANY OTHER CASE → Default to Upgrade
               else {
-                print('⚠️ Access denied: Unknown status - Show upgrade dialog');
                 _showUpgradeChatDialog(context);
               }
             },
@@ -3004,6 +2982,10 @@ class _MatchOverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final int percentage = totalPreferencesCount > 0
+        ? ((matchedPreferencesCount / totalPreferencesCount) * 100).round()
+        : 0;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -3033,7 +3015,7 @@ class _MatchOverviewSection extends StatelessWidget {
               const SizedBox(width: 16),
               Flexible(
                 child: Text(
-                  "$matchedPreferencesCount/$totalPreferencesCount Of Preferences Match",
+                  "$percentage% match • $matchedPreferencesCount of $totalPreferencesCount preferences",
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
@@ -3162,6 +3144,7 @@ class _OtherMatchedProfilesSection extends StatelessWidget {
                   profile: profile,
                   red: red,
                   gradient: gradient,
+                  isNewMember: index < 3,
                 );
               },
             ),
@@ -3409,11 +3392,13 @@ class _MatchedProfileCard extends StatelessWidget {
   final MatchedProfile profile;
   final Color red;
   final LinearGradient gradient;
+  final bool isNewMember;
 
   const _MatchedProfileCard({
     required this.profile,
     required this.red,
     required this.gradient,
+    this.isNewMember = false,
   });
 
   @override
@@ -3466,7 +3451,7 @@ class _MatchedProfileCard extends StatelessWidget {
                     height: 120,
                     width: double.infinity,
                     color: Colors.grey.shade300,
-                    child: profile.imageUrl != "https://via.placeholder.com/150"
+                    child: profile.imageUrl.isNotEmpty
                         ? Image.network(
                       profile.imageUrl,
                       fit: BoxFit.cover,
@@ -3506,6 +3491,27 @@ class _MatchedProfileCard extends StatelessWidget {
                   ),
                 ),
               ),
+
+              if (isNewMember)
+                Positioned(
+                  top: 38,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'New',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
 
               // Verified Badge
               if (profile.isVerifiedBool)
@@ -3565,7 +3571,7 @@ class _MatchedProfileCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Text(
-                    "MS: ${profile.userid} ${profile.lastName}",
+                    "MS: ${profile.memberid?.isNotEmpty == true ? profile.memberid : profile.userid} ${profile.name}",
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,

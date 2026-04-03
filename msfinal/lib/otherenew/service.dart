@@ -49,7 +49,7 @@ class ProfileService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/block_user.php'),
+        Uri.parse('$baseUrl/block_user.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'my_id': myId,
@@ -69,7 +69,7 @@ class ProfileService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/unblock_user.php'),
+        Uri.parse('$baseUrl/unblock_user.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'my_id': myId,
@@ -89,7 +89,7 @@ class ProfileService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/check_block_status.php'),
+        Uri.parse('$baseUrl/check_block_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'my_id': myId,
@@ -109,7 +109,7 @@ class ProfileService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/get_blocked_users.php'),
+        Uri.parse('$baseUrl/get_blocked_users.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'my_id': myId,
@@ -144,9 +144,15 @@ class ProfileService {
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> matchedUsersJson = jsonResponse['matched_users'] ?? [];
-          return matchedUsersJson
+          final matchedProfiles = matchedUsersJson
               .map((json) => MatchedProfile.fromJson(json))
               .toList();
+          matchedProfiles.sort((a, b) {
+            final matchCompare = b.matchPercent.compareTo(a.matchPercent);
+            if (matchCompare != 0) return matchCompare;
+            return b.userid.compareTo(a.userid);
+          });
+          return matchedProfiles;
         } else {
           return [];
         }
@@ -173,18 +179,24 @@ class ProfileService {
         body: {
           'myid': myId,
           'userid': userId,
-          'request_type':"Photo"
+          'request_type': 'Photo'
         },
       );
 
-      if (response.request == 200) {
-        return json.decode(response.body);
-      } else {
-        return {'sent': '', '': 'Sent'};
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(json.decode(response.body));
       }
+
+      return {
+        'status': 'error',
+        'message': 'Failed to send photo request',
+      };
     } catch (e) {
-      debugPrint('❌ Error sending photo request: ');
-      return {'': '', '': '='};
+      debugPrint('❌ Error sending photo request: $e');
+      return {
+        'status': 'error',
+        'message': e.toString(),
+      };
     }
   }
 
@@ -205,14 +217,20 @@ class ProfileService {
         },
       );
 
-      if (response.request == 'success') {
-        return json.decode(response.body);
-      } else {
-        return {'': '', '': 'Sent'};
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(json.decode(response.body));
       }
+
+      return {
+        'status': 'error',
+        'message': 'Failed to send chat request',
+      };
     } catch (e) {
-     // debugPrint('❌ Error sending chat request:');
-      return {'': '', '': ''};
+      debugPrint('❌ Error sending chat request: $e');
+      return {
+        'status': 'error',
+        'message': e.toString(),
+      };
     }
   }
 

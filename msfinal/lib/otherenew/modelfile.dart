@@ -129,9 +129,9 @@ class MatchedProfile {
   String get profession => designation.isNotEmpty ? designation : "Not specified";
   String get maritalStatus => "Not specified"; // Not in API
   String get qualification => "Not specified"; // Not in API
-  String get imageUrl => profilePicture != null
+  String get imageUrl => profilePicture != null && profilePicture!.isNotEmpty
       ? "https://digitallami.com/Api2/$profilePicture"
-      : "https://via.placeholder.com/150"; // Placeholder for null images
+      : '';
 
   bool get isVerifiedBool => isVerified == 1;
 
@@ -826,7 +826,11 @@ class UserProfile extends ChangeNotifier {
   });
 
   // Computed getters for UI
-  String get name => "${profileResponse?.data.personalDetail.lastName ?? ''}".trim();
+  String get name {
+    final firstName = profileResponse?.data.personalDetail.firstName ?? '';
+    final lastName = profileResponse?.data.personalDetail.lastName ?? '';
+    return '$firstName $lastName'.trim();
+  }
 
   String get studentStatus {
     final educationType = profileResponse?.data.personalDetail.educationtype ?? '';
@@ -1027,10 +1031,84 @@ class UserProfile extends ChangeNotifier {
   /// Factory constructor to create UserProfile from API response
   factory UserProfile.fromResponse(ProfileResponse response) {
     final personalDetail = response.data.personalDetail;
+    final familyDetail = response.data.familyDetail;
     final lifestyle = response.data.lifestyle;
     final partner = response.data.partner;
     final partnerMatch = response.partnerMatch;
     final accessControl = response.accessControl;
+
+    String normalize(dynamic value) {
+      return value
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replaceAll(RegExp(r'\s+'), ' ');
+    }
+
+    bool isAnyValue(dynamic value) {
+      final normalized = normalize(value);
+      return normalized.isEmpty ||
+          normalized == 'any' ||
+          normalized == 'all' ||
+          normalized == 'not available' ||
+          normalized == 'not specified';
+    }
+
+    bool matchesPreference({
+      required String key,
+      required dynamic preferenceValue,
+      required dynamic actualValue,
+    }) {
+      final apiValue = partnerMatch.details[key];
+      if (apiValue != null) return apiValue;
+      if (isAnyValue(preferenceValue)) return true;
+
+      final normalizedPreference = normalize(preferenceValue);
+      final normalizedActual = normalize(actualValue);
+      if (normalizedActual.isEmpty) return false;
+
+      final options = normalizedPreference
+          .split(RegExp(r'[,/|]'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+
+      if (options.isEmpty) {
+        return normalizedActual == normalizedPreference ||
+            normalizedActual.contains(normalizedPreference) ||
+            normalizedPreference.contains(normalizedActual);
+      }
+
+      return options.any((option) =>
+          normalizedActual == option ||
+          normalizedActual.contains(option) ||
+          option.contains(normalizedActual));
+    }
+
+    bool matchesAgeRange() {
+      final apiValue = partnerMatch.details['age'];
+      if (apiValue != null) return apiValue;
+
+      final minAge = int.tryParse(partner.minage.toString());
+      final maxAge = int.tryParse(partner.maxage.toString());
+      if (minAge == null || maxAge == null) return true;
+
+      final age = int.tryParse(personalDetail.birthDate.split('-').first);
+      if (age != null && age > 18 && age < 100) {
+        return age >= minAge && age <= maxAge;
+      }
+
+      final birthDate = DateTime.tryParse(personalDetail.birthDate);
+      if (birthDate == null) return false;
+
+      final now = DateTime.now();
+      var computedAge = now.year - birthDate.year;
+      final hadBirthday = now.month > birthDate.month ||
+          (now.month == birthDate.month && now.day >= birthDate.day);
+      if (!hadBirthday) computedAge--;
+
+      return computedAge >= minAge && computedAge <= maxAge;
+    }
 
     // Build contact info based on access control
     final contactInfo = <ContactInfoItem>[];
@@ -1256,91 +1334,147 @@ class UserProfile extends ChangeNotifier {
         icon: Icons.cake,
         title: "Age Range",
         value: "${partner.minage} to ${partner.maxage}",
-        matched: partnerMatch.details['age'] ?? false,
+        matched: matchesAgeRange(),
       ),
       PartnerPreferenceItem(
         icon: Icons.menu_book,
         title: "Religion",
         value: partner.religion.isNotEmpty ? partner.religion : "Any",
-        matched: partnerMatch.details['religion'] ?? false,
+        matched: matchesPreference(
+          key: 'religion',
+          preferenceValue: partner.religion,
+          actualValue: personalDetail.religionName,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.flag,
         title: "Country",
         value: partner.country.isNotEmpty ? partner.country : "Any",
-        matched: partnerMatch.details['country'] ?? false,
+        matched: matchesPreference(
+          key: 'country',
+          preferenceValue: partner.country,
+          actualValue: personalDetail.country,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.location_city,
         title: "City",
         value: partner.city.isNotEmpty ? partner.city : "Any",
-        matched: partnerMatch.details['city'] ?? false,
+        matched: matchesPreference(
+          key: 'city',
+          preferenceValue: partner.city,
+          actualValue: personalDetail.city,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.restaurant,
         title: "Diet",
         value: partner.diet.isNotEmpty ? partner.diet : "Any",
-        matched: partnerMatch.details['diet'] ?? false,
+        matched: matchesPreference(
+          key: 'diet',
+          preferenceValue: partner.diet,
+          actualValue: lifestyle.diet,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.favorite,
         title: "Marital Status",
         value: partner.maritalstatus.isNotEmpty ? partner.maritalstatus : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'marital_status',
+          preferenceValue: partner.maritalstatus,
+          actualValue: personalDetail.maritalStatusName,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.family_restroom,
         title: "Family Type",
         value: partner.familytype.isNotEmpty ? partner.familytype : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'family_type',
+          preferenceValue: partner.familytype,
+          actualValue: familyDetail.familytype,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.groups,
         title: "Caste",
         value: partner.caste.isNotEmpty ? partner.caste : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'caste',
+          preferenceValue: partner.caste,
+          actualValue: personalDetail.communityName,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.person_pin,
         title: "Mother Tongue",
         value: partner.mothertoungue.isNotEmpty ? partner.mothertoungue : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'mother_tongue',
+          preferenceValue: partner.mothertoungue,
+          actualValue: personalDetail.motherTongue,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.star,
         title: "Manglik",
         value: partner.manglik.isNotEmpty ? partner.manglik : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'manglik',
+          preferenceValue: partner.manglik,
+          actualValue: personalDetail.manglik,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.school,
         title: "Qualification",
         value: partner.qualification.isNotEmpty ? partner.qualification : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'qualification',
+          preferenceValue: partner.qualification,
+          actualValue: personalDetail.degree,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.work,
         title: "Profession",
         value: partner.proffession.isNotEmpty ? partner.proffession : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'profession',
+          preferenceValue: partner.proffession,
+          actualValue: personalDetail.occupationtype,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.attach_money,
         title: "Annual Income",
         value: partner.annualincome.isNotEmpty ? partner.annualincome : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'annual_income',
+          preferenceValue: partner.annualincome,
+          actualValue: personalDetail.annualincome,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.local_bar,
         title: "Drink",
         value: partner.drinkaccept.isNotEmpty ? partner.drinkaccept : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'drink',
+          preferenceValue: partner.drinkaccept,
+          actualValue: lifestyle.drinks,
+        ),
       ),
       PartnerPreferenceItem(
         icon: Icons.smoking_rooms,
         title: "Smoke",
         value: partner.smokeaccept.isNotEmpty ? partner.smokeaccept : "Any",
-        matched: true,
+        matched: matchesPreference(
+          key: 'smoke',
+          preferenceValue: partner.smokeaccept,
+          actualValue: lifestyle.smoke,
+        ),
       ),
     ];
 
@@ -1369,6 +1503,24 @@ class UserProfile extends ChangeNotifier {
     lifeStyleDetails = newProfile.lifeStyleDetails;
     partnerPreferences = newProfile.partnerPreferences;
     otherMatchedProfiles = newProfile.otherMatchedProfiles;
+
+    notifyListeners();
+  }
+
+  void updateProfileData(
+    ProfileResponse newResponse,
+    List<MatchedProfile> matchedProfiles,
+  ) {
+    final newProfile = UserProfile.fromResponse(newResponse);
+    profileResponse = newResponse;
+    contactInfo = newProfile.contactInfo;
+    photoAlbumUrls = newProfile.photoAlbumUrls;
+    personalDetails = newProfile.personalDetails;
+    communityDetails = newProfile.communityDetails;
+    educationCareerDetails = newProfile.educationCareerDetails;
+    lifeStyleDetails = newProfile.lifeStyleDetails;
+    partnerPreferences = newProfile.partnerPreferences;
+    otherMatchedProfiles = matchedProfiles;
 
     notifyListeners();
   }
