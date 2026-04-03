@@ -7,6 +7,9 @@ import 'package:ms2026/Auth/Screen/signupscreen8.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../ReUsable/dropdownwidget.dart';
+import '../../ReUsable/registration_progress.dart';
+import '../../ReUsable/enhanced_form_fields.dart';
+import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 
 class AstrologicDetailsPage extends StatefulWidget {
@@ -16,9 +19,11 @@ class AstrologicDetailsPage extends StatefulWidget {
   State<AstrologicDetailsPage> createState() => _AstrologicDetailsPageState();
 }
 
-class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
+class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with SingleTickerProviderStateMixin {
   bool submitted = false;
   bool isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   // Form variables
   String? _horoscopeBelief;
@@ -64,6 +69,20 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
   void initState() {
     super.initState();
     _initializeNepaliDate();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _initializeNepaliDate() {
@@ -190,7 +209,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFE64B37),
+              primary: AppColors.primary,
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -359,157 +378,147 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  const Center(
-                    child: Text(
-                      "HeroScope Details",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFE64B37),
-                      ),
+        child: RegistrationStepContainer(
+          onBack: () => Navigator.pop(context),
+          onContinue: _validateAndSubmit,
+          isLoading: isLoading,
+          canContinue: !isLoading,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                RegistrationStepHeader(
+                  title: 'Astrological Details',
+                  subtitle: 'Share your horoscope and birth details for better compatibility',
+                  currentStep: 8,
+                  totalSteps: 11,
+                  onBack: () => Navigator.pop(context),
+                ),
+                const SizedBox(height: 32),
+
+                // Skip Button
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: isLoading ? null : _skipPage,
+                    icon: const Icon(Icons.skip_next, size: 18),
+                    label: const Text('Skip this step'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
 
-                  const SizedBox(height: 25),
+                // Horoscope Belief Section
+                const SectionHeader(
+                  title: 'Horoscope Belief',
+                  subtitle: 'Do you believe in horoscope matching?',
+                  icon: Icons.auto_awesome_rounded,
+                ),
+                const SizedBox(height: 16),
 
-                  // Horoscope Belief
-                  _buildSectionTitle("Horoscope Belief"),
-                  if (submitted && _errors['horoscopeBelief']!.isNotEmpty)
-                    _buildErrorText(_errors['horoscopeBelief']!),
+                Row(
+                  children: [
+                    Expanded(
+                      child: EnhancedRadioOption<String>(
+                        label: 'Yes',
+                        value: 'Yes',
+                        groupValue: _horoscopeBelief,
+                        onChanged: _handleHoroscopeBeliefChange,
+                        icon: Icons.check_circle_outline,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: EnhancedRadioOption<String>(
+                        label: 'No',
+                        value: 'No',
+                        groupValue: _horoscopeBelief,
+                        onChanged: _handleHoroscopeBeliefChange,
+                        icon: Icons.cancel_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: EnhancedRadioOption<String>(
+                        label: 'Doesn\'t matter',
+                        value: 'Doesn\'t matter',
+                        groupValue: _horoscopeBelief,
+                        onChanged: _handleHoroscopeBeliefChange,
+                        icon: Icons.help_outline,
+                      ),
+                    ),
+                  ],
+                ),
+                if (submitted && _errors['horoscopeBelief']!.isNotEmpty) ...[
                   const SizedBox(height: 8),
+                  _buildErrorText(_errors['horoscopeBelief']!),
+                ],
+
+                // Show details only if belief is "Yes"
+                if (_horoscopeBelief == 'Yes') ...[
+                  const SizedBox(height: 32),
+
+                  // Birth Location Section
+                  const SectionHeader(
+                    title: 'Birth Location',
+                    subtitle: 'Where were you born?',
+                    icon: Icons.location_on_outlined,
+                  ),
+                  const SizedBox(height: 20),
+
+                  EnhancedDropdown<String>(
+                    label: 'Country of Birth',
+                    value: _selectedCountryOfBirth,
+                    items: _countryOptions,
+                    itemLabel: (item) => item,
+                    hint: 'Select your birth country',
+                    onChanged: _handleCountryOfBirthChange,
+                    hasError: submitted && _errors['countryOfBirth']!.isNotEmpty,
+                    errorText: _errors['countryOfBirth'],
+                    isRequired: true,
+                  ),
+                  const SizedBox(height: 16),
+
+                  EnhancedDropdown<String>(
+                    label: 'City of Birth',
+                    value: _selectedCityOfBirth,
+                    items: _cityOptions,
+                    itemLabel: (item) => item,
+                    hint: 'Select your birth city',
+                    onChanged: _handleCityOfBirthChange,
+                    hasError: submitted && _errors['cityOfBirth']!.isNotEmpty,
+                    errorText: _errors['cityOfBirth'],
+                    isRequired: true,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Birth Date & Time Section
+                  const SectionHeader(
+                    title: 'Birth Date & Time',
+                    subtitle: 'When were you born?',
+                    icon: Icons.calendar_today_outlined,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Date Type Toggle (AD/BS)
+                  _buildFieldLabel('Date Type', isRequired: true),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
-                        child: _buildRadioOption(
-                          value: "Yes",
-                          groupValue: _horoscopeBelief,
-                          label: "Yes",
-                          onChanged: _handleHoroscopeBeliefChange,
-                          hasError: submitted && _errors['horoscopeBelief']!.isNotEmpty,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildRadioOption(
-                          value: "No",
-                          groupValue: _horoscopeBelief,
-                          label: "No",
-                          onChanged: _handleHoroscopeBeliefChange,
-                          hasError: submitted && _errors['horoscopeBelief']!.isNotEmpty,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildRadioOption(
-                          value: "Doesn't matter",
-                          groupValue: _horoscopeBelief,
-                          label: "Doesn't matter",
-                          onChanged: _handleHoroscopeBeliefChange,
-                          hasError: submitted && _errors['horoscopeBelief']!.isNotEmpty,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 25),
-                  _buildDivider(),
-                  const SizedBox(height: 25),
-
-                  if (_horoscopeBelief == 'Yes') ...[
-                    _buildSectionTitle("Country Of Birth*"),
-                    if (submitted && _errors['countryOfBirth']!.isNotEmpty)
-                      _buildErrorText(_errors['countryOfBirth']!),
-                    const SizedBox(height: 8),
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _countryOptions,
-                        selectedItem: _selectedCountryOfBirth,
-                        itemLabel: (item) => item,
-                        hint: "Country Of Birth*",
-                        onChanged: _handleCountryOfBirthChange,
-                        title: 'Country',
-                        showError: submitted && _errors['countryOfBirth']!.isNotEmpty,
-                        // errorText: _errors['countryOfBirth'],
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // City of Birth
-                    _buildSectionTitle("City Of Birth*"),
-                    if (submitted && _errors['cityOfBirth']!.isNotEmpty)
-                      _buildErrorText(_errors['cityOfBirth']!),
-                    const SizedBox(height: 8),
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _cityOptions,
-                        selectedItem: _selectedCityOfBirth,
-                        itemLabel: (item) => item,
-                        hint: "City Of Birth*",
-                        onChanged: _handleCityOfBirthChange,
-                        title: 'Cities',
-                        showError: submitted && _errors['cityOfBirth']!.isNotEmpty,
-                        // errorText: _errors['cityOfBirth'],
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // Zodiac Sign
-                    _buildSectionTitle("Zodiac Sign*"),
-                    if (submitted && _errors['zodiacSign']!.isNotEmpty)
-                      _buildErrorText(_errors['zodiacSign']!),
-                    const SizedBox(height: 8),
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _zodiacSignOptions,
-                        selectedItem: _selectedZodiacSign,
-                        itemLabel: (item) => item,
-                        hint: "Zodiac Sign*",
-                        onChanged: _handleZodiacSignChange,
-                        title: 'Zodiac Sign',
-                        showError: submitted && _errors['zodiacSign']!.isNotEmpty,
-                        // errorText: _errors['zodiacSign'],
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // Time of Birth
-                    _buildSectionTitle("Time Of Birth*"),
-                    if (submitted && _errors['timeOfBirth']!.isNotEmpty)
-                      _buildErrorText(_errors['timeOfBirth']!),
-                    const SizedBox(height: 8),
-                    _buildTimePicker(),
-
-                    const SizedBox(height: 25),
-                    _buildDivider(),
-                    const SizedBox(height: 25),
-
-                    // Date of Birth
-                    _buildSectionTitle("Date Of Birth*"),
-                    const SizedBox(height: 12),
-
-                    // AD/BS Toggle
-                    Row(
-                      children: [
-                        _buildDateTypeOption(
+                        child: EnhancedRadioOption<bool>(
+                          label: 'AD (Anno Domini)',
                           value: true,
                           groupValue: _isAD,
-                          label: "AD",
                           onChanged: (value) {
                             setState(() {
-                              _isAD = value;
+                              _isAD = value!;
                               if (!_isAD && _selectedMonth != null && _selectedDay != null && _selectedYear != null) {
                                 // Convert AD to BS
                                 final converted = _convertADtoBS(_selectedYear!, _selectedMonth!, _selectedDay!);
@@ -520,15 +529,18 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
                               }
                             });
                           },
+                          icon: Icons.calendar_month,
                         ),
-                        const SizedBox(width: 20),
-                        _buildDateTypeOption(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: EnhancedRadioOption<bool>(
+                          label: 'BS (Bikram Sambat)',
                           value: false,
                           groupValue: _isAD,
-                          label: "BS",
                           onChanged: (value) {
                             setState(() {
-                              _isAD = value;
+                              _isAD = value!;
                               if (!_isAD) {
                                 // Initialize BS values if not set
                                 if (_selectedMonth == null || !_nepaliMonths.contains(_selectedMonth)) {
@@ -549,545 +561,353 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
                               }
                             });
                           },
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // Month, Day, Year Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSectionTitle("Month*"),
-                              if (submitted && _errors['month']!.isNotEmpty)
-                                _buildErrorText(_errors['month']!),
-                              const SizedBox(height: 8),
-                              Container(
-                                child: TypingDropdown<String>(
-                                  items: _isAD ? _monthNames : _nepaliMonths,
-                                  selectedItem: _selectedMonth,
-                                  itemLabel: (item) => item,
-                                  hint: "Month*",
-                                  onChanged: _handleMonthChange,
-                                  title: 'Month',
-                                  showError: submitted && _errors['month']!.isNotEmpty,
-                                  // errorText: _errors['month'],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSectionTitle("Day*"),
-                              if (submitted && _errors['day']!.isNotEmpty)
-                                _buildErrorText(_errors['day']!),
-                              const SizedBox(height: 8),
-                              Container(
-                                child: TypingDropdown<String>(
-                                  items: _isAD ? _dayOptions : _nepaliDays,
-                                  selectedItem: _selectedDay,
-                                  itemLabel: (item) => item,
-                                  hint: "Day*",
-                                  onChanged: _handleDayChange,
-                                  title: 'Days',
-                                  showError: submitted && _errors['day']!.isNotEmpty,
-                                  // errorText: _errors['day'],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSectionTitle("Year*"),
-                              if (submitted && _errors['year']!.isNotEmpty)
-                                _buildErrorText(_errors['year']!),
-                              const SizedBox(height: 8),
-                              Container(
-                                child: TypingDropdown<String>(
-                                  items: _isAD ? _yearOptions : _nepaliYears,
-                                  selectedItem: _selectedYear,
-                                  itemLabel: (item) => item,
-                                  hint: "Year*",
-                                  onChanged: _handleYearChange,
-                                  title: 'Years',
-                                  showError: submitted && _errors['year']!.isNotEmpty,
-                                  // errorText: _errors['year'],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Display converted date info
-                    if (_selectedMonth != null && _selectedDay != null && _selectedYear != null) ...[
-                      const SizedBox(height: 15),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info,
-                              color: Colors.blue[700],
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _isAD
-                                    ? "Selected: $_selectedMonth $_selectedDay, $_selectedYear AD"
-                                    : "Selected: $_selectedMonth $_selectedDay, $_selectedYear BS",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ],
+                          icon: Icons.event_note,
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 20),
 
-                    const SizedBox(height: 25),
-                    _buildDivider(),
-                    const SizedBox(height: 25),
-
-                    // Manglik Status
-                    _buildSectionTitle("Manglik*"),
-                    if (submitted && _errors['manglikStatus']!.isNotEmpty)
-                      _buildErrorText(_errors['manglikStatus']!),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildRadioOption(
-                            value: "Yes",
-                            groupValue: _manglikStatus,
-                            label: "Yes",
-                            onChanged: _handleManglikStatusChange,
-                            hasError: submitted && _errors['manglikStatus']!.isNotEmpty,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildRadioOption(
-                            value: "No",
-                            groupValue: _manglikStatus,
-                            label: "No",
-                            onChanged: _handleManglikStatusChange,
-                            hasError: submitted && _errors['manglikStatus']!.isNotEmpty,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildRadioOption(
-                            value: "Doesn't matter",
-                            groupValue: _manglikStatus,
-                            label: "Doesn't matter",
-                            onChanged: _handleManglikStatusChange,
-                            hasError: submitted && _errors['manglikStatus']!.isNotEmpty,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 25),
-                  ],
-
-                  // Buttons
+                  // Date Fields
                   Row(
                     children: [
                       Expanded(
-                        child: _buildButton(
-                          text: "Previous",
-                          isPrimary: false,
-                          onPressed: isLoading ? null : () {
-                            Navigator.pop(context);
-                          },
+                        flex: 2,
+                        child: EnhancedDropdown<String>(
+                          label: 'Month',
+                          value: _selectedMonth,
+                          items: _isAD ? _monthNames : _nepaliMonths,
+                          itemLabel: (item) => item,
+                          hint: 'Month',
+                          onChanged: _handleMonthChange,
+                          hasError: submitted && _errors['month']!.isNotEmpty,
+                          errorText: _errors['month'],
+                          isRequired: true,
                         ),
                       ),
-                      const SizedBox(width: 15),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: _buildButton(
-                          text: isLoading ? "Saving..." : "Continue",
-                          isPrimary: true,
-                          onPressed: isLoading ? null : _validateAndSubmit,
+                        child: EnhancedDropdown<String>(
+                          label: 'Day',
+                          value: _selectedDay,
+                          items: _isAD ? _dayOptions : _nepaliDays,
+                          itemLabel: (item) => item,
+                          hint: 'Day',
+                          onChanged: _handleDayChange,
+                          hasError: submitted && _errors['day']!.isNotEmpty,
+                          errorText: _errors['day'],
+                          isRequired: true,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: EnhancedDropdown<String>(
+                          label: 'Year',
+                          value: _selectedYear,
+                          items: _isAD ? _yearOptions : _nepaliYears,
+                          itemLabel: (item) => item,
+                          hint: 'Year',
+                          onChanged: _handleYearChange,
+                          hasError: submitted && _errors['year']!.isNotEmpty,
+                          errorText: _errors['year'],
+                          isRequired: true,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
 
-            // Progress bubble
-            Positioned(
-              right: 12,
-              top: 8,
-              child: _progressBubble(0.75, "75%"),
-            ),
-
-            Positioned(
-              left: 18,
-              top: 10,
-              child: GestureDetector(
-                onTap: isLoading ? null : () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePage()));
-                },
-                child: Container(
-                  height: 30,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Skip',
-                      style: TextStyle(color: Colors.white),
+                  // Display selected date
+                  if (_selectedMonth != null && _selectedDay != null && _selectedYear != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isAD
+                                  ? "Birth Date: $_selectedMonth $_selectedDay, $_selectedYear AD"
+                                  : "Birth Date: $_selectedMonth $_selectedDay, $_selectedYear BS",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
+                  ],
 
-            // Loading overlay
-            if (isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE64B37)),
+                  const SizedBox(height: 20),
+
+                  // Time of Birth
+                  _buildFieldLabel('Time of Birth', isRequired: true),
+                  const SizedBox(height: 12),
+                  _buildTimePicker(),
+
+                  const SizedBox(height: 32),
+
+                  // Zodiac Details Section
+                  const SectionHeader(
+                    title: 'Zodiac Details',
+                    subtitle: 'Your astrological information',
+                    icon: Icons.stars_rounded,
                   ),
-                ),
-              ),
+                  const SizedBox(height: 20),
+
+                  EnhancedDropdown<String>(
+                    label: 'Zodiac Sign',
+                    value: _selectedZodiacSign,
+                    items: _zodiacSignOptions,
+                    itemLabel: (item) => item,
+                    hint: 'Select your zodiac sign',
+                    onChanged: _handleZodiacSignChange,
+                    hasError: submitted && _errors['zodiacSign']!.isNotEmpty,
+                    errorText: _errors['zodiacSign'],
+                    isRequired: true,
+                    prefixIcon: Icons.auto_awesome,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Manglik Status
+                  _buildFieldLabel('Manglik Status', isRequired: true),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: EnhancedRadioOption<String>(
+                          label: 'Yes',
+                          value: 'Yes',
+                          groupValue: _manglikStatus,
+                          onChanged: _handleManglikStatusChange,
+                          icon: Icons.check_circle_outline,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: EnhancedRadioOption<String>(
+                          label: 'No',
+                          value: 'No',
+                          groupValue: _manglikStatus,
+                          onChanged: _handleManglikStatusChange,
+                          icon: Icons.cancel_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: EnhancedRadioOption<String>(
+                          label: 'Doesn\'t matter',
+                          value: 'Doesn\'t matter',
+                          groupValue: _manglikStatus,
+                          onChanged: _handleManglikStatusChange,
+                          icon: Icons.help_outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (submitted && _errors['manglikStatus']!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildErrorText(_errors['manglikStatus']!),
+                  ],
+                ],
+
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimePicker() {
+    return InkWell(
+      onTap: _selectTime,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: submitted && _errors['timeOfBirth']!.isNotEmpty
+                ? AppColors.error
+                : AppColors.border,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: submitted && _errors['timeOfBirth']!.isNotEmpty
+                  ? AppColors.error.withOpacity(0.1)
+                  : AppColors.shadowLight,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time_rounded,
+              color: _selectedTimeOfBirth != null
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _selectedTimeOfBirth != null
+                    ? _formatTimeForDisplay(_selectedTimeOfBirth!)
+                    : "Select time of birth",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: _selectedTimeOfBirth != null
+                      ? FontWeight.w500
+                      : FontWeight.w400,
+                  color: _selectedTimeOfBirth != null
+                      ? AppColors.textPrimary
+                      : AppColors.textHint,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label, {bool isRequired = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (isRequired) ...[
+            const SizedBox(width: 4),
+            const Text(
+              '*',
+              style: TextStyle(
+                color: AppColors.error,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildErrorText(String error) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 4.0, top: 4.0),
-        child: Text(
-          error,
-          style: const TextStyle(
-            color: Colors.red,
-            fontSize: 12,
-          ),
-        ));
-
-  }
-
-  // Time Picker Widget
-  Widget _buildTimePicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: _selectTime,
-          child: Container(
-            height: 55,
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: submitted && _errors['timeOfBirth']!.isNotEmpty
-                    ? Colors.red
-                    : const Color(0xFF48A54C),
-                width: 1.6,
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedTimeOfBirth != null
-                        ? _formatTimeForDisplay(_selectedTimeOfBirth!)
-                        : "Select Time (e.g., 09:41 AM)",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: _selectedTimeOfBirth != null ? Colors.black87 : Colors.black54,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.access_time,
-                  color: const Color(0xFFE64B37),
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (submitted && _errors['timeOfBirth']!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Text(
-              _errors['timeOfBirth']!,
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return const Divider(
-      color: Colors.grey,
-      height: 1,
-      thickness: 1,
-    );
-  }
-
-  Widget _buildRadioOption({
-    required String value,
-    required String? groupValue,
-    required String label,
-    required Function(String) onChanged,
-    bool hasError = false,
-  }) {
-    bool isSelected = groupValue == value;
-
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: hasError ? Colors.red : const Color(0xFF48A54C),
-          width: 1.2,
-        ),
-        color: isSelected ? const Color(0xFFE64B37).withOpacity(0.1) : Colors.transparent,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            onChanged(value);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFFE64B37) : Colors.grey,
-                      width: 2,
-                    ),
-                    color: isSelected ? const Color(0xFFE64B37) : Colors.transparent,
-                  ),
-                  child: isSelected
-                      ? const Icon(
-                    Icons.circle,
-                    size: 10,
-                    color: Colors.white,
-                  )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateTypeOption({
-    required bool value,
-    required bool groupValue,
-    required String label,
-    required Function(bool) onChanged,
-  }) {
-    bool isSelected = groupValue == value;
-
-    return Expanded(
-      child: Container(
-        height: 45,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: const Color(0xFF48A54C),
-            width: 1.2,
-          ),
-          color: isSelected ? const Color(0xFFE64B37).withOpacity(0.1) : Colors.transparent,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: () {
-              onChanged(value);
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFFE64B37) : Colors.grey,
-                        width: 2,
-                      ),
-                      color: isSelected ? const Color(0xFFE64B37) : Colors.transparent,
-                    ),
-                    child: isSelected
-                        ? const Icon(
-                      Icons.circle,
-                      size: 8,
-                      color: Colors.white,
-                    )
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButton({
-    required String text,
-    required bool isPrimary,
-    required VoidCallback? onPressed,
-  }) {
-    return Container(
-      height: 55,
-      decoration: BoxDecoration(
-        gradient: isPrimary && onPressed != null
-            ? const LinearGradient(
-          colors: [
-            Color(0xFFE64B37),
-            Color(0xFFE62255),
-          ],
-        )
-            : const LinearGradient(
-          colors: [
-            Color(0xFFEEA2A4),
-            Color(0xFFF3C0C4),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: onPressed,
-          child: Center(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _progressBubble(double progress, String label) {
-    final size = 42.0;
-    return SizedBox(
-      height: size,
-      width: size,
-      child: Stack(
-        alignment: Alignment.center,
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
         children: [
-          Container(
-            height: size,
-            width: size,
-            decoration: BoxDecoration(
-              color: Colors.red.shade100,
-              shape: BoxShape.circle,
-            ),
+          const Icon(
+            Icons.error_outline,
+            size: 14,
+            color: AppColors.error,
           ),
-          SizedBox(
-            height: size,
-            width: size,
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 3.2,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFE64B37)),
-              backgroundColor: Colors.white,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFE64B37),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              error,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.error,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _skipPage() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.primary),
+              SizedBox(width: 12),
+              Text(
+                "Skip Astrological Details?",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            "You can fill in your astrological details later from your profile settings.",
+            style: TextStyle(fontSize: 15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LifestylePage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                "Skip",
+                style: TextStyle(color: AppColors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1112,7 +932,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> {
     });
   }
 
-_submitAstrologicData() async {
+  _submitAstrologicData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
@@ -1201,12 +1021,12 @@ _submitAstrologicData() async {
         );
 
         if (updated) {
-          _showSuccess("Astrologic details saved successfully!");
+          _showSuccess("Astrological details saved successfully!");
           // Navigate after a short delay
           Future.delayed(const Duration(seconds: 1), () {
             Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => LifestylePage())
+                MaterialPageRoute(builder: (context) => const LifestylePage())
             );
           });
         } else {
@@ -1233,10 +1053,17 @@ _submitAstrologicData() async {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -1244,10 +1071,17 @@ _submitAstrologicData() async {
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: AppColors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.success,
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

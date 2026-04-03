@@ -4,8 +4,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Make sure these imports are correct
 import '../../ReUsable/dropdownwidget.dart';
+import '../../ReUsable/registration_progress.dart';
+import '../../ReUsable/enhanced_form_fields.dart';
+import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 
 class LifestylePage extends StatefulWidget {
@@ -15,8 +17,11 @@ class LifestylePage extends StatefulWidget {
   State<LifestylePage> createState() => _LifestylePageState();
 }
 
-class _LifestylePageState extends State<LifestylePage> {
+class _LifestylePageState extends State<LifestylePage> with SingleTickerProviderStateMixin {
   bool submitted = false;
+  bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   // Form variables
   String? _selectedDiet;
@@ -24,6 +29,15 @@ class _LifestylePageState extends State<LifestylePage> {
   String? _selectedDrinkType;
   String? _selectedSmoke;
   String? _selectedSmokeType;
+
+  // Error messages
+  final Map<String, String> _errors = {
+    'diet': '',
+    'drink': '',
+    'drinkType': '',
+    'smoke': '',
+    'smokeType': '',
+  };
 
   // Dropdown options
   final List<String> _dietOptions = [
@@ -39,7 +53,6 @@ class _LifestylePageState extends State<LifestylePage> {
     'Yes',
     'No',
     'SomeTime',
-
   ];
 
   final List<String> _drinkTypeOptions = [
@@ -67,211 +80,335 @@ class _LifestylePageState extends State<LifestylePage> {
     'Other'
   ];
 
-  bool _isLoading = false;
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // Validation methods
+  bool _validateRequired(String? value, String fieldName) {
+    if (value == null || value.isEmpty) {
+      _errors[fieldName] = 'This field is required';
+      return false;
+    }
+    _errors[fieldName] = '';
+    return true;
+  }
+
+  bool _validateForm() {
+    bool isValid = true;
+
+    // Clear all errors
+    _errors.forEach((key, value) {
+      _errors[key] = '';
+    });
+
+    if (!_validateRequired(_selectedDiet, 'diet')) {
+      isValid = false;
+    }
+
+    if (!_validateRequired(_selectedDrink, 'drink')) {
+      isValid = false;
+    }
+
+    // Drink type validation (only if not "No")
+    if (_selectedDrink != "No" && !_validateRequired(_selectedDrinkType, 'drinkType')) {
+      isValid = false;
+    }
+
+    if (!_validateRequired(_selectedSmoke, 'smoke')) {
+      isValid = false;
+    }
+
+    // Smoke type validation (only if not "No")
+    if (_selectedSmoke != "No" && !_validateRequired(_selectedSmokeType, 'smokeType')) {
+      isValid = false;
+    }
+
+    setState(() {});
+    return isValid;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header with Skip button - FIXED
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Skip Button
-                      GestureDetector(
-                        onTap: _skipPage,
-                        child: Container(
-                          height: 30,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Skip',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ),
+        child: RegistrationStepContainer(
+          onBack: () => Navigator.pop(context),
+          onContinue: _validateAndSubmit,
+          isLoading: _isLoading,
+          canContinue: !_isLoading,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                RegistrationStepHeader(
+                  title: 'Lifestyle Preferences',
+                  subtitle: 'Share your lifestyle choices and daily habits',
+                  currentStep: 9,
+                  totalSteps: 11,
+                  onBack: () => Navigator.pop(context),
+                ),
+                const SizedBox(height: 32),
 
-                      // Title
-                      const Text(
-                        "Life Style",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFE64B37),
-                        ),
-                      ),
-
-                      // Empty container for balance
-                      const SizedBox(width: 80),
-                    ],
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // Your Diet
-                  _buildSectionTitle("Your Diet*"),
-                  const SizedBox(height: 8),
-                  Container(
-                    child: TypingDropdown<String>(
-                      items: _dietOptions,
-                      selectedItem: _selectedDiet,
-                      itemLabel: (item) => item,
-                      hint: "Select your diet*",
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDiet = value;
-                        });
-                      }, title: 'Diets', showError: submitted,
+                // Skip Button
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _isLoading ? null : _skipPage,
+                    icon: const Icon(Icons.skip_next, size: 18),
+                    label: const Text('Skip this step'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Drink
-                  _buildSectionTitle("Drink*"),
-                  const SizedBox(height: 8),
-                  Container(
-                    child: TypingDropdown<String>(
-                      items: _drinkOptions,
-                      selectedItem: _selectedDrink,
-                      itemLabel: (item) => item,
-                      hint: "Select drink habit*",
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDrink = value;
-                          // Reset drink type if "No" is selected
-                          if (value == "No") {
-                            _selectedDrinkType = null;
-                          }
-                        });
-                      }, title: 'Drink habit', showError:  submitted,
-                    ),
-                  ),
-
-                  // Drink Type (only show if not "No")
-                  if (_selectedDrink != null && _selectedDrink != "No") ...[
-                    const SizedBox(height: 15),
-                    _buildSectionTitle("Select Drink Type*"),
-                    const SizedBox(height: 8),
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _drinkTypeOptions,
-                        selectedItem: _selectedDrinkType,
-                        itemLabel: (item) => item,
-                        hint: "Select drink type*",
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDrinkType = value;
-                          });
-                        }, title: 'Drink Type', showError:  submitted,
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Smoke
-                  _buildSectionTitle("Smoke*"),
-                  const SizedBox(height: 8),
-                  Container(
-                    child: TypingDropdown<String>(
-                      items: _smokeOptions,
-                      selectedItem: _selectedSmoke,
-                      itemLabel: (item) => item,
-                      hint: "Select smoke habit*",
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedSmoke = value;
-                          // Reset smoke type if "No" is selected
-                          if (value == "No") {
-                            _selectedSmokeType = null;
-                          }
-                        });
-                      }, title: 'Smoke habit', showError:  submitted,
-                    ),
-                  ),
-
-                  // Smoke Type (only show if not "No")
-                  if (_selectedSmoke != null && _selectedSmoke != "No") ...[
-                    const SizedBox(height: 15),
-                    _buildSectionTitle("Select Smoke Type*"),
-                    const SizedBox(height: 8),
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _smokeTypeOptions,
-                        selectedItem: _selectedSmokeType,
-                        itemLabel: (item) => item,
-                        hint: "Select smoke type*",
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedSmokeType = value;
-                          });
-                        }, title: 'Smoke Type', showError:  submitted,
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 35),
-
-                  // Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildButton(
-                          text: "Previous",
-                          isPrimary: false,
-                          onPressed: _isLoading ? null : () {
-                            Navigator.pop(context);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: _buildButton(
-                          text: _isLoading ? "Submitting..." : "Continue",
-                          isPrimary: true,
-                          onPressed: _isLoading ? null : _validateAndSubmit,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-
-            // Progress bubble
-            Positioned(
-              right: 12,
-              top: 8,
-              child: _progressBubble(0.80, "80%"), // Fixed progress value to match your label
-            ),
-
-            // Loading overlay
-            if (_isLoading)
-              Container(
-                color: Colors.black54,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE64B37)),
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(height: 16),
+
+                // Diet Section
+                const SectionHeader(
+                  title: 'Diet Preference',
+                  subtitle: 'What type of diet do you follow?',
+                  icon: Icons.restaurant_rounded,
+                ),
+                const SizedBox(height: 20),
+
+                EnhancedDropdown<String>(
+                  label: 'Your Diet',
+                  value: _selectedDiet,
+                  items: _dietOptions,
+                  itemLabel: (item) => item,
+                  hint: 'Select your diet preference',
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDiet = value;
+                      _errors['diet'] = '';
+                    });
+                  },
+                  hasError: submitted && _errors['diet']!.isNotEmpty,
+                  errorText: _errors['diet'],
+                  isRequired: true,
+                  prefixIcon: Icons.food_bank_outlined,
+                ),
+                const SizedBox(height: 32),
+
+                // Drink Section
+                const SectionHeader(
+                  title: 'Drinking Habits',
+                  subtitle: 'Do you consume alcohol?',
+                  icon: Icons.local_bar_outlined,
+                ),
+                const SizedBox(height: 20),
+
+                EnhancedDropdown<String>(
+                  label: 'Drink Alcohol',
+                  value: _selectedDrink,
+                  items: _drinkOptions,
+                  itemLabel: (item) => item,
+                  hint: 'Select drink habit',
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDrink = value;
+                      _errors['drink'] = '';
+                      // Reset drink type if "No" is selected
+                      if (value == "No") {
+                        _selectedDrinkType = null;
+                        _errors['drinkType'] = '';
+                      }
+                    });
+                  },
+                  hasError: submitted && _errors['drink']!.isNotEmpty,
+                  errorText: _errors['drink'],
+                  isRequired: true,
+                ),
+
+                // Drink Type (only show if not "No")
+                if (_selectedDrink != null && _selectedDrink != "No") ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowLight,
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: AppColors.primaryGradient,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.liquor_outlined,
+                                size: 20,
+                                color: AppColors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Drink Preference',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        EnhancedDropdown<String>(
+                          label: 'Type of Drink',
+                          value: _selectedDrinkType,
+                          items: _drinkTypeOptions,
+                          itemLabel: (item) => item,
+                          hint: 'Select drink type',
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedDrinkType = value;
+                              _errors['drinkType'] = '';
+                            });
+                          },
+                          hasError: submitted && _errors['drinkType']!.isNotEmpty,
+                          errorText: _errors['drinkType'],
+                          isRequired: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+
+                // Smoke Section
+                const SectionHeader(
+                  title: 'Smoking Habits',
+                  subtitle: 'Do you smoke?',
+                  icon: Icons.smoke_free_outlined,
+                ),
+                const SizedBox(height: 20),
+
+                EnhancedDropdown<String>(
+                  label: 'Smoke',
+                  value: _selectedSmoke,
+                  items: _smokeOptions,
+                  itemLabel: (item) => item,
+                  hint: 'Select smoke habit',
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSmoke = value;
+                      _errors['smoke'] = '';
+                      // Reset smoke type if "No" is selected
+                      if (value == "No") {
+                        _selectedSmokeType = null;
+                        _errors['smokeType'] = '';
+                      }
+                    });
+                  },
+                  hasError: submitted && _errors['smoke']!.isNotEmpty,
+                  errorText: _errors['smoke'],
+                  isRequired: true,
+                ),
+
+                // Smoke Type (only show if not "No")
+                if (_selectedSmoke != null && _selectedSmoke != "No") ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowLight,
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: AppColors.primaryGradient,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.smoking_rooms_outlined,
+                                size: 20,
+                                color: AppColors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Smoke Preference',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        EnhancedDropdown<String>(
+                          label: 'Type of Smoke',
+                          value: _selectedSmokeType,
+                          items: _smokeTypeOptions,
+                          itemLabel: (item) => item,
+                          hint: 'Select smoke type',
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedSmokeType = value;
+                              _errors['smokeType'] = '';
+                            });
+                          },
+                          hasError: submitted && _errors['smokeType']!.isNotEmpty,
+                          errorText: _errors['smokeType'],
+                          isRequired: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -282,46 +419,48 @@ class _LifestylePageState extends State<LifestylePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            "Skip Lifestyle Details?",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFE64B37),
-            ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.primary),
+              SizedBox(width: 12),
+              Text(
+                "Skip Lifestyle Details?",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           content: const Text(
-            "Are you sure you want to skip this section? You can fill it later.",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-            ),
+            "You can fill in your lifestyle preferences later from your profile settings.",
+            style: TextStyle(fontSize: 15),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text(
                 "Cancel",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
+                Navigator.pop(context);
                 _proceedWithoutLifestyle();
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
               child: const Text(
                 "Skip",
-                style: TextStyle(
-                  color: Color(0xFFE64B37),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: AppColors.white),
               ),
             ),
           ],
@@ -335,137 +474,17 @@ class _LifestylePageState extends State<LifestylePage> {
     // Navigate to next page without saving lifestyle data
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PartnerPreferencesPage()),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildButton({
-    required String text,
-    required bool isPrimary,
-    required VoidCallback? onPressed,
-  }) {
-    return Opacity(
-      opacity: onPressed == null ? 0.6 : 1.0,
-      child: Container(
-        height: 55,
-        decoration: BoxDecoration(
-          gradient: isPrimary
-              ? const LinearGradient(
-            colors: [
-              Color(0xFFE64B37),
-              Color(0xFFE62255),
-            ],
-          )
-              : const LinearGradient(
-            colors: [
-              Color(0xFFEEA2A4),
-              Color(0xFFF3C0C4),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(30),
-            onTap: onPressed,
-            child: Center(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _progressBubble(double progress, String label) {
-    final size = 42.0;
-    return SizedBox(
-      height: size,
-      width: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            height: size,
-            width: size,
-            decoration: BoxDecoration(
-              color: Colors.red.shade100,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(
-            height: size,
-            width: size,
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 3.2,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFE64B37)),
-              backgroundColor: Colors.white,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFE64B37),
-            ),
-          ),
-        ],
-      ),
+      MaterialPageRoute(builder: (context) => const PartnerPreferencesPage()),
     );
   }
 
   void _validateAndSubmit() async {
-    submitted = true;
     setState(() {
       submitted = true;
-
     });
-    // Basic validation
-    if (_selectedDiet == null) {
-      _showError("Please select your diet");
-      return;
-    }
 
-    if (_selectedDrink == null) {
-      _showError("Please select your drink habit");
-      return;
-    }
-
-    // Drink type validation (only if not "No")
-    if (_selectedDrink != "No" && _selectedDrinkType == null) {
-      _showError("Please select drink type");
-      return;
-    }
-
-    if (_selectedSmoke == null) {
-      _showError("Please select your smoke habit");
-      return;
-    }
-
-    // Smoke type validation (only if not "No")
-    if (_selectedSmoke != "No" && _selectedSmokeType == null) {
-      _showError("Please select smoke type");
+    if (!_validateForm()) {
+      _showError("Please fill all required fields correctly");
       return;
     }
 
@@ -526,10 +545,12 @@ class _LifestylePageState extends State<LifestylePage> {
         );
 
         // Navigate to next page
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => PartnerPreferencesPage()),
-        );
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PartnerPreferencesPage()),
+          );
+        });
       } else {
         _showError(data['message'] ?? "Submission failed. Please try again.");
       }
@@ -546,9 +567,17 @@ class _LifestylePageState extends State<LifestylePage> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
         duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -556,9 +585,17 @@ class _LifestylePageState extends State<LifestylePage> {
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: AppColors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.success,
         duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

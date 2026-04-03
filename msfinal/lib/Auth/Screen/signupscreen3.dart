@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:ms2026/Auth/Screen/signupscreen4.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../ReUsable/dropdownwidget.dart';
+import '../../ReUsable/registration_progress.dart';
+import '../../ReUsable/enhanced_form_fields.dart';
+import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 
 class CommunityDetailsPage extends StatefulWidget {
@@ -105,221 +108,189 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
     'Other': 5,
   };
 
+  bool get _canContinue {
+    return _selectedReligion != null &&
+        _selectedCommunity != null &&
+        _selectedSubcommunity != null &&
+        _selectedCastLanguage != null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  const Center(
-                    child: Text(
-                      "Community Details",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFE64B37),
+        child: RegistrationStepContainer(
+          onBack: () => Navigator.pop(context),
+          onContinue: _validateAndSubmit,
+          isLoading: _isLoading,
+          canContinue: _canContinue,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              RegistrationStepHeader(
+                title: 'Community Details',
+                subtitle: 'Tell us about your religious and community background',
+                currentStep: 4,
+                totalSteps: 11,
+                onBack: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 32),
+
+              // Religious Section
+              SectionHeader(
+                title: 'Religious Information',
+                subtitle: 'Your religious and cultural details',
+                icon: Icons.temple_hindu_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              // Religion Dropdown
+              EnhancedDropdown<String>(
+                label: 'Religion',
+                value: _selectedReligion,
+                items: _religionOptions,
+                itemLabel: (item) => item,
+                hint: 'Select your religion',
+                isRequired: true,
+                hasError: submitted && _selectedReligion == null,
+                errorText: submitted && _selectedReligion == null
+                    ? 'Please select your religion'
+                    : null,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedReligion = value;
+                  });
+                },
+                prefixIcon: Icons.self_improvement_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              // Community Dropdown
+              EnhancedDropdown<String>(
+                label: 'Community',
+                value: _selectedCommunity,
+                items: _communityOptions,
+                itemLabel: (item) => item,
+                hint: 'Select your community',
+                isRequired: true,
+                hasError: submitted && _selectedCommunity == null,
+                errorText: submitted && _selectedCommunity == null
+                    ? 'Please select your community'
+                    : null,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCommunity = value;
+                    if (_selectedSubcommunity != null &&
+                        !_subcommunityOptions.contains(_selectedSubcommunity)) {
+                      _selectedSubcommunity = null;
+                    }
+                  });
+                },
+                prefixIcon: Icons.people_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              // Subcommunity Dropdown
+              EnhancedDropdown<String>(
+                label: 'Subcommunity',
+                value: _selectedSubcommunity,
+                items: _subcommunityOptions,
+                itemLabel: (item) => item,
+                hint: 'Select your subcommunity',
+                isRequired: true,
+                hasError: submitted && _selectedSubcommunity == null,
+                errorText: submitted && _selectedSubcommunity == null
+                    ? 'Please select your subcommunity'
+                    : null,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSubcommunity = value;
+                  });
+                },
+                prefixIcon: Icons.family_restroom_rounded,
+              ),
+              const SizedBox(height: 32),
+
+              // Language Section
+              SectionHeader(
+                title: 'Language Information',
+                subtitle: 'Your primary caste language',
+                icon: Icons.language_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              // Cast Language Dropdown
+              EnhancedDropdown<String>(
+                label: 'Caste Language',
+                value: _selectedCastLanguage,
+                items: _castLanguageOptions,
+                itemLabel: (item) => item,
+                hint: 'Select your caste language',
+                isRequired: true,
+                hasError: submitted && _selectedCastLanguage == null,
+                errorText: submitted && _selectedCastLanguage == null
+                    ? 'Please select your caste language'
+                    : null,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCastLanguage = value;
+                  });
+                },
+                prefixIcon: Icons.translate_rounded,
+              ),
+              const SizedBox(height: 32),
+
+              // Info Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      AppColors.accent.withOpacity(0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: AppColors.primary,
+                        size: 24,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Religion
-                  _buildSectionTitle("Religious*"),
-                  const SizedBox(height: 8),
-                  TypingDropdown<String>(
-                    items: _religionOptions,
-                    selectedItem: _selectedReligion,
-                    itemLabel: (item) => item,
-                    hint: "Select Religion",
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedReligion = value!;
-                      });
-                    }, title: 'Religion', showError: submitted,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Community
-                  _buildSectionTitle("Community*"),
-                  const SizedBox(height: 8),
-                  TypingDropdown<String>(
-                    items: _communityOptions,
-                    selectedItem: _selectedCommunity,
-                    itemLabel: (item) => item,
-                    hint: "Select Community",
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCommunity = value;
-                        if (_selectedSubcommunity != null &&
-                            !_subcommunityOptions.contains(_selectedSubcommunity)) {
-                          _selectedSubcommunity = null;
-                        }
-                      });
-                    }, title: 'Community', showError: submitted,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Subcommunity
-                  _buildSectionTitle("Subcommunity*"),
-                  const SizedBox(height: 8),
-                  TypingDropdown<String>(
-                    items: _subcommunityOptions,
-                    selectedItem: _selectedSubcommunity,
-                    itemLabel: (item) => item,
-                    hint: "Select Subcommunity",
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedSubcommunity = value;
-                      });
-                    }, title: 'SubCommunity', showError: submitted,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Cast Language
-                  _buildSectionTitle("Cast Language*"),
-                  const SizedBox(height: 8),
-                  TypingDropdown<String>(
-                    items: _castLanguageOptions,
-                    selectedItem: _selectedCastLanguage,
-                    itemLabel: (item) => item,
-                    hint: "Select Cast Language",
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCastLanguage = value;
-                      });
-                    }, title: 'Caste Languages', showError: submitted,
-                  ),
-                  const SizedBox(height: 25),
-
-                  // Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildButton(
-                          text: "Previous",
-                          isPrimary: false,
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Your community details help us find the most compatible matches for you.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
                         ),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: _buildButton(
-                          text: _isLoading ? "Saving..." : "Continue",
-                          isPrimary: true,
-                          onPressed: _isLoading ? null : _validateAndSubmit,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-
-            // Progress bubble
-            Positioned(
-              right: 12,
-              top: 8,
-              child: _progressBubble(0.15, "25%"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildButton({
-    required String text,
-    required bool isPrimary,
-    required VoidCallback? onPressed,
-  }) {
-    return Container(
-      height: 55,
-      decoration: BoxDecoration(
-        gradient: isPrimary
-            ? const LinearGradient(
-          colors: [Color(0xFFE64B37), Color(0xFFE62255)],
-        )
-            : const LinearGradient(
-          colors: [Color(0xFFEEA2A4), Color(0xFFF3C0C4)],
-        ),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: onPressed,
-          child: Center(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _progressBubble(double progress, String label) {
-    final size = 42.0;
-    return SizedBox(
-      height: size,
-      width: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            height: size,
-            width: size,
-            decoration: BoxDecoration(
-              color: Colors.red.shade100,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(
-            height: size,
-            width: size,
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 3.2,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFE64B37)),
-              backgroundColor: Colors.white,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFE64B37),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -328,8 +299,8 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
   void _validateAndSubmit() async {
     setState(() {
       submitted = true;
-
     });
+
     if (_selectedReligion == null) {
       _showError("Please select religion");
       return;
@@ -343,7 +314,7 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
       return;
     }
     if (_selectedCastLanguage == null) {
-      _showError("Please select cast language");
+      _showError("Please select caste language");
       return;
     }
 
@@ -370,23 +341,37 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
 
     if (result['status'] == 'success') {
       bool updated = await UpdateService.updatePageNumber(
-        userId: userId.toString(),     // <-- pass real user ID
-        pageNo: 2,        // <-- page you want to update
+        userId: userId.toString(),
+        pageNo: 2,
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => LivingStatusPage()),
-      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => LivingStatusPage()),
+        );
+      }
     } else {
       _showError(result['message'] ?? "Failed to save details");
     }
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         duration: const Duration(seconds: 3),
       ),
     );
