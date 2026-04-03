@@ -22,7 +22,7 @@ class GlobalConnectivityHandler extends StatefulWidget {
 }
 
 class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
-  static const double _hiddenBannerOffsetY = -1.2;
+  static const double _hiddenBannerOffsetMultiplier = -1.2;
 
   ConnectivityService? _connectivityService;
   Timer? _hideBannerTimer;
@@ -191,6 +191,10 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
         return;
       }
 
+      debugPrint(
+        'Falling back to SplashScreen after reconnect because the current route '
+        'could not be refreshed by name.',
+      );
       navigator.pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => const SplashScreen(),
@@ -217,7 +221,7 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
                   duration: const Duration(milliseconds: 220),
                   offset: _isBannerVisible
                       ? Offset.zero
-                      : const Offset(0, _hiddenBannerOffsetY),
+                      : const Offset(0, _hiddenBannerOffsetMultiplier),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                   child: Material(

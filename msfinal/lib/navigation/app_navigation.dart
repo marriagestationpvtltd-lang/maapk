@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const String noInternetRouteName = '/no-internet';
+const String noInternetRouteName = '/noInternet';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final AppRouteTracker appRouteTracker = AppRouteTracker();

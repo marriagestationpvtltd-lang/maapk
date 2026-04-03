@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -6,7 +8,7 @@ import '../constant/app_dimensions.dart';
 import '../service/connectivity_service.dart';
 
 class NoInternetScreen extends StatefulWidget {
-  final Future<void> Function()? onRetry;
+  final FutureOr<void> Function()? onRetry;
 
   const NoInternetScreen({super.key, this.onRetry});
 
@@ -85,7 +87,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
     try {
       if (widget.onRetry != null) {
-        await widget.onRetry!();
+        await Future.sync(widget.onRetry!);
       } else if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
@@ -97,7 +99,8 @@ class _NoInternetScreenState extends State<NoInternetScreen>
   Future<void> _triggerRecovery() async {
     try {
       await _completeRetry();
-    } catch (_) {
+    } catch (error) {
+      debugPrint('NoInternetScreen recovery failed: $error');
       if (!mounted) {
         return;
       }
