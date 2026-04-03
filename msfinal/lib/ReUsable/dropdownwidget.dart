@@ -251,6 +251,8 @@ class _BottomSheetContentState<T>
   final TextEditingController searchController =
   TextEditingController();
 
+  bool get _showSearch => widget.items.length >= 5;
+
   @override
   void initState() {
     super.initState();
@@ -330,28 +332,32 @@ class _BottomSheetContentState<T>
                 ],
               ),
 
-            const SizedBox(height: 12),
+             const SizedBox(height: 12),
 
-            /// SEARCH
-            TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: "Search...",
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 10),
-              ),
-            ),
+             /// SEARCH
+             if (_showSearch) ...[
+               TextField(
+                 controller: searchController,
+                 autofocus: true,
+                 textInputAction: TextInputAction.search,
+                 decoration: InputDecoration(
+                   hintText: "Search...",
+                   prefixIcon: const Icon(Icons.search),
+                   border: OutlineInputBorder(
+                     borderRadius: BorderRadius.circular(30),
+                   ),
+                   contentPadding:
+                   const EdgeInsets.symmetric(
+                       horizontal: 20, vertical: 10),
+                 ),
+               ),
 
-            const SizedBox(height: 16),
+               const SizedBox(height: 16),
+             ],
 
-            /// LIST
-            Expanded(
-              child: ListView.builder(
+             /// LIST
+             Expanded(
+               child: ListView.builder(
                 itemCount: filteredItems.length,
                 itemBuilder: (_, index) {
                   final item = filteredItems[index];
