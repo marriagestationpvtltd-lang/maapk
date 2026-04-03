@@ -181,18 +181,22 @@ class ProfileService {
       if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(json.decode(response.body));
         if (result['status'] == 'success') {
-          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
-          await NotificationService.sendRequestNotification(
-            recipientUserId: userId,
-            senderName: senderName,
-            senderId: myId,
-            requestType: 'Photo',
-          );
-          await NotificationInboxService.recordOutgoingRequest(
-            recipientUserId: userId,
-            requestType: 'Photo',
-            recipientName: 'MS:$userId',
-          );
+          try {
+            final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+            await NotificationService.sendRequestNotification(
+              recipientUserId: userId,
+              senderName: senderName,
+              senderId: myId,
+              requestType: 'Photo',
+            );
+            await NotificationInboxService.recordOutgoingRequest(
+              recipientUserId: userId,
+              requestType: 'Photo',
+              recipientName: 'MS:$userId',
+            );
+          } catch (notifError) {
+            debugPrint('⚠️ Photo request sent but notification failed: $notifError');
+          }
         }
         return result;
       }
@@ -230,18 +234,22 @@ class ProfileService {
       if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(json.decode(response.body));
         if (result['status'] == 'success') {
-          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
-          await NotificationService.sendRequestNotification(
-            recipientUserId: userId,
-            senderName: senderName,
-            senderId: myId,
-            requestType: 'Chat',
-          );
-          await NotificationInboxService.recordOutgoingRequest(
-            recipientUserId: userId,
-            requestType: 'Chat',
-            recipientName: 'MS:$userId',
-          );
+          try {
+            final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+            await NotificationService.sendRequestNotification(
+              recipientUserId: userId,
+              senderName: senderName,
+              senderId: myId,
+              requestType: 'Chat',
+            );
+            await NotificationInboxService.recordOutgoingRequest(
+              recipientUserId: userId,
+              requestType: 'Chat',
+              recipientName: 'MS:$userId',
+            );
+          } catch (notifError) {
+            debugPrint('⚠️ Chat request sent but notification failed: $notifError');
+          }
         }
         return result;
       }
