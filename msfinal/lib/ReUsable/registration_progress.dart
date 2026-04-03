@@ -1,6 +1,8 @@
 // Professional Registration Progress Indicator
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../constant/app_colors.dart';
+import '../Startup/onboarding.dart';
 
 class RegistrationProgress extends StatelessWidget {
   final int currentStep;
@@ -128,7 +130,16 @@ class RegistrationStepHeader extends StatelessWidget {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: onBack,
+                    onTap: () {
+                      // Navigate to onboarding screen instead of just popping
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    },
                     borderRadius: BorderRadius.circular(12),
                     child: const Padding(
                       padding: EdgeInsets.all(12),
@@ -211,61 +222,82 @@ class RegistrationStepContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            controller: scrollController,
-            physics: scrollPhysics ?? const ClampingScrollPhysics(),
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to onboarding instead of allowing default pop
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const OnboardingScreen(),
+          ),
+          (route) => false,
+        );
+        return false; // Prevent default back navigation
+      },
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: scrollController,
+              physics: scrollPhysics ?? const ClampingScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: child,
+            ),
+          ),
+          // Bottom action buttons
+          Container(
             padding: const EdgeInsets.all(20),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: child,
-          ),
-        ),
-        // Bottom action buttons
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowLight,
-                blurRadius: 12,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              children: [
-                if (onBack != null) ...[
-                  Expanded(
-                    flex: 1,
-                    child: OutlinedButton(
-                      onPressed: isLoading ? null : onBack,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(
-                          color: AppColors.border,
-                          width: 1.5,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowLight,
+                  blurRadius: 12,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  if (onBack != null) ...[
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton(
+                        onPressed: isLoading ? null : () {
+                          // Navigate to onboarding instead of pop
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const OnboardingScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(
+                            color: AppColors.border,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Back',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        child: const Text(
+                          'Back',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
+                    const SizedBox(width: 12),
+                  ],
                 Expanded(
                   flex: 2,
                   child: Container(
@@ -289,7 +321,7 @@ class RegistrationStepContainer extends StatelessWidget {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: (isLoading || !canContinue) ? null : onContinue,
+                        onTap: isLoading ? null : onContinue,
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -308,17 +340,17 @@ class RegistrationStepContainer extends StatelessWidget {
                                     children: [
                                       Text(
                                         continueText,
-                                        style: const TextStyle(
-                                          color: AppColors.white,
+                                        style: TextStyle(
+                                          color: canContinue ? AppColors.white : AppColors.textSecondary,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      const Icon(
+                                      Icon(
                                         Icons.arrow_forward_ios,
                                         size: 16,
-                                        color: AppColors.white,
+                                        color: canContinue ? AppColors.white : AppColors.textSecondary,
                                       ),
                                     ],
                                   ),
@@ -333,6 +365,7 @@ class RegistrationStepContainer extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }
