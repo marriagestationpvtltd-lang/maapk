@@ -1212,6 +1212,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             ),
                           ),
                         ],
+                      ],
                       ),
                     ),
 
