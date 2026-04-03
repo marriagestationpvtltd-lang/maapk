@@ -425,34 +425,54 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   Widget _incomingControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
-      _btn(Icons.call, Colors.green, _acceptCall),
-      _btn(Icons.call_end, Colors.red, _rejectCall),
+      _callBtn(Icons.call, Colors.green, _acceptCall, loading: _processing),
+      _callBtn(Icons.call_end, Colors.red, _rejectCall),
     ],
   );
 
   Widget _activeControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
-       _btn(
+       _callBtn(
          _micMuted ? Icons.mic_off : Icons.mic,
-         Colors.white,
+         _micMuted ? Colors.orange : Colors.white,
          _toggleMute,
        ),
-      _btn(Icons.call_end, Colors.red, _endCall),
-       _btn(
+      _callBtn(Icons.call_end, Colors.red, _endCall),
+       _callBtn(
          _speakerOn ? Icons.volume_up : Icons.volume_off,
-         Colors.white,
+         _speakerOn ? Colors.blue : Colors.white,
          _engineInitialized ? () {
-           _speakerOn = !_speakerOn;
+           setState(() => _speakerOn = !_speakerOn);
            _engine.setEnableSpeakerphone(_speakerOn);
-           setState(() {});
-         } : () {},
+         } : null,
        ),
     ],
   );
 
-  Widget _btn(IconData i, Color c, VoidCallback f) =>
-      IconButton(icon: Icon(i, color: c, size: 48), onPressed: f);
+  Widget _callBtn(IconData icon, Color color, VoidCallback? onPressed, {bool loading = false}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.85),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: loading
+            ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)))
+            : Icon(icon, color: Colors.white, size: 32),
+      ),
+    );
+  }
 
   String _format(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';

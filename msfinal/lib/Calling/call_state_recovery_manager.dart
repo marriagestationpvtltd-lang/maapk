@@ -88,15 +88,15 @@ class CallStateRecoveryManager {
 
     print('[CallStateRecovery] Navigating to call screen');
 
+    // Use camelCase keys to match what IncomingCallScreen._parseData expects
     final callData = {
-      'caller_id': callState.callerId,
-      'caller_name': callState.callerName,
-      'caller_image': callState.callerImage,
-      'receiver_id': callState.receiverId,
-      'receiver_name': callState.receiverName,
-      'receiver_image': callState.receiverImage,
-      'channel_name': callState.channelName,
-      'call_type': callState.callType,
+      'callerId': callState.callerId,
+      'callerName': callState.callerName,
+      'callerImage': callState.callerImage,
+      'recipientName': callState.receiverName,
+      'channelName': callState.channelName,
+      'type': callState.callType == 'video' ? 'video_call' : 'call',
+      'isVideoCall': callState.callType == 'video' ? 'true' : 'false',
     };
 
     // Determine which screen to navigate to
@@ -206,8 +206,9 @@ class CallStateRecoveryManager {
 
     // Check if we should create a new call from the notification
     // (This handles the case where notification arrived but app was killed before state saved)
-    final callerId = data['caller_id'] ?? data['senderId'];
-    final channelName = data['channel_name'] ?? data['channelName'];
+    // Support both camelCase keys (from sendCallNotification) and underscore keys (legacy)
+    final callerId = data['callerId'] ?? data['caller_id'] ?? data['senderId'];
+    final channelName = data['channelName'] ?? data['channel_name'];
 
     if (callerId == null || channelName == null) {
       print('[CallStateRecovery] Incomplete call data in notification');
@@ -219,11 +220,11 @@ class CallStateRecoveryManager {
       callId: channelName, // Use channel as call ID
       channelName: channelName,
       callerId: callerId,
-      callerName: data['caller_name'] ?? data['senderName'] ?? 'Unknown',
-      callerImage: data['caller_image'] ?? data['senderImage'] ?? '',
-      receiverId: data['receiver_id'] ?? data['myId'] ?? '',
-      receiverName: data['receiver_name'] ?? data['myName'] ?? '',
-      receiverImage: data['receiver_image'] ?? data['myImage'] ?? '',
+      callerName: data['callerName'] ?? data['caller_name'] ?? data['senderName'] ?? 'Unknown',
+      callerImage: data['callerImage'] ?? data['caller_image'] ?? data['senderImage'] ?? '',
+      receiverId: data['receiverId'] ?? data['receiver_id'] ?? data['myId'] ?? '',
+      receiverName: data['recipientName'] ?? data['receiverName'] ?? data['receiver_name'] ?? data['myName'] ?? '',
+      receiverImage: data['receiverImage'] ?? data['receiver_image'] ?? data['myImage'] ?? '',
       callType: callType == 'video_call' ? 'video' : 'audio',
       status: CallStatus.ringing,
       startTime: DateTime.now(),
