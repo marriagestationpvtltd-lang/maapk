@@ -240,8 +240,8 @@ class _CoupleIllustration extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Bride card
-          const _ProfileCard(icon: Icons.person, label: 'Bride'),
+          // Left profile card
+          const _ProfileCard(icon: Icons.woman, label: 'Bride'),
 
           // Heart connector
           Padding(
@@ -268,8 +268,8 @@ class _CoupleIllustration extends StatelessWidget {
             ),
           ),
 
-          // Groom card
-          const _ProfileCard(icon: Icons.person, label: 'Groom'),
+          // Right profile card
+          const _ProfileCard(icon: Icons.man, label: 'Groom'),
         ],
       ),
     );
