@@ -1,6 +1,7 @@
 // lib/screens/ChatDetailScreen.dart
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,6 +25,7 @@ import '../otherenew/service.dart';
 import '../pushnotification/pushservice.dart';
 import '../webrtc/webrtc.dart';
 import 'call_overlay_manager.dart';
+import 'widgets/typing_indicator.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatRoomId;
@@ -110,6 +112,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
 
+  // Typing indicator
+  Timer? _typingDebounce;
+  bool _isReceiverTyping = false;
+  StreamSubscription? _typingSubscription;
+
+  // Scroll-to-reply + highlight
+  final Map<String, GlobalKey> _messageKeys = {};
+  String? _highlightedMessageId;
+
+  // Delivered status (hover for web)
+  String? _hoveredMessageId;
+
   static const LinearGradient _primaryGradient = LinearGradient(
     colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
     begin: Alignment.topLeft,
@@ -183,6 +197,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     // Add scroll listener for lazy loading
     _scrollController.addListener(_onScroll);
+
+    // Start listening to receiver's typing status
+    _listenToTypingStatus();
   }
 
   void _onScroll() {
@@ -240,7 +257,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
     }
   }
-  @override
+
+  // ───────── TYPING INDICATOR ─────────
+
+  /// Listen to the `typing` map on the chatRoom document and update
+  /// [_isReceiverTyping] when the receiver's entry changes.
+  void _listenToTypingStatus() {
+    _typingSubscription = _firestore
+        .collection('chatRooms')
+        .doc(widget.chatRoomId)
+        .snapshots()
+        .listen((snap) {
+      if (!snap.exists || !mounted) return;
+      final data = snap.data() as Map<String, dynamic>? ?? {};
+      final typingMap = data['typing'] as Map<String, dynamic>? ?? {};
+
+      // Consider receiver typing only if their timestamp is within last 5 seconds
+      final receiverTypingTs = typingMap[widget.receiverId];
+      bool typing = false;
+      if (receiverTypingTs is Timestamp) {
+        final diff = DateTime.now().difference(receiverTypingTs.toDate());
+        typing = diff.inSeconds < 5;
+      }
+      if (mounted && _isReceiverTyping != typing) {
+        setState(() => _isReceiverTyping = typing);
+      }
+    });
+  }
+
+  /// Called whenever the input field text changes.  Writes a server-timestamp
+  /// to `chatRooms/{id}.typing.{myUserId}` and clears it after 3 s of idle.
+  void _onTypingChanged() {
+    _typingDebounce?.cancel();
+    _firestore.collection('chatRooms').doc(widget.chatRoomId).set(
+      {'typing': {widget.currentUserId: FieldValue.serverTimestamp()}},
+      SetOptions(merge: true),
+    );
+    _typingDebounce = Timer(const Duration(seconds: 3), _clearTyping);
+  }
+
+  void _clearTyping() {
+    _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
+      'typing.${widget.currentUserId}': FieldValue.delete(),
+    }).catchError((_) {}); // ignore if doc doesn't exist yet
+  }
+
+  // ───────── SCROLL TO REPLIED MESSAGE ─────────
+
+  /// Scroll to the message with [messageId] and briefly highlight it.
+  void _scrollToMessage(String messageId) {
+    final key = _messageKeys[messageId];
+    if (key?.currentContext == null) return;
+
+    Scrollable.ensureVisible(
+      key!.currentContext!,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      alignment: 0.3,
+    );
+
+    setState(() => _highlightedMessageId = messageId);
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
   void dispose() {
     // Clear chat active state when screen closes
     ScreenStateManager().onChatScreenClosed();
@@ -251,6 +331,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _messageFocusNode.dispose();
     _audioPlayer.dispose();
     _swipeAnimationController?.dispose();
+    _typingDebounce?.cancel();
+    _typingSubscription?.cancel();
+    _clearTyping(); // Remove our typing entry on exit
     super.dispose();
   }
 
@@ -302,9 +385,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       final batch = _firestore.batch();
       for (final doc in unreadMessages.docs) {
-        batch.update(doc.reference, {'isRead': true});
+        batch.update(doc.reference, {'isRead': true, 'isDelivered': true});
       }
       await batch.commit();
+
+      // Also mark undelivered messages as delivered
+      final undeliveredMessages = await _firestore
+          .collection('chatRooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .where('receiverId', isEqualTo: widget.currentUserId)
+          .where('isDelivered', isEqualTo: false)
+          .get();
+
+      if (undeliveredMessages.docs.isNotEmpty) {
+        final deliveredBatch = _firestore.batch();
+        for (final doc in undeliveredMessages.docs) {
+          deliveredBatch.update(doc.reference, {'isDelivered': true});
+        }
+        await deliveredBatch.commit();
+      }
     } catch (e) {
       print('Error marking messages as read: $e');
     }
@@ -333,6 +433,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'messageType': 'text',
         'timestamp': timestamp,
         'isRead': false,
+        'isDelivered': false,
         'isDeletedForSender': false,
         'isDeletedForReceiver': false,
       };
@@ -859,16 +960,80 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     required DateTime timestamp,
     required String messageType,
     required bool isRead,
+    required bool isDelivered,
     required int? duration,
     required Map<String, dynamic> messageData,
     required Map<String, dynamic>? repliedTo,
     required bool isEdited,
   }) {
+    final msgId = messageData['messageId'] as String? ?? '';
+    // Assign a stable GlobalKey so we can scroll to this message
+    final key = _messageKeys.putIfAbsent(msgId, () => GlobalKey());
+
     final time = _formatTime(timestamp);
     final userName = isMine ? widget.currentUserName : widget.receiverName;
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final isHighlighted = _highlightedMessageId == msgId;
 
-    final messageContent = GestureDetector(
+    // Build the reply snippet widget (tappable to scroll to source)
+    Widget? replyWidget;
+    if (repliedTo != null) {
+      replyWidget = GestureDetector(
+        onTap: () {
+          final replyId = repliedTo['messageId'] as String?;
+          if (replyId != null) _scrollToMessage(replyId);
+        },
+        child: Container(
+          width: 260,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            gradient: _secondaryGradient,
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              left: BorderSide(color: _accentColor, width: 3.5),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                repliedTo['senderName'] ?? 'User',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                repliedTo['messageType'] == 'text'
+                    ? repliedTo['message']
+                    : repliedTo['messageType'] == 'image'
+                        ? '📷 Photo'
+                        : '🎤 Voice message',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: _lightTextColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Choose tick icon based on delivery/read state
+    Widget _buildTick() {
+      if (isRead) {
+        return Icon(Icons.done_all, size: 16, color: const Color(0xFF34B7F1));
+      } else if (isDelivered) {
+        return Icon(Icons.done_all, size: 16, color: Colors.grey.shade500);
+      } else {
+        return Icon(Icons.done, size: 16, color: Colors.grey.shade500);
+      }
+    }
+
+    Widget messageContent = GestureDetector(
       onLongPress: () {
         if (mounted) {
           setState(() {
@@ -879,7 +1044,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         }
       },
       child: Container(
+        key: key,
         margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isHighlighted ? _accentColor.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -901,50 +1071,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   ),
                 ],
 
-                if (repliedTo != null) ...[
-                  Container(
-                    width: 260,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    margin: const EdgeInsets.only(bottom: 6),
-                    decoration: BoxDecoration(
-                      gradient: _secondaryGradient,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border(
-                        left: BorderSide(
-                          color: _accentColor,
-                          width: 3.5,
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          repliedTo['senderName'] ?? 'User',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _accentColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          repliedTo['messageType'] == 'text'
-                              ? repliedTo['message']
-                              : repliedTo['messageType'] == 'image'
-                              ? '📷 Photo'
-                              : '🎤 Voice message',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _lightTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                if (replyWidget != null) replyWidget,
 
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1012,11 +1139,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     ),
                     if (isMine) ...[
                       const SizedBox(width: 4),
-                      Icon(
-                        isRead ? Icons.done_all : Icons.done,
-                        size: 16,
-                        color: isRead ? const Color(0xFF34B7F1) : Colors.grey.shade500,
-                      ),
+                      _buildTick(),
                     ]
                   ],
                 ),
@@ -1030,10 +1153,73 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       ),
     );
 
+    // Wrap with MouseRegion on web for hover quick-actions
+    if (kIsWeb) {
+      messageContent = MouseRegion(
+        onEnter: (_) => setState(() => _hoveredMessageId = msgId),
+        onExit: (_) => setState(() {
+          if (_hoveredMessageId == msgId) _hoveredMessageId = null;
+        }),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            messageContent,
+            if (_hoveredMessageId == msgId)
+              Positioned(
+                top: 0,
+                right: isMine ? null : -80,
+                left: isMine ? -80 : null,
+                child: _buildHoverActions(messageData, isMine),
+              ),
+          ],
+        ),
+      );
+    }
+
     return _swipeableMessage(
       child: messageContent,
       messageData: messageData,
       isMine: isMine,
+    );
+  }
+
+  /// Small row of quick-action buttons shown on hover (web only).
+  Widget _buildHoverActions(Map<String, dynamic> msg, bool isMine) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 6, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _hoverActionBtn(Icons.reply, () => _setReplyMessage(msg)),
+          if (isMine && msg['messageType'] == 'text')
+            _hoverActionBtn(Icons.edit, () => _setEditMessage(msg)),
+          _hoverActionBtn(Icons.delete, () {
+            setState(() {
+              selectedMessage = msg;
+              selectedMine = isMine;
+              showDeletePopup = true;
+            });
+          }, color: Colors.red),
+        ],
+      ),
+    );
+  }
+
+  Widget _hoverActionBtn(IconData icon, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon, size: 18, color: color ?? Colors.grey[700]),
+      ),
     );
   }
 
@@ -1363,6 +1549,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                             if (mounted) {
                               setState(() {});
                             }
+                            // Fire typing indicator only when composing (not editing)
+                            if (!isEditing && value.isNotEmpty) {
+                              _onTypingChanged();
+                            } else if (!isEditing && value.isEmpty) {
+                              _clearTyping();
+                            }
                           },
                           onSubmitted: (_) => isEditing ? _editMessage() : _sendMessage(),
                         ),
@@ -1658,6 +1850,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           timestamp: timestamp,
           messageType: data['messageType'] ?? 'text',
           isRead: data['isRead'] ?? false,
+          isDelivered: data['isDelivered'] ?? false,
           duration: data['duration']?.toInt(),
           messageData: data,
           repliedTo: data['repliedTo'],
@@ -2083,18 +2276,37 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       fontWeight: FontWeight.w600,
                       fontSize: 17),
                 ),
-                const Text(
-                  "online",
-                  style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13),
-                ),
+                if (_isReceiverTyping)
+                  Row(
+                    children: [
+                      TypingIndicatorWidget(dotColor: Colors.white, dotSize: 6),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'typing...',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  )
+                else
+                  const Text(
+                    "online",
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
               ],
             ),
           ),
           GestureDetector(
             onTap: () {
-              print('tapped on call button');
+              // Prevent starting a new call if one is already active
+              if (CallOverlayManager().isCallActive) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You are already in a call'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -2116,6 +2328,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           ),
           IconButton(
             onPressed: () {
+              // Prevent starting a new call if one is already active
+              if (CallOverlayManager().isCallActive) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You are already in a call'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
