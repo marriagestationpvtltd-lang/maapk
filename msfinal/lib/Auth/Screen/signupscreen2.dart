@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
+import '../../ReUsable/dropdownwidget.dart';
 import '../../ReUsable/smart_scroll_behavior.dart';
 import '../../service/personal_details_api.dart';
 import '../../service/updatepage.dart';
@@ -68,26 +69,25 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
     'Slim', 'Athletic', 'Average', 'Heavy', 'Muscular'
   ];
 
-  List<String> get _heightOptions {
-    return List.generate(121, (index) {
+  late final List<String> _heightOptions;
+  late final List<String> _weightOptions;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Cache large lists once to avoid repeated generation during build
+    _heightOptions = List.generate(121, (index) {
       int cm = 100 + index;
       double totalInches = cm / 2.54;
       int feet = totalInches ~/ 12;
       int inches = (totalInches % 12).round();
       return "$cm cm ($feet' $inches\")";
     });
-  }
-
-  List<String> get _weightOptions {
-    return List.generate(121, (index) {
+    _weightOptions = List.generate(121, (index) {
       int kg = 30 + index;
       return "$kg kg";
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
 
     // Initialize focus node
     _disabilityFocus = FocusNode();
@@ -536,16 +536,15 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                 Row(
                   children: [
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Height',
-                        value: _selectedHeight,
+                      child: TypingDropdown<String>(
+                        title: 'Height',
                         items: _heightOptions,
                         itemLabel: (height) => height,
                         hint: 'Select height',
-                        prefixIcon: Icons.height,
-                        hasError: _fieldErrors['height'] != null,
+                        selectedItem: _selectedHeight,
+                        showError: _fieldErrors['height'] != null,
                         errorText: _fieldErrors['height'],
-                        isRequired: true,
+                        prefixIcon: Icons.height,
                         onChanged: (value) {
                           setState(() {
                             _selectedHeight = value;
@@ -558,16 +557,15 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Weight',
-                        value: _selectedWeight,
+                      child: TypingDropdown<String>(
+                        title: 'Weight',
                         items: _weightOptions,
                         itemLabel: (weight) => weight,
                         hint: 'Select weight',
-                        prefixIcon: Icons.monitor_weight_outlined,
-                        hasError: _fieldErrors['weight'] != null,
+                        selectedItem: _selectedWeight,
+                        showError: _fieldErrors['weight'] != null,
                         errorText: _fieldErrors['weight'],
-                        isRequired: true,
+                        prefixIcon: Icons.monitor_weight_outlined,
                         onChanged: (value) {
                           setState(() {
                             _selectedWeight = value;

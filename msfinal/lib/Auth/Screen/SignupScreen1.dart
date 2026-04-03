@@ -10,6 +10,7 @@ import 'package:ms2026/Auth/Screen/signupscreen2.dart';
 import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
+import '../../ReUsable/dropdownwidget.dart';
 import '../../ReUsable/dateconverter.dart';
 import '../../ReUsable/smart_scroll_behavior.dart';
 import '../SuignupModel/signup_model.dart';
@@ -1262,19 +1263,18 @@ class _YourDetailsPageState extends State<YourDetailsPage>
 
                     const SizedBox(height: 16),
 
-                    // Date Dropdowns
                     if (isAD)
                       Row(
                         children: [
                           Expanded(
                             flex: 2,
-                            child: EnhancedDropdown<String>(
-                              label: 'Year',
-                              value: selectedADYear.isNotEmpty ? selectedADYear : null,
+                            child: TypingDropdown<String>(
+                              title: 'Year',
                               items: adYears,
                               itemLabel: (year) => year,
                               hint: 'Year',
-                              hasError: _fieldErrors['dob'] != null && selectedADYear.isEmpty,
+                              selectedItem: selectedADYear.isNotEmpty ? selectedADYear : null,
+                              showError: _fieldErrors['dob'] != null && selectedADYear.isEmpty,
                               onChanged: (value) {
                                 setState(() {
                                   selectedADYear = value ?? '';
@@ -1332,13 +1332,13 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                         children: [
                           Expanded(
                             flex: 2,
-                            child: EnhancedDropdown<String>(
-                              label: 'Year',
-                              value: selectedBSYear.isNotEmpty ? selectedBSYear : null,
+                            child: TypingDropdown<String>(
+                              title: 'Year',
                               items: bsYears,
                               itemLabel: (year) => year,
                               hint: 'Year',
-                              hasError: _fieldErrors['dob'] != null && selectedBSYear.isEmpty,
+                              selectedItem: selectedBSYear.isNotEmpty ? selectedBSYear : null,
+                              showError: _fieldErrors['dob'] != null && selectedBSYear.isEmpty,
                               onChanged: (value) {
                                 setState(() {
                                   selectedBSYear = value ?? '';

@@ -11,6 +11,7 @@ class TypingDropdown<T> extends StatefulWidget {
   final String hint;
   final String title;
   final String? errorText;
+  final IconData? prefixIcon;
 
   const TypingDropdown({
     Key? key,
@@ -22,6 +23,7 @@ class TypingDropdown<T> extends StatefulWidget {
     required this.title,
     required this.showError,
     this.errorText,
+    this.prefixIcon,
   }) : super(key: key);
 
 
@@ -40,6 +42,22 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
           ? widget.itemLabel(widget.selectedItem!)
           : '',
     );
+  }
+
+  @override
+  void didUpdateWidget(TypingDropdown<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedItem != oldWidget.selectedItem) {
+      controller.text = widget.selectedItem != null
+          ? widget.itemLabel(widget.selectedItem!)
+          : '';
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   void _openBottomSheet() {
@@ -150,10 +168,17 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
                       fontWeight: FontWeight.w400,
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: widget.prefixIcon != null ? 8 : 16,
                       vertical: 14,
                     ),
+                    prefixIcon: widget.prefixIcon != null
+                        ? Icon(
+                            widget.prefixIcon,
+                            color: hasError ? AppColors.error : AppColors.textSecondary,
+                            size: 22,
+                          )
+                        : null,
                     suffixIcon: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: hasError ? AppColors.error : AppColors.textSecondary,
@@ -231,6 +256,12 @@ class _BottomSheetContentState<T>
     super.initState();
     filteredItems = widget.items;
     searchController.addListener(_filter);
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   void _filter() {
