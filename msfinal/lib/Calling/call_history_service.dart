@@ -68,30 +68,17 @@ class CallHistoryService {
   static Stream<List<CallHistory>> getCallHistory(String userId) {
     return _firestore
         .collection(COLLECTION_NAME)
-        .where('callerId', whereIn: [userId])
         .orderBy('startTime', descending: true)
         .limit(100)
         .snapshots()
-        .asyncMap((callerSnapshot) async {
-      // Get calls where user is caller
-      final callerCalls = callerSnapshot.docs
+        .map((snapshot) {
+      // Filter to only calls involving this user
+      final allCalls = snapshot.docs
           .map((doc) => CallHistory.fromMap(doc.data(), doc.id))
+          .where((call) => call.callerId == userId || call.recipientId == userId)
           .toList();
 
-      // Get calls where user is recipient
-      final recipientSnapshot = await _firestore
-          .collection(COLLECTION_NAME)
-          .where('recipientId', isEqualTo: userId)
-          .orderBy('startTime', descending: true)
-          .limit(100)
-          .get();
-
-      final recipientCalls = recipientSnapshot.docs
-          .map((doc) => CallHistory.fromMap(doc.data(), doc.id))
-          .toList();
-
-      // Combine and sort by start time
-      final allCalls = [...callerCalls, ...recipientCalls];
+      // Sort by start time
       allCalls.sort((a, b) => b.startTime.compareTo(a.startTime));
 
       return allCalls.take(100).toList();
