@@ -989,14 +989,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
             final participantLocations = data['participantLocations'] != null
                 ? Map<String, dynamic>.from(data['participantLocations'])
                 : <String, dynamic>{};
-            final dynamic rawLocation =
-                participantLocations[otherParticipantId];
-            final String locationLabel =
-                (rawLocation?.toString().trim().isNotEmpty ?? false)
-                    ? rawLocation.toString().trim()
-                    : 'Location not shared';
-            final bool hasLocation =
-                (rawLocation?.toString().trim().isNotEmpty ?? false);
             final int unreadForMe = unreadCount[userId] ?? 0;
 
             print('\n=== Building Chat Item $index ===');
@@ -1008,6 +1000,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
             // Find the OTHER participant (not me)
             String otherParticipantId = '';
             String otherPersonName = '';
+            dynamic rawLocation;
+            String locationLabel = 'Location not shared';
+            bool hasLocation = false;
 
             for (var participantId in participants) {
               if (participantId.trim() != userId.trim()) {
@@ -1015,6 +1010,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                 // Get name from Firebase data
                 otherPersonName = participantNames[otherParticipantId] ?? 'Unknown';
+                rawLocation = participantLocations[otherParticipantId];
+                if ((rawLocation?.toString().trim().isNotEmpty ?? false)) {
+                  locationLabel = rawLocation.toString().trim();
+                  hasLocation = true;
+                }
 
                 // DEBUG: Check if the name matches what we expect
                 print('Found other participant: ID=$otherParticipantId, Name from Firebase=$otherPersonName');
