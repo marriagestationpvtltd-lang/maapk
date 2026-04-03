@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ms2026/Home/Screen/premiummember.dart';
 import 'package:ms2026/Home/Screen/profilecard.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../Auth/Screen/signupscreen10.dart';
 import '../../Auth/SuignupModel/signup_model.dart';
+import '../../Chat/ChatdetailsScreen.dart';
 import '../../Chat/ChatlistScreen.dart';
 import '../../liked/liked.dart';
 import '../../Models/masterdata.dart';
@@ -22,7 +24,9 @@ import '../../main.dart';
 import '../../online/onlineservice.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../profile/myprofile.dart';
+import '../../purposal/Purposalmodel.dart';
 import '../../purposal/purposalScreen.dart';
+import '../../purposal/purposalservice.dart';
 import '../../service/Service_chat.dart';
 import 'machprofilescreen.dart';
 
@@ -35,6 +39,10 @@ class MatrimonyHomeScreen extends StatefulWidget {
 }
 
 class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
+  static const String _apiBaseUrl = 'https://digitallami.com/Api2';
+  static const String _placeholderProfileImage =
+      'https://via.placeholder.com/150';
+  static const Color _brandRed = Color(0xFFF90E18);
   int _currentIndex = 0;
 
   List<dynamic> _matchedProfilesApi = [];
@@ -42,7 +50,11 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   String _errorMessage = '';
   List<Map<String, dynamic>> _premiumMembers = [];
   List<Map<String, dynamic>> _otherServices = [];
+  List<MatchedUser> _photoRequestProfiles = [];
+  List<ProposalModel> _chatRequestProfiles = [];
   bool _loading = true;
+  bool _photoRequestsLoading = true;
+  bool _chatRequestsLoading = true;
 
   List<dynamic> _shortlistedProfiles = [];
   bool _isLoadingShortlist = false;
@@ -133,6 +145,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     try {
       setState(() {
         _isLoading = true;
+        _photoRequestsLoading = true;
         _errorMessage = '';
       });
 
@@ -156,9 +169,21 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         final result = jsonDecode(response.body);
 
         if (result['success'] == true) {
+          final rawProfiles = List<dynamic>.from(result['matched_users'] ?? []);
+          final photoProfiles = rawProfiles
+              .map((item) => MatchedUser.fromJson(Map<String, dynamic>.from(item)))
+              .where((profile) {
+            final status = profile.photoRequestStatus.toLowerCase();
+            return status == 'accepted' || status == 'pending';
+          }).toList()
+            ..sort((a, b) => _requestStatusPriority(a.photoRequestStatus)
+                .compareTo(_requestStatusPriority(b.photoRequestStatus)));
+
           setState(() {
-            _matchedProfilesApi = result['matched_users'] ?? [];
+            _matchedProfilesApi = rawProfiles;
+            _photoRequestProfiles = photoProfiles;
             _isLoading = false;
+            _photoRequestsLoading = false;
           });
         } else {
           throw Exception(result['message'] ?? 'Failed to load matched profiles');
@@ -170,6 +195,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
+        _photoRequestProfiles = [];
+        _photoRequestsLoading = false;
       });
       print('Error fetching matched profiles: $e');
     }
@@ -325,6 +352,47 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       setState(() => _loading = false);
       debugPrint('Exception: $e');
     }}
+
+  Future<void> _fetchChatRequestProfiles() async {
+    try {
+      setState(() {
+        _chatRequestsLoading = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) {
+        setState(() {
+          _chatRequestProfiles = [];
+          _chatRequestsLoading = false;
+        });
+        return;
+      }
+
+      final userData = jsonDecode(userDataString);
+      final currentUserId = userData['id'].toString();
+
+      final results = await Future.wait([
+        ProposalService.fetchProposals(currentUserId, 'sent'),
+        ProposalService.fetchProposals(currentUserId, 'accepted'),
+      ]);
+
+      setState(() {
+        _chatRequestProfiles = _mergeChatRequests(
+          currentUserId: currentUserId,
+          sentRequests: results[0],
+          acceptedRequests: results[1],
+        );
+        _chatRequestsLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetching chat request profiles: $e');
+      setState(() {
+        _chatRequestProfiles = [];
+        _chatRequestsLoading = false;
+      });
+    }
+  }
 
 
 
@@ -2026,6 +2094,303 @@ String usertye = '';
     );
   }
 
+  List<ProposalModel> _mergeChatRequests({
+    required String currentUserId,
+    required List<ProposalModel> sentRequests,
+    required List<ProposalModel> acceptedRequests,
+  }) {
+    final Map<String, ProposalModel> mergedRequests = {};
+
+    void addRequests(List<ProposalModel> requests) {
+      for (final request in requests) {
+        final requestType = (request.requestType ?? '').toLowerCase();
+        final status = (request.status ?? '').toLowerCase();
+        final isSentByCurrentUser = request.senderId?.toString() == currentUserId;
+
+        if (requestType != 'chat' || !isSentByCurrentUser) {
+          continue;
+        }
+
+        if (status != 'accepted' && status != 'pending') {
+          continue;
+        }
+
+        final key = request.proposalId ??
+            '${request.senderId}_${request.receiverId}_${request.requestType}';
+        final existing = mergedRequests[key];
+
+        if (existing == null ||
+            _requestStatusPriority(status) <
+                _requestStatusPriority(existing.status)) {
+          mergedRequests[key] = request;
+        }
+      }
+    }
+
+    addRequests(sentRequests);
+    addRequests(acceptedRequests);
+
+    final requests = mergedRequests.values.toList()
+      ..sort((a, b) {
+        final statusCompare = _requestStatusPriority(a.status)
+            .compareTo(_requestStatusPriority(b.status));
+        if (statusCompare != 0) {
+          return statusCompare;
+        }
+
+        final aName = '${a.firstName ?? ''} ${a.lastName ?? ''}'.trim();
+        final bName = '${b.firstName ?? ''} ${b.lastName ?? ''}'.trim();
+        return aName.compareTo(bName);
+      });
+
+    return requests;
+  }
+
+  int _requestStatusPriority(String? status) {
+    switch ((status ?? '').toLowerCase()) {
+      case 'accepted':
+        return 0;
+      case 'pending':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return const Color(0xFF2E7D32);
+      case 'pending':
+        return const Color(0xFFF9A825);
+      default:
+        return _brandRed;
+    }
+  }
+
+  String _resolveApiImageUrl(String rawImage) {
+    if (rawImage.isEmpty) {
+      return '';
+    }
+
+    if (rawImage.startsWith('http')) {
+      return rawImage;
+    }
+
+    final normalizedPath = rawImage.startsWith('/')
+        ? rawImage.substring(1)
+        : rawImage;
+    return '$_apiBaseUrl/$normalizedPath';
+  }
+
+  Widget _buildRequestLoadingState() {
+    return SizedBox(
+      height: 250,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: _brandRed,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestEmptyState({
+    required IconData icon,
+    required String message,
+  }) {
+    return SizedBox(
+      height: 250,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 48, color: Colors.grey.shade300),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestFallbackImage() {
+    return Container(
+      width: double.infinity,
+      height: 160,
+      color: Colors.grey.shade100,
+      child: const Center(
+        child: Icon(Icons.person_rounded, size: 60, color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _buildRequestStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  void _openProfile(String profileUserId) {
+    if (docstatus == 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProfileLoader(
+            userId: profileUserId,
+            myId: userid.toString(),
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+      );
+    }
+  }
+
+  void _openPhotoRequestProfile(String profileUserId) {
+    if (docstatus != 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+      );
+      return;
+    }
+
+    if (usertye == 'free') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SubscriptionPage()),
+      );
+      return;
+    }
+
+    _openProfile(profileUserId);
+  }
+
+  Future<void> _openChatRequest(ProposalModel request) async {
+    try {
+      if (docstatus == "not_uploaded" ||
+          docstatus == "rejected" ||
+          docstatus == "pending") {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+        );
+        return;
+      }
+
+      if (usertye == "free") {
+        showUpgradeDialog(context);
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) {
+        return;
+      }
+
+      final userData = jsonDecode(userDataString);
+      final currentUserIdStr = userData['id'].toString();
+      final currentUserName =
+          '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+      final currentUserImage =
+          _resolveApiImageUrl(userData['profilePicture']?.toString() ?? '');
+
+      final isCurrentUserSender = currentUserIdStr == request.senderId;
+      final otherUserId = isCurrentUserSender
+          ? (request.receiverId ?? '')
+          : (request.senderId ?? '');
+
+      if (otherUserId.isEmpty) {
+        return;
+      }
+
+      final otherUserName =
+          'MS ${request.memberid ?? ''} ${request.firstName ?? ''} ${request.lastName ?? ''}'
+              .trim();
+      final otherUserImage = _resolveApiImageUrl(request.profilePicture ?? '');
+
+      final userIds = [currentUserIdStr, otherUserId]..sort();
+      final chatRoomId = userIds.join('_');
+
+      final chatRoomDoc = await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .doc(chatRoomId)
+          .get();
+
+      if (!chatRoomDoc.exists) {
+        await FirebaseFirestore.instance
+            .collection('chatRooms')
+            .doc(chatRoomId)
+            .set({
+          'chatRoomId': chatRoomId,
+          'participants': [currentUserIdStr, otherUserId],
+          'participantNames': {
+            currentUserIdStr: currentUserName,
+            otherUserId: otherUserName,
+          },
+          'participantImages': {
+            currentUserIdStr: currentUserImage,
+            otherUserId: otherUserImage,
+          },
+          'unreadCount': {
+            currentUserIdStr: 0,
+            otherUserId: 0,
+          },
+          'lastMessage': '',
+          'lastMessageType': 'text',
+          'lastMessageTime': DateTime.now(),
+          'lastMessageSenderId': '',
+          'createdAt': DateTime.now(),
+          'updatedAt': DateTime.now(),
+        });
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            chatRoomId: chatRoomId,
+            receiverId: otherUserId,
+            receiverName:
+                otherUserName.isNotEmpty ? otherUserName : 'User $otherUserId',
+            receiverImage: otherUserImage.isNotEmpty
+                ? otherUserImage
+                : _placeholderProfileImage,
+            currentUserId: currentUserIdStr,
+            currentUserName: currentUserName.isNotEmpty
+                ? currentUserName
+                : 'User $currentUserIdStr',
+            currentUserImage: currentUserImage.isNotEmpty
+                ? currentUserImage
+                : _placeholderProfileImage,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error opening chat request: $e');
+    }
+  }
+
 
 
   Widget _buildSectionHeader(String title, {bool showSeeAll = true}) {
@@ -2181,4 +2546,3 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
     );
   }
 }
-
