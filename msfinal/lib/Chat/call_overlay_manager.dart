@@ -422,7 +422,7 @@ class _OverlayIconButton extends StatelessWidget {
       child: IconButton(
         onPressed: onPressed,
         icon: Icon(icon, color: color, size: 20),
-        tooltip: 'Open call',
+        tooltip: 'Maximize call',
       ),
     );
   }
