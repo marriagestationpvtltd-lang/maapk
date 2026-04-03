@@ -1107,7 +1107,7 @@ String usertye = '';
     final stats = [
       {'icon': Icons.favorite_rounded, 'value': '$matchCount', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
       {'icon': Icons.star_rounded, 'value': '$premiumCount', 'label': 'Premium', 'color': const Color(0xFFFFD700)},
-      {'icon': Icons.person_rounded, 'value': '$profilePercent%', 'label': 'Profile', 'color': const Color(0xFF4CAF50)},
+      {'icon': Icons.person_rounded, 'value': '$profilePercent%', 'label': 'Profile', 'color': const Color(0xFF2196F3)},
       {'icon': Icons.handshake_rounded, 'value': '$servicesCount', 'label': 'Services', 'color': const Color(0xFF2196F3)},
     ];
 
