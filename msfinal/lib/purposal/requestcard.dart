@@ -124,7 +124,7 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
             "Unable to check document status right now. Please try again later.",
           ),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
     } finally {
