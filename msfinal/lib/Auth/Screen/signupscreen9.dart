@@ -1019,7 +1019,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
           },
         );
       },
-    ).whenComplete(searchController.dispose);
+    ).whenComplete(() => searchController.dispose());
   }
 
   Widget _buildMultiSelectField({
