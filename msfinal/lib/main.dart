@@ -18,6 +18,7 @@ import 'otherenew/modelfile.dart';
 import 'otherenew/othernew.dart';
 import 'otherenew/service.dart';
 import 'constant/app_theme.dart';
+import 'service/connectivity_service.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -460,6 +461,10 @@ void main() async {
   await Firebase.initializeApp();
   await initLocalNotifications();
 
+  // Initialize connectivity service
+  final connectivityService = ConnectivityService();
+  await connectivityService.initialize();
+
   runApp(
     MultiProvider(
       providers: [
@@ -467,6 +472,7 @@ void main() async {
         ChangeNotifierProvider<UserProfile>(
           create: (_) => UserProfile.empty(),
         ),
+        ChangeNotifierProvider.value(value: connectivityService),
       ],
       child: const MyApp(),
     ),
