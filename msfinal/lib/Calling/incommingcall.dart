@@ -12,6 +12,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class IncomingCallScreen extends StatefulWidget {
   final Map<String, dynamic> callData;
@@ -37,6 +38,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   bool _micMuted = false;
   bool _speakerOn = true;
   bool _processing = false;
+  bool _foregroundServiceStarted = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -180,6 +182,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
       await _engine.enableAudio();
       await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine.setEnableSpeakerphone(_speakerOn);
 
       await _engine.joinChannel(
         token: token,
@@ -193,6 +196,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
       setState(() => _callActive = true);
       _initializeOverlay();
+      await _startForegroundService();
     } catch (e) {
       debugPrint('Accept error $e');
       _end();
@@ -285,11 +289,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       await _engine.leaveChannel();
       await _engine.release();
     }
+    await _stopForegroundService();
 
     _end();
   }
 
   void _end() {
+    _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -421,6 +427,23 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   void dispose() {
     _ringTimer?.cancel();
     _callTimer?.cancel();
+    _stopForegroundService();
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_foregroundServiceStarted || _channel.isEmpty) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'audio',
+      otherUserName: _callerName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    _foregroundServiceStarted = false;
+    await CallForegroundServiceManager.stopCallService();
   }
 }

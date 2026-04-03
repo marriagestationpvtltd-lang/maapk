@@ -12,6 +12,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class IncomingVideoCallScreen extends StatefulWidget {
   final Map<String, dynamic> callData;
@@ -40,6 +41,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   bool _cameraOn = true;
   bool _frontCamera = true;
   bool _processing = false;
+  bool _foregroundServiceStarted = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -226,6 +228,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
 
       await _engine.enableAudio();
+      await _engine.setEnableSpeakerphone(_speakerOn);
       if (_isVideoCall) {
         print('📹 Enabling video...');
         await _engine.enableVideo();
@@ -256,6 +259,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       print('✅ Call active');
       setState(() => _callActive = true);
       _initializeOverlay();
+      await _startForegroundService();
     } catch (e) {
       print('❌ Accept error: $e');
       debugPrint('Accept error $e');
@@ -348,11 +352,13 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       await _engine.leaveChannel();
       await _engine.release();
     }
+    await _stopForegroundService();
 
     _end();
   }
 
   void _end() {
+    _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -712,6 +718,23 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   void dispose() {
     _ringTimer?.cancel();
     _callTimer?.cancel();
+    _stopForegroundService();
     super.dispose();
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_foregroundServiceStarted || _channel.isEmpty) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: _isVideoCall ? 'video' : 'audio',
+      otherUserName: _callerName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    _foregroundServiceStarted = false;
+    await CallForegroundServiceManager.stopCallService();
   }
 }

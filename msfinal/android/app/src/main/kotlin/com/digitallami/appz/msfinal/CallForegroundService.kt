@@ -1,6 +1,9 @@
 package com.Marriage.Station
 
 import android.app.*
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -11,6 +14,8 @@ import io.flutter.Log
 
 class CallForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
     private val TAG = "CallForegroundService"
     private val CHANNEL_ID = "call_foreground_channel"
     private val NOTIFICATION_ID = 1001
@@ -54,6 +59,7 @@ class CallForegroundService : Service() {
         Log.d(TAG, "CallForegroundService created")
         createNotificationChannel()
         acquireWakeLock()
+        configureAudioForCall()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -193,9 +199,53 @@ class CallForegroundService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "MarriageStation::CallWakeLock"
         ).apply {
-            acquire(10 * 60 * 1000L /*10 minutes max*/)
+            acquire()
             Log.d(TAG, "WakeLock acquired")
         }
+    }
+
+    private fun configureAudioForCall() {
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+        audioManager?.isMicrophoneMute = false
+
+        val focusResult = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAcceptsDelayedFocusGain(false)
+                .build()
+            audioFocusRequest = focusRequest
+            audioManager?.requestAudioFocus(focusRequest) ?: AudioManager.AUDIOFOCUS_REQUEST_FAILED
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.requestAudioFocus(
+                null,
+                AudioManager.STREAM_VOICE_CALL,
+                AudioManager.AUDIOFOCUS_GAIN
+            ) ?: AudioManager.AUDIOFOCUS_REQUEST_FAILED
+        }
+
+        Log.d(TAG, "Audio configured for call: focusResult=$focusResult")
+    }
+
+    private fun resetAudioConfiguration() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { request ->
+                audioManager?.abandonAudioFocusRequest(request)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus(null)
+        }
+
+        audioManager?.mode = AudioManager.MODE_NORMAL
+        audioManager?.isMicrophoneMute = false
+        audioFocusRequest = null
     }
 
     private fun releaseWakeLock() {
@@ -224,6 +274,7 @@ class CallForegroundService : Service() {
 
     private fun stopForegroundService() {
         Log.d(TAG, "Stopping foreground service")
+        resetAudioConfiguration()
         releaseWakeLock()
         stopForeground(true)
         stopSelf()
@@ -235,6 +286,7 @@ class CallForegroundService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "CallForegroundService destroyed")
+        resetAudioConfiguration()
         releaseWakeLock()
         super.onDestroy()
     }

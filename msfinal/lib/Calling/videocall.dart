@@ -11,6 +11,7 @@ import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
+import 'call_foreground_service.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String currentUserId;
@@ -55,6 +56,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _ending = false;
   bool _remoteAccepted = false;
   bool _isCallRinging = true; // Add ringing state
+  bool _foregroundServiceStarted = false;
 
   Timer? _timeoutTimer;
   Timer? _callTimer;
@@ -234,6 +236,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       }
 
       _initializeOverlay();
+      await _startForegroundService();
 
       // ✅ TOKEN
       _token = await AgoraTokenService.getToken(
@@ -362,6 +365,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     // Always stop ringtone when ending call
     await _stopRingtone();
+    await _stopForegroundService();
 
     // Update call history
     if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
@@ -413,10 +417,27 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   void _exit() {
+    _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _startForegroundService() async {
+    if (_foregroundServiceStarted || _channel.isEmpty) return;
+    _foregroundServiceStarted = true;
+    await CallForegroundServiceManager.startOngoingCall(
+      callType: 'video',
+      otherUserName: widget.otherUserName,
+      callId: _channel,
+    );
+  }
+
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    _foregroundServiceStarted = false;
+    await CallForegroundServiceManager.stopCallService();
   }
 
   // ================= TOGGLE CAMERA =================
@@ -739,6 +760,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _timeoutTimer?.cancel();
     _responseSubscription?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
+    _stopForegroundService();
     super.dispose();
   }
 }
