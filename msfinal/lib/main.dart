@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
 
@@ -28,14 +29,23 @@ FlutterLocalNotificationsPlugin();
 const String callChannelId = 'calls_channel';
 const String callChannelName = 'Calls';
 const String callChannelDescription = 'Channel for WhatsApp-like call notifications';
+const String generalChannelId = 'general_notifications';
+const String generalChannelName = 'General Notifications';
+const String generalChannelDescription = 'Channel for general app notifications';
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   final data = message.data;
   NotificationService.triggerCallResponse(data);
+  await NotificationInboxService.recordIncomingRemoteNotification(
+    data: data,
+    fallbackTitle: message.notification?.title,
+    fallbackBody: message.notification?.body,
+  );
 
-  if (defaultTargetPlatform == TargetPlatform.android) {
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      (data['type'] == 'call' || data['type'] == 'video_call')) {
     await _displayWhatsAppCallNotification(data, message.notification);
   }
 }
@@ -158,9 +168,20 @@ Future<void> initLocalNotifications() async {
     vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
   );
 
+  final generalChannel = AndroidNotificationChannel(
+    generalChannelId,
+    generalChannelName,
+    description: generalChannelDescription,
+    importance: Importance.high,
+    playSound: true,
+  );
+
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(androidChannel);
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(generalChannel);
 
   const android = AndroidInitializationSettings('@mipmap/ic_launcher');
   const ios = DarwinInitializationSettings(
@@ -386,6 +407,11 @@ Future<void> setupFirebaseMessaging() async {
     debugPrint('📱 Message data: $data');
 
     NotificationService.triggerCallResponse(data);
+    await NotificationInboxService.recordIncomingRemoteNotification(
+      data: data,
+      fallbackTitle: message.notification?.title,
+      fallbackBody: message.notification?.body,
+    );
 
     // Show WhatsApp-like notification for calls
     if (data['type'] == 'call' || data['type'] == 'video_call') {
@@ -397,19 +423,37 @@ Future<void> setupFirebaseMessaging() async {
 
       // Auto-navigate for call notifications when app is in foreground
       _navigateToCallPage(data);
+    } else {
+      await _showStandardNotification(message);
     }
   });
 
-  Future<void> _showChatNotification(Map<String, dynamic> data) async {
+  Future<void> _showStandardNotification(RemoteMessage message) async {
+    final data = message.data;
+    final content = NotificationInboxService.buildNotificationContent(
+      type: data['type']?.toString() ?? 'notification',
+      actorName: data['senderName']?.toString() ??
+          data['viewerName']?.toString() ??
+          data['callerName']?.toString(),
+      requestType: data['requestType']?.toString() ?? data['request_type']?.toString(),
+      messagePreview: data['message']?.toString() ?? message.notification?.body,
+    );
+
     const androidDetails = AndroidNotificationDetails(
-      'chat_channel',
-      'Chats',
-      channelDescription: 'Chat message notifications',
+      generalChannelId,
+      generalChannelName,
+      channelDescription: generalChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
     );
 
-    const iosDetails = DarwinNotificationDetails();
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      presentBanner: true,
+      presentList: true,
+    );
 
     const details = NotificationDetails(
       android: androidDetails,
@@ -418,18 +462,23 @@ Future<void> setupFirebaseMessaging() async {
 
     await flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      data['senderName'] ?? 'New Message',
-      data['message'] ?? '',
+      message.notification?.title ?? content['title'],
+      message.notification?.body ?? content['body'],
       details,
       payload: json.encode(data),
     );
   }
 
   // Handle messages when app is in background but opened via notification
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
     final data = message.data;
     debugPrint('📱 App opened from background via notification');
     debugPrint('📱 Message data: $data');
+    await NotificationInboxService.recordIncomingRemoteNotification(
+      data: data,
+      fallbackTitle: message.notification?.title,
+      fallbackBody: message.notification?.body,
+    );
 
     if (data['type'] == 'call' || data['type'] == 'video_call') {
       _navigateToCallPage(data);
@@ -437,11 +486,16 @@ Future<void> setupFirebaseMessaging() async {
   });
 
   // Handle initial message if app was opened from terminated state
-  FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+  FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) async {
     if (message != null) {
       final data = message.data;
       debugPrint('📱 App opened from terminated state via notification');
       debugPrint('📱 Message data: $data');
+      await NotificationInboxService.recordIncomingRemoteNotification(
+        data: data,
+        fallbackTitle: message.notification?.title,
+        fallbackBody: message.notification?.body,
+      );
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (data['type'] == 'call' || data['type'] == 'video_call') {

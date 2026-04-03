@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../Notification/notification_inbox_service.dart';
+import '../pushnotification/pushservice.dart';
 import '../otherenew/modelfile.dart';
 
 class ProfileService {
@@ -177,7 +179,22 @@ class ProfileService {
       );
 
       if (response.statusCode == 200) {
-        return Map<String, dynamic>.from(json.decode(response.body));
+        final result = Map<String, dynamic>.from(json.decode(response.body));
+        if (result['status'] == 'success') {
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+          await NotificationService.sendRequestNotification(
+            recipientUserId: userId,
+            senderName: senderName,
+            senderId: myId,
+            requestType: 'Photo',
+          );
+          await NotificationInboxService.recordOutgoingRequest(
+            recipientUserId: userId,
+            requestType: 'Photo',
+            recipientName: 'MS:$userId',
+          );
+        }
+        return result;
       }
 
       return {
@@ -211,7 +228,22 @@ class ProfileService {
       );
 
       if (response.statusCode == 200) {
-        return Map<String, dynamic>.from(json.decode(response.body));
+        final result = Map<String, dynamic>.from(json.decode(response.body));
+        if (result['status'] == 'success') {
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+          await NotificationService.sendRequestNotification(
+            recipientUserId: userId,
+            senderName: senderName,
+            senderId: myId,
+            requestType: 'Chat',
+          );
+          await NotificationInboxService.recordOutgoingRequest(
+            recipientUserId: userId,
+            requestType: 'Chat',
+            recipientName: 'MS:$userId',
+          );
+        }
+        return result;
       }
 
       return {
@@ -268,7 +300,23 @@ class ProfileService {
       'request_type': type,
     });
 
-    return json.decode(response.body);
+    final result = Map<String, dynamic>.from(json.decode(response.body));
+    if (result['status'] == 'success') {
+      final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+      await NotificationService.sendRequestAccepted(
+        recipientUserId: senderId,
+        senderName: senderName,
+        senderId: myId,
+        requestType: type,
+      );
+      await NotificationInboxService.markRequestResolved(
+        peerUserId: senderId,
+        requestType: type,
+        status: 'accepted',
+      );
+    }
+
+    return result;
   }
 
   Future<Map<String, dynamic>> rejectRequest({
@@ -284,6 +332,22 @@ class ProfileService {
       'request_type': type,
     });
 
-    return json.decode(response.body);
+    final result = Map<String, dynamic>.from(json.decode(response.body));
+    if (result['status'] == 'success') {
+      final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+      await NotificationService.sendRequestRejected(
+        recipientUserId: senderId,
+        senderName: senderName,
+        senderId: myId,
+        requestType: type,
+      );
+      await NotificationInboxService.markRequestResolved(
+        peerUserId: senderId,
+        requestType: type,
+        status: 'rejected',
+      );
+    }
+
+    return result;
   }
 }

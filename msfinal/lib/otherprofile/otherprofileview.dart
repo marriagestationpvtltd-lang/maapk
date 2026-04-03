@@ -6,6 +6,7 @@ import 'package:ms2026/otherprofile/service_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import '../Notification/notification_inbox_service.dart';
 import '../pushnotification/pushservice.dart';
 import 'gallerysection.dart';
 import 'loadingerror.dart';
@@ -154,6 +155,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           recipientUserId:  widget.userId.toString(),       // ID of the user receiving the request
           senderName: "MS:${senderId}",       // Name of the sender
           senderId: senderId.toString(),              // ID of the sender
+          requestType: requestType,
         );
 
         if(success) {
@@ -161,6 +163,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
         } else {
           print("Failed to send notification.");
         }
+        await NotificationInboxService.recordOutgoingRequest(
+          recipientUserId: widget.userId.toString(),
+          requestType: requestType,
+          recipientName: '${_profileData?.personalDetail['lastName'] ?? ''}'.trim(),
+        );
         _showRequestSentPopup(response['message'] ?? 'Request sent successfully!');
 
         if (requestType == 'Photo') {

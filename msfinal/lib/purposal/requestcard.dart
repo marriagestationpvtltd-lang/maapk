@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:ms2026/Chat/ChatdetailsScreen.dart';
 import 'package:ms2026/Models/masterdata.dart';
+import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/Package/PackageScreen.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
+import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:ms2026/purposal/purposalservice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -606,6 +608,18 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
         );
 
         if (success) {
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+          await NotificationService.sendRequestAccepted(
+            recipientUserId: widget.data.senderId ?? '',
+            senderName: senderName,
+            senderId: widget.userid,
+            requestType: widget.data.requestType ?? 'Request',
+          );
+          await NotificationInboxService.markRequestResolved(
+            peerUserId: widget.data.senderId ?? '',
+            requestType: widget.data.requestType ?? 'Request',
+            status: 'accepted',
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Request accepted successfully"),
@@ -784,6 +798,18 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
         }
 
         if (success) {
+          final senderName = await NotificationInboxService.getCurrentUserDisplayName();
+          await NotificationService.sendRequestRejected(
+            recipientUserId: widget.data.senderId ?? '',
+            senderName: senderName,
+            senderId: widget.userid,
+            requestType: widget.data.requestType ?? 'Request',
+          );
+          await NotificationInboxService.markRequestResolved(
+            peerUserId: widget.data.senderId ?? '',
+            requestType: widget.data.requestType ?? 'Request',
+            status: 'rejected',
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Request rejected"),
