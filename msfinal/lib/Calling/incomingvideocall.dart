@@ -524,13 +524,14 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
                 icon: Icons.call,
                 color: Colors.green,
                 onPressed: _acceptCall,
-                size: 60,
+                size: 72,
+                loading: _processing,
               ),
               _acceptRejectButton(
                 icon: Icons.call_end,
                 color: Colors.red,
                 onPressed: _rejectCall,
-                size: 60,
+                size: 72,
               ),
             ],
           ),
@@ -666,23 +667,32 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
-    double size = 60,
+    double size = 72,
+    bool loading = false,
   }) {
     return GestureDetector(
-      onTap: onPressed,
+      onTap: loading ? null : onPressed,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.black54,
+          color: color.withOpacity(0.85),
           shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.5), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Icon(
-          icon,
-          color: color,
-          size: size * 0.5,
-        ),
+        child: loading
+            ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)))
+            : Icon(
+                icon,
+                color: Colors.white,
+                size: size * 0.45,
+              ),
       ),
     );
   }
@@ -730,7 +740,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
-    double size = 48,
+    double size = 56,
   }) {
     return GestureDetector(
       onTap: onPressed,
@@ -738,13 +748,20 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.black54,
+          color: color == Colors.red ? Colors.red.withOpacity(0.85) : Colors.black54,
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Icon(
           icon,
-          color: color,
-          size: size * 0.6,
+          color: color == Colors.red ? Colors.white : color,
+          size: size * 0.55,
         ),
       ),
     );
