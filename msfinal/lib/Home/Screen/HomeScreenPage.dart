@@ -1228,7 +1228,6 @@ String usertye = '';
       {
         'icon': Icons.search_rounded,
         'label': 'Search',
-        'count': null,
         'gradient': [const Color(0xFF6C63FF), const Color(0xFF4834D4)],
         'onTap': () {
           if (docstatus == 'approved') {
