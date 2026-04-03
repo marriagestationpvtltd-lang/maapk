@@ -39,6 +39,10 @@ class MatrimonyHomeScreen extends StatefulWidget {
 }
 
 class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
+  static const String _apiBaseUrl = 'https://digitallami.com/Api2';
+  static const String _placeholderProfileImage =
+      'https://via.placeholder.com/150';
+  static const Color _brandRed = Color(0xFFF90E18);
   int _currentIndex = 0;
 
   List<dynamic> _matchedProfilesApi = [];
@@ -164,8 +168,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         if (result['success'] == true) {
           final rawProfiles = List<dynamic>.from(result['matched_users'] ?? []);
           final photoProfiles = rawProfiles
-              .map((item) => MatchedUser.fromJson(
-                  Map<String, dynamic>.from(item as Map<dynamic, dynamic>)))
+              .map((item) => MatchedUser.fromJson(Map<String, dynamic>.from(item)))
               .where((profile) {
             final status = profile.photoRequestStatus.toLowerCase();
             return status == 'accepted' || status == 'pending';
@@ -1492,7 +1495,7 @@ String usertye = '';
                             child: Text(
                               '${profile.matchPercent}%',
                               style: const TextStyle(
-                                color: Color(0xFFF90E18),
+                                color: _brandRed,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -2339,7 +2342,7 @@ String usertye = '';
       case 'pending':
         return const Color(0xFFF9A825);
       default:
-        return const Color(0xFFF90E18);
+        return _brandRed;
     }
   }
 
@@ -2355,7 +2358,7 @@ String usertye = '';
     final normalizedPath = rawImage.startsWith('/')
         ? rawImage.substring(1)
         : rawImage;
-    return 'https://digitallami.com/Api2/$normalizedPath';
+    return '$_apiBaseUrl/$normalizedPath';
   }
 
   Widget _buildRequestLoadingState() {
@@ -2363,7 +2366,7 @@ String usertye = '';
       height: 250,
       child: Center(
         child: CircularProgressIndicator(
-          color: const Color(0xFFF90E18),
+          color: _brandRed,
           strokeWidth: 2,
         ),
       ),
@@ -2550,14 +2553,14 @@ String usertye = '';
                 otherUserName.isNotEmpty ? otherUserName : 'User $otherUserId',
             receiverImage: otherUserImage.isNotEmpty
                 ? otherUserImage
-                : 'https://via.placeholder.com/150',
+                : _placeholderProfileImage,
             currentUserId: currentUserIdStr,
             currentUserName: currentUserName.isNotEmpty
                 ? currentUserName
                 : 'User $currentUserIdStr',
             currentUserImage: currentUserImage.isNotEmpty
                 ? currentUserImage
-                : 'https://via.placeholder.com/150',
+                : _placeholderProfileImage,
           ),
         ),
       );
