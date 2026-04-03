@@ -449,8 +449,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   Future<void> _stopForegroundService() async {
     if (!_foregroundServiceStarted) return;
     try {
-      _foregroundServiceStarted = false;
       await CallForegroundServiceManager.stopCallService();
+      _foregroundServiceStarted = false;
     } catch (e) {
       debugPrint('Error stopping call foreground service: $e');
     }
