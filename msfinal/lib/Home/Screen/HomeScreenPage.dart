@@ -8,6 +8,7 @@ import 'package:ms2026/Home/Screen/premiummember.dart';
 import 'package:ms2026/Home/Screen/profilecard.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../Auth/Screen/signupscreen10.dart';
 import '../../Auth/SuignupModel/signup_model.dart';
@@ -31,6 +32,17 @@ import '../../purposal/requestcard.dart' show showUpgradeDialog;
 import '../../service/Service_chat.dart';
 import 'machprofilescreen.dart';
 
+// Cache data structure for better performance
+class CachedData {
+  final dynamic data;
+  final DateTime timestamp;
+
+  CachedData(this.data, this.timestamp);
+
+  bool isExpired(Duration maxAge) {
+    return DateTime.now().difference(timestamp) > maxAge;
+  }
+}
 
 class MatrimonyHomeScreen extends StatefulWidget {
   const MatrimonyHomeScreen({super.key});
@@ -63,9 +75,14 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   int userid = 0;
   String _userId = '';
 
-
   bool _isCheckingStatus = false;
-  Timer? _autoRefreshTimer;
+
+  // Cache management
+  Map<String, CachedData> _cache = {};
+
+  // Lazy loading flags
+  bool _premiumMembersLoaded = false;
+  bool _otherServicesLoaded = false;
 
 
   Future<void> _checkDocumentStatus() async {
@@ -145,6 +162,20 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   }
 
   Future<void> fetchMatchedProfiles() async {
+    // Check cache first
+    final cacheKey = 'matched_profiles';
+    if (_cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      final cachedData = _cache[cacheKey]!.data as Map<String, dynamic>;
+      setState(() {
+        _matchedProfilesApi = cachedData['raw'] as List<dynamic>;
+        _photoRequestProfiles = cachedData['photo'] as List<MatchedUser>;
+        _isLoading = false;
+        _photoRequestsLoading = false;
+      });
+      return;
+    }
+
     try {
       setState(() {
         _isLoading = true;
@@ -182,6 +213,12 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             ..sort((a, b) => _requestStatusPriority(a.photoRequestStatus)
                 .compareTo(_requestStatusPriority(b.photoRequestStatus)));
 
+          // Cache the data
+          _cache[cacheKey] = CachedData({
+            'raw': rawProfiles,
+            'photo': photoProfiles,
+          }, DateTime.now());
+
           setState(() {
             _matchedProfilesApi = rawProfiles;
             _photoRequestProfiles = photoProfiles;
@@ -206,6 +243,17 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   }
 
   Future<void> _fetchShortlistedProfiles() async {
+    // Check cache first
+    final cacheKey = 'shortlisted_profiles';
+    if (_cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      setState(() {
+        _shortlistedProfiles = _cache[cacheKey]!.data as List<dynamic>;
+        _isLoadingShortlist = false;
+      });
+      return;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
@@ -222,8 +270,13 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == 'success') {
+          final profiles = data['data'] ?? [];
+
+          // Cache the data
+          _cache[cacheKey] = CachedData(profiles, DateTime.now());
+
           setState(() {
-            _shortlistedProfiles = data['data'] ?? [];
+            _shortlistedProfiles = profiles;
             _isLoadingShortlist = false;
           });
         } else {
@@ -239,6 +292,18 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   }
 
   Future<void> _fetchPremiumMembers() async {
+    // Check cache first
+    final cacheKey = 'premium_members';
+    if (_cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      setState(() {
+        _premiumMembers = _cache[cacheKey]!.data as List<Map<String, dynamic>>;
+        _isLoading = false;
+        _premiumMembersLoaded = true;
+      });
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
     final userData = jsonDecode(userDataString!);
@@ -254,35 +319,50 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         if (data['success'] == true && data['data'] != null) {
           final List members = data['data'];
 
-          setState(() {
-            _premiumMembers = members.map<Map<String, dynamic>>((member) {
-              // Construct full profile picture URL
-              final rawImage = member['profile_picture'] ?? '';
-              final imageUrl = rawImage.startsWith('http')
-                  ? rawImage
-                  : 'https://digitallami.com/Api2/$rawImage';
+          final membersList = members.map<Map<String, dynamic>>((member) {
+            // Construct full profile picture URL
+            final rawImage = member['profile_picture'] ?? '';
+            final imageUrl = rawImage.startsWith('http')
+                ? rawImage
+                : 'https://digitallami.com/Api2/$rawImage';
 
-              return {
-                'firstName': member['firstName'] ?? '',
-                'lastName': member['lastName'] ?? '',
-                'age': member['age'] ?? '',
-                'city': member['city'] ?? '',
-                'image': imageUrl,
-                'isVerified': member['isVerified'] ?? '0',
-                'id': member['id'],
-              };
-            }).toList();
+            return {
+              'firstName': member['firstName'] ?? '',
+              'lastName': member['lastName'] ?? '',
+              'age': member['age'] ?? '',
+              'city': member['city'] ?? '',
+              'image': imageUrl,
+              'isVerified': member['isVerified'] ?? '0',
+              'id': member['id'],
+            };
+          }).toList();
+
+          // Cache the data
+          _cache[cacheKey] = CachedData(membersList, DateTime.now());
+
+          setState(() {
+            _premiumMembers = membersList;
             _isLoading = false;
+            _premiumMembersLoaded = true;
           });
         } else {
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _premiumMembersLoaded = true;
+          });
         }
       } else {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _premiumMembersLoaded = true;
+        });
         debugPrint('Error fetching premium members: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _premiumMembersLoaded = true;
+      });
       debugPrint('Exception: $e');
     }
   }
@@ -314,6 +394,18 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     return UserMasterData.fromJson(res['data']);
   }
   Future<void> _fetchOtherServices() async {
+    // Check cache first
+    final cacheKey = 'other_services';
+    if (_cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      setState(() {
+        _otherServices = _cache[cacheKey]!.data as List<Map<String, dynamic>>;
+        _loading = false;
+        _otherServicesLoaded = true;
+      });
+      return;
+    }
+
     try {
       final url = Uri.parse('https://digitallami.com/Api2/services_api.php');
       final response = await http.get(url);
@@ -324,37 +416,53 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         if (data['success'] == true && data['data'] != null) {
           final List services = data['data'];
 
-          setState(() {
-            _otherServices = services.map<Map<String, dynamic>>((service) {
-              // Build full image URL
-              final rawImage = service['profile_picture'] ?? '';
-              final imageUrl = rawImage.startsWith('http')
-                  ? rawImage
-                  : 'https://digitallami.com/$rawImage';
+          final servicesList = services.map<Map<String, dynamic>>((service) {
+            // Build full image URL
+            final rawImage = service['profile_picture'] ?? '';
+            final imageUrl = rawImage.startsWith('http')
+                ? rawImage
+                : 'https://digitallami.com/$rawImage';
 
-              return {
-                'category': service['servicetype'] ?? '',
-                'name': '${service['firstname'] ?? ''} ${service['lastname'] ?? ''}',
-                'age': service['age']?.toString() ?? '',
-                'location': service['city'] ?? '',
-                'experience': service['experience'] ?? '',
-                'image': imageUrl,
-                'id': service['id'],
-              };
-            }).toList();
+            return {
+              'category': service['servicetype'] ?? '',
+              'name': '${service['firstname'] ?? ''} ${service['lastname'] ?? ''}',
+              'age': service['age']?.toString() ?? '',
+              'location': service['city'] ?? '',
+              'experience': service['experience'] ?? '',
+              'image': imageUrl,
+              'id': service['id'],
+            };
+          }).toList();
+
+          // Cache the data
+          _cache[cacheKey] = CachedData(servicesList, DateTime.now());
+
+          setState(() {
+            _otherServices = servicesList;
             _loading = false;
+            _otherServicesLoaded = true;
           });
         } else {
-          setState(() => _loading = false);
+          setState(() {
+            _loading = false;
+            _otherServicesLoaded = true;
+          });
         }
       } else {
-        setState(() => _loading = false);
+        setState(() {
+          _loading = false;
+          _otherServicesLoaded = true;
+        });
         debugPrint('Error fetching services: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _otherServicesLoaded = true;
+      });
       debugPrint('Exception: $e');
-    }}
+    }
+  }
 
   Future<void> _fetchChatRequestProfiles() async {
     try {
@@ -447,21 +555,19 @@ String usertye = '';
   @override
   void initState() {
     super.initState();
+    // Load only essential data on init
     loadMasterData();
     fetchMatchedProfiles();
     _checkDocumentStatus();
-    _fetchPremiumMembers();
-    _fetchOtherServices();
     _fetchShortlistedProfiles();
     OnlineStatusService().start();
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _refreshAllData();
-    });
+    // Removed auto-refresh timer for better performance
+    // User can manually refresh using pull-to-refresh
   }
 
   @override
   void dispose() {
-    _autoRefreshTimer?.cancel();
+    // Clean up resources
     super.dispose();
   }
 
@@ -531,16 +637,29 @@ String usertye = '';
                     ),
                   ),
                   const SizedBox(height: 28),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GestureDetector(
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => PaidUsersListPage(userId: userid))),
-                      child: _buildSectionHeader('Premium Members', showSeeAll: true),
+                  VisibilityDetector(
+                    key: const Key('premium-members-section'),
+                    onVisibilityChanged: (info) {
+                      // Load data when section becomes visible (>10% visible)
+                      if (info.visibleFraction > 0.1 && !_premiumMembersLoaded) {
+                        _fetchPremiumMembers();
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(context,
+                                MaterialPageRoute(builder: (_) => PaidUsersListPage(userId: userid))),
+                            child: _buildSectionHeader('Premium Members', showSeeAll: true),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildPremiumMembers(),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _buildPremiumMembers(),
                   const SizedBox(height: 24),
                   const ImageBannerSlider(),
                   const SizedBox(height: 24),
@@ -567,14 +686,27 @@ String usertye = '';
                   const SizedBox(height: 14),
                   _buildShortlistedProfiles(),
                   const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildSectionHeader('Other Services', showSeeAll: false),
-                  ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildOtherServices(),
+                  VisibilityDetector(
+                    key: const Key('other-services-section'),
+                    onVisibilityChanged: (info) {
+                      // Load data when section becomes visible (>10% visible)
+                      if (info.visibleFraction > 0.1 && !_otherServicesLoaded) {
+                        _fetchOtherServices();
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildSectionHeader('Other Services', showSeeAll: false),
+                        ),
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildOtherServices(),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 32),
                 ],
