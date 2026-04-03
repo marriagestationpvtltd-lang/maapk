@@ -3015,7 +3015,7 @@ class _MatchOverviewSection extends StatelessWidget {
               const SizedBox(width: 16),
               Flexible(
                 child: Text(
-                  "$matchPercentage% Match • $matchedPreferencesCount of $totalPreferencesCount preferences",
+                  "$matchPercentage% Match - $matchedPreferencesCount of $totalPreferencesCount preferences",
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,

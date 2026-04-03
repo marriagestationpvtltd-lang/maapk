@@ -1061,7 +1061,7 @@ class UserProfile extends ChangeNotifier {
       required dynamic actualValue,
     }) {
       final apiValue = partnerMatch.details[key];
-      if (apiValue != null) return apiValue;
+      if (apiValue is bool) return apiValue;
       if (isAnyValue(preferenceValue)) return true;
 
       final normalizedPreference = normalize(preferenceValue);
@@ -1088,7 +1088,7 @@ class UserProfile extends ChangeNotifier {
 
     bool matchesAgeRange() {
       final apiValue = partnerMatch.details['age'];
-      if (apiValue != null) return apiValue;
+      if (apiValue is bool) return apiValue;
 
       final minAge = int.tryParse(partner.minage.toString());
       final maxAge = int.tryParse(partner.maxage.toString());
