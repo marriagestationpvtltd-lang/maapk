@@ -10,6 +10,8 @@ import '../Models/chatservice.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../online/onlineservice.dart';
+import '../purposal/Purposalmodel.dart';
+import '../purposal/purposalservice.dart';
 import '../service/Service_chat.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
@@ -30,12 +32,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool isLoading = true;
   String docstatus = '';
 
+  List<ProposalModel> _pendingChatRequests = [];
+  bool _requestsLoading = true;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
     OnlineStatusService().start();
-
   }
 
   Future<void> _loadUserData() async {
@@ -70,6 +74,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       print('userId: $userId');
       print('name: $name');
 
+      await _loadPendingChatRequests(user.id?.toString() ?? userIdString);
+
     } catch (e) {
       print('Error loading user data: $e');
       if (mounted) {
@@ -98,7 +104,316 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return UserMasterData.fromJson(res['data']);
   }
 
-  @override
+  Future<void> _loadPendingChatRequests(String uid) async {
+    try {
+      if (mounted) setState(() => _requestsLoading = true);
+      final all = await ProposalService.fetchProposals(uid, 'received');
+      final pending = all
+          .where((p) =>
+              p.requestType?.toLowerCase() == 'chat' &&
+              p.status?.toLowerCase() == 'pending')
+          .toList();
+      if (mounted) {
+        setState(() {
+          _pendingChatRequests = pending;
+          _requestsLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading chat requests: $e');
+      if (mounted) setState(() => _requestsLoading = false);
+    }
+  }
+
+  Future<void> _handleAcceptChatRequest(ProposalModel proposal) async {
+    // Step 1: Check document status
+    if (docstatus != 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => IDVerificationScreen()),
+      );
+      return;
+    }
+
+    // Step 2: Check payment / subscription
+    if (usertye != 'paid') {
+      showUpgradeDialog(context);
+      return;
+    }
+
+    // Step 3: Confirm and accept
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Accept Chat Request"),
+        content: Text(
+          "${proposal.firstName ?? ''} ${proposal.lastName ?? ''} wants to chat with you. Accept?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Accept"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final success = await ProposalService.acceptProposal(
+        proposal.proposalId.toString(),
+        userId,
+      );
+      if (mounted) Navigator.pop(context);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Chat request accepted"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _loadPendingChatRequests(userId);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to accept request"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _handleRejectChatRequest(ProposalModel proposal) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Reject Chat Request"),
+        content: const Text("Are you sure you want to reject this request?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Reject"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final success = await ProposalService.rejectProposal(
+        proposal.proposalId.toString(),
+        userId,
+      );
+      if (mounted) Navigator.pop(context);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Chat request rejected"),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        await _loadPendingChatRequests(userId);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to reject request"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildChatRequestsSection() {
+    if (_requestsLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: LinearProgressIndicator(),
+      );
+    }
+
+    if (_pendingChatRequests.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Chat Requests (${_pendingChatRequests.length})',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 130,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _pendingChatRequests.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final req = _pendingChatRequests[index];
+              return _buildChatRequestCard(req);
+            },
+          ),
+        ),
+        const Divider(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildChatRequestCard(ProposalModel req) {
+    final imageUrl = req.profilePicture?.isNotEmpty == true
+        ? req.profilePicture!
+        : 'https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg';
+    final displayName =
+        '${req.firstName ?? ''} ${req.lastName ?? ''}'.trim();
+
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: const [
+          BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(imageUrl),
+                onBackgroundImageError: (_, __) {},
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName.isEmpty ? 'User' : displayName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      req.city ?? '',
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.black54),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Wants to chat with you',
+            style: TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _handleAcceptChatRequest(req),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF90E18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Accept',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _handleRejectChatRequest(req),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Reject',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
@@ -136,6 +451,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         children: [
           _buildTopIcons(),
           const Divider(height: 1),
+          _buildChatRequestsSection(),
           Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
