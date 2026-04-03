@@ -28,7 +28,6 @@ import '../webrtc/webrtc.dart';
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
 import '../service/connectivity_service.dart';
-import '../screens/no_internet_screen.dart';
 import 'MainControllere.dart';
 import 'onboarding.dart';
 
@@ -65,11 +64,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (!hasInternet) {
         setState(() {
-          _errorMessage = 'कृपया तपाईंको इन्टरनेट जडान जाँच गर्नुहोस्';
+          _errorMessage = 'Please check your internet connection';
           _isCheckingVersion = false;
         });
-        // Navigate to no internet screen
-        _showNoInternetScreen();
         return;
       }
 
@@ -457,22 +454,6 @@ class _SplashScreenState extends State<SplashScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => screen),
-    );
-  }
-
-  void _showNoInternetScreen() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => NoInternetScreen(
-          onRetry: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SplashScreen()),
-            );
-          },
-        ),
-      ),
     );
   }
 

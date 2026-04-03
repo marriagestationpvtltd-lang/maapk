@@ -18,9 +18,9 @@ import 'otherenew/modelfile.dart';
 import 'otherenew/othernew.dart';
 import 'otherenew/service.dart';
 import 'constant/app_theme.dart';
+import 'navigation/app_navigation.dart';
 import 'service/connectivity_service.dart';
-
-final navigatorKey = GlobalKey<NavigatorState>();
+import 'widgets/global_connectivity_handler.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
@@ -493,6 +493,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Marriage Station',
       theme: AppTheme.lightTheme,
+      navigatorObservers: [appRouteTracker],
+      builder: (context, child) {
+        return GlobalConnectivityHandler(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const SplashScreen(),
       routes: {
         '/login': (context) => const OnboardingScreen(),
