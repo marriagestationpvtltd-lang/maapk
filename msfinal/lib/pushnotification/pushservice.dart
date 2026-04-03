@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 
+import '../Notification/notification_inbox_service.dart';
 import '../Calling/callmanager.dart';
 
 class NotificationService {
@@ -35,16 +36,26 @@ class NotificationService {
     required String recipientUserId,
     required String senderName,
     required String senderId,
+    String requestType = 'Profile',
+    bool isReminder = false,
     Map<String, dynamic>? extraData,
   }) async {
+    final normalizedRequestType = NotificationInboxService.normalizeRequestType(requestType);
+    final content = NotificationInboxService.buildNotificationContent(
+      type: isReminder ? 'request_reminder' : 'request',
+      actorName: senderName,
+      requestType: normalizedRequestType,
+    );
+
     return await sendNotification(
       userId: recipientUserId,
-      title: '📨 New Request',
-      body: '$senderName sent you a request',
+      title: content['title'] ?? 'Request update',
+      body: content['body'] ?? '$senderName sent you a request',
       data: {
-        'type': 'request',
+        'type': isReminder ? 'request_reminder' : 'request',
         'senderId': senderId,
         'senderName': senderName,
+        'requestType': normalizedRequestType,
         'timestamp': DateTime.now().toIso8601String(),
         ...?extraData,
       },
@@ -59,12 +70,18 @@ class NotificationService {
     required String message,
     Map<String, dynamic>? extraData,
   }) async {
+    final content = NotificationInboxService.buildNotificationContent(
+      type: 'chat_message',
+      actorName: senderName,
+      messagePreview: message,
+    );
+
     return await sendNotification(
       userId: recipientUserId,
-      title: '💬 New Message',
-      body: '$senderName: $message',
+      title: content['title'] ?? 'New chat message',
+      body: content['body'] ?? '$senderName: $message',
       data: {
-        'type': 'chat',
+        'type': 'chat_message',
         'senderId': senderId,
         'senderName': senderName,
         'message': message,
@@ -79,16 +96,25 @@ class NotificationService {
     required String recipientUserId,
     required String senderName,
     required String senderId,
+    String requestType = 'Request',
     Map<String, dynamic>? extraData,
   }) async {
+    final normalizedRequestType = NotificationInboxService.normalizeRequestType(requestType);
+    final content = NotificationInboxService.buildNotificationContent(
+      type: 'request_rejected',
+      actorName: senderName,
+      requestType: normalizedRequestType,
+    );
+
     return await sendNotification(
       userId: recipientUserId,
-      title: '❌ Request Rejected',
-      body: '$senderName rejected your request',
+      title: content['title'] ?? 'Request rejected',
+      body: content['body'] ?? '$senderName rejected your request',
       data: {
         'type': 'request_rejected',
         'senderId': senderId,
         'senderName': senderName,
+        'requestType': normalizedRequestType,
         'timestamp': DateTime.now().toIso8601String(),
         ...?extraData,
       },
@@ -100,16 +126,25 @@ class NotificationService {
     required String recipientUserId,
     required String senderName,
     required String senderId,
+    String requestType = 'Request',
     Map<String, dynamic>? extraData,
   }) async {
+    final normalizedRequestType = NotificationInboxService.normalizeRequestType(requestType);
+    final content = NotificationInboxService.buildNotificationContent(
+      type: 'request_accepted',
+      actorName: senderName,
+      requestType: normalizedRequestType,
+    );
+
     return await sendNotification(
       userId: recipientUserId,
-      title: '✅ Request Accepted',
-      body: '$senderName accepted your request',
+      title: content['title'] ?? 'Request accepted',
+      body: content['body'] ?? '$senderName accepted your request',
       data: {
         'type': 'request_accepted',
         'senderId': senderId,
         'senderName': senderName,
+        'requestType': normalizedRequestType,
         'timestamp': DateTime.now().toIso8601String(),
         ...?extraData,
       },
@@ -151,6 +186,33 @@ class NotificationService {
       print('❌ Error sending notification: $e');
       return false;
     }
+  }
+
+  static Future<bool> sendProfileViewNotification({
+    required String recipientUserId,
+    required String viewerName,
+    required String viewerId,
+    Map<String, dynamic>? extraData,
+  }) async {
+    final content = NotificationInboxService.buildNotificationContent(
+      type: 'profile_view',
+      actorName: viewerName,
+    );
+
+    return await sendNotification(
+      userId: recipientUserId,
+      title: content['title'] ?? 'Profile viewed',
+      body: content['body'] ?? '$viewerName viewed your profile.',
+      data: {
+        'type': 'profile_view',
+        'viewerId': viewerId,
+        'viewerName': viewerName,
+        'senderId': viewerId,
+        'senderName': viewerName,
+        'timestamp': DateTime.now().toIso8601String(),
+        ...?extraData,
+      },
+    );
   }
 
   // Send call notification (OUTGOING)

@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ms2026/Chat/ChatdetailsScreen.dart';
+import 'package:ms2026/Notification/notification_inbox_service.dart';
+import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -283,6 +285,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final result = jsonDecode(response.body);
       debugPrint("Profile view response: $result");
+
+      if (response.statusCode == 200 &&
+          result['status']?.toString().toLowerCase() == 'success') {
+        final viewerName = await NotificationInboxService.getCurrentUserDisplayName();
+        await NotificationService.sendProfileViewNotification(
+          recipientUserId: viewedUserId,
+          viewerName: viewerName,
+          viewerId: myId,
+        );
+      }
 
     } catch (e) {
       debugPrint("Error adding profile view: $e");

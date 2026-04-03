@@ -234,10 +234,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'isDeletedForSender': false,
         'isDeletedForReceiver': false,
       };
-      NotificationService.sendRequestNotification(
+      NotificationService.sendChatNotification(
         recipientUserId: widget.receiverId.toString(),
-        senderName: "MS:${widget.currentUserId}",
+        senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
         senderId: widget.currentUserId,
+        message: message,
       );
 
       // Add reply data if replying to a message

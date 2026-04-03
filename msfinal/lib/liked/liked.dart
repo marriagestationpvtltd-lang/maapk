@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
+import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
 import '../Models/masterdata.dart';
 import '../main.dart';
@@ -210,6 +211,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
             recipientUserId: receiverId.toString(),
             senderName: "MS:$userId ${userLastName ?? ''}",
             senderId: userId.toString(),
+            requestType: formattedRequestType,
           );
 
           if (success) {
@@ -217,6 +219,12 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
           } else {
             print("Failed to send notification.");
           }
+
+          await NotificationInboxService.recordOutgoingRequest(
+            recipientUserId: receiverId.toString(),
+            requestType: formattedRequestType,
+            recipientName: receiverName,
+          );
 
           _showRequestSentPopup('$formattedRequestType request sent to $receiverName');
         } else {
