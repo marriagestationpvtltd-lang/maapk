@@ -334,6 +334,52 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                     color: AppColors.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 12),
+                // Security Message
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.success.withOpacity(0.1),
+                        AppColors.success.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.success.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.verified_user,
+                          color: AppColors.success,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          "Your photos are 100% secure. Others cannot view without your permission. Only after your approval can others see it.",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 ListTile(
                   leading: Container(
@@ -754,6 +800,48 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                               color: AppColors.textSecondary,
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          // Privacy Information
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.secondary.withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.info_outline,
+                                    color: AppColors.secondary,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Flexible(
+                                  child: Text(
+                                    "Your photo will not be visible to others without your permission until approved by admin",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      height: 1.3,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1113,6 +1201,28 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                           Expanded(
                             flex: 2,
                             child: EnhancedDropdown<String>(
+                              label: 'Year',
+                              value: selectedADYear.isNotEmpty ? selectedADYear : null,
+                              items: adYears,
+                              itemLabel: (year) => year,
+                              hint: 'Year',
+                              hasError: _fieldErrors['dob'] != null && selectedADYear.isEmpty,
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedADYear = value ?? '';
+                                  final days = currentAdDays;
+                                  if (!days.contains(selectedADDay)) {
+                                    selectedADDay = days.isNotEmpty ? days.first : '01';
+                                  }
+                                });
+                                _updateDobToProvider();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: EnhancedDropdown<String>(
                               label: 'Month',
                               value: selectedADMonth.isNotEmpty ? selectedADMonth : null,
                               items: adMonths,
@@ -1133,6 +1243,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                           ),
                           const SizedBox(width: 8),
                           Expanded(
+                            flex: 1,
                             child: EnhancedDropdown<String>(
                               label: 'Day',
                               value: selectedADDay.isNotEmpty ? selectedADDay : null,
@@ -1146,33 +1257,33 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                               },
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: EnhancedDropdown<String>(
-                              label: 'Year',
-                              value: selectedADYear.isNotEmpty ? selectedADYear : null,
-                              items: adYears,
-                              itemLabel: (year) => year,
-                              hint: 'Year',
-                              hasError: _fieldErrors['dob'] != null && selectedADYear.isEmpty,
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedADYear = value ?? '';
-                                  final days = currentAdDays;
-                                  if (!days.contains(selectedADDay)) {
-                                    selectedADDay = days.isNotEmpty ? days.first : '01';
-                                  }
-                                });
-                                _updateDobToProvider();
-                              },
-                            ),
-                          ),
                         ],
                       )
                     else
                       Row(
                         children: [
+                          Expanded(
+                            flex: 2,
+                            child: EnhancedDropdown<String>(
+                              label: 'Year',
+                              value: selectedBSYear.isNotEmpty ? selectedBSYear : null,
+                              items: bsYears,
+                              itemLabel: (year) => year,
+                              hint: 'Year',
+                              hasError: _fieldErrors['dob'] != null && selectedBSYear.isEmpty,
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedBSYear = value ?? '';
+                                  final days = currentBsDays;
+                                  if (!days.contains(selectedBSDay)) {
+                                    selectedBSDay = days.isNotEmpty ? days.first : '01';
+                                  }
+                                });
+                                _convertBsToAdAndUpdate();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             flex: 2,
                             child: EnhancedDropdown<String>(
@@ -1196,6 +1307,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                           ),
                           const SizedBox(width: 8),
                           Expanded(
+                            flex: 1,
                             child: EnhancedDropdown<String>(
                               label: 'Day',
                               value: selectedBSDay.isNotEmpty ? selectedBSDay : null,
@@ -1205,28 +1317,6 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                               hasError: _fieldErrors['dob'] != null && selectedBSDay.isEmpty,
                               onChanged: (value) {
                                 setState(() => selectedBSDay = value ?? '');
-                                _convertBsToAdAndUpdate();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: EnhancedDropdown<String>(
-                              label: 'Year',
-                              value: selectedBSYear.isNotEmpty ? selectedBSYear : null,
-                              items: bsYears,
-                              itemLabel: (year) => year,
-                              hint: 'Year',
-                              hasError: _fieldErrors['dob'] != null && selectedBSYear.isEmpty,
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedBSYear = value ?? '';
-                                  final days = currentBsDays;
-                                  if (!days.contains(selectedBSDay)) {
-                                    selectedBSDay = days.isNotEmpty ? days.first : '01';
-                                  }
-                                });
                                 _convertBsToAdAndUpdate();
                               },
                             ),
