@@ -178,6 +178,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         normalized == 'null' ||
         normalized == 'n/a' ||
         normalized == 'not specified' ||
+        normalized == 'not provided' ||
         normalized == '0';
   }
 
@@ -1473,131 +1474,125 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   Widget _buildProfileInfo(Map<String, dynamic> personalDetail) {
+    final location = _displayValue(
+      _joinNonEmpty([
+        _firstFilled([personalDetail['city']]),
+        _firstFilled([personalDetail['country']]),
+      ]),
+    );
+
+    Widget statRow(String l1, dynamic v1, String l2, dynamic v2) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Expanded(child: _buildMiniStat(l1, _displayValue(v1))),
+            const SizedBox(width: 10),
+            Expanded(child: _buildMiniStat(l2, _displayValue(v2))),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: AppColors.primary.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withOpacity(0.14),
-                          AppColors.primaryLight.withOpacity(0.06),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.info_outline,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.04),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  SizedBox(width: 12),
-                  Column(
+                  child: const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Basic Information',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          color: Color(0xFF1A1A2E),
                         ),
                       ),
                       Text(
-                        'Clean snapshot of your core profile details',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        'Key profile snapshot',
+                        style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11),
                       ),
                     ],
                   ),
-                ],
-              ),
-              _buildSectionAction(onTap: _editBasicInfo),
-            ],
-          ),
-          SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _buildMiniStat('Profile ID', _displayValue(personalDetail['memberid'])),
-              _buildMiniStat('Height', _displayValue(personalDetail['height_name'])),
-              _buildMiniStat('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
-              _buildMiniStat('Mother Tongue', _displayValue(personalDetail['motherTongue'])),
-              _buildMiniStat(
-                'Location',
-                _displayValue(
-                  _joinNonEmpty([
-                    _firstFilled([personalDetail['city']]),
-                    _firstFilled([personalDetail['country']]),
-                  ]),
                 ),
-              ),
-              _buildMiniStat('Privacy', _displayValue(personalDetail['privacy'])),
-            ],
+                _buildSectionAction(onTap: _editBasicInfo),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                statRow('Profile ID', personalDetail['memberid'], 'Height', personalDetail['height_name']),
+                statRow('Marital Status', personalDetail['maritalStatusName'], 'Mother Tongue', personalDetail['motherTongue']),
+                statRow('Location', location, 'Privacy', personalDetail['privacy']),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionAction({
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
+  Widget _buildSectionAction({required VoidCallback onTap}) {
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [AppColors.primary, AppColors.primaryDark],
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.22),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.edit_outlined, color: Colors.white, size: 16),
-            SizedBox(width: 6),
+          children: [
+            Icon(Icons.edit_outlined, color: Colors.white, size: 13),
+            SizedBox(width: 4),
             Text(
               'Edit',
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -1611,77 +1606,38 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     required String value,
     required IconData icon,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBFB),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: Colors.grey[900],
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    // Kept for backward compatibility; prefer _buildInfoRow for new rows.
+    return _buildInfoRow(label, value);
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final missing = _isMissing(value);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
+            flex: 4,
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+                color: Colors.grey[500],
+                fontSize: 13,
               ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.grey[800],
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: missing ? Colors.grey[400] : const Color(0xFF1A1A2E),
+                fontSize: 13,
+                fontWeight: missing ? FontWeight.normal : FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -1690,20 +1646,17 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   Widget _buildMiniStat(String label, String value) {
+    final missing = _isMissing(value);
     return Container(
-      width: 156,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFFFFFBFB),
-            AppColors.primary.withOpacity(0.02),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: missing ? Colors.grey.shade50 : AppColors.primary.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: missing
+              ? Colors.grey.shade200
+              : AppColors.primary.withOpacity(0.12),
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1711,17 +1664,20 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
+              color: Colors.grey[500],
+              fontSize: 11,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              height: 1.3,
+            style: TextStyle(
+              color: missing ? Colors.grey[400] : const Color(0xFF1A1A2E),
+              fontSize: 13,
+              fontWeight: missing ? FontWeight.normal : FontWeight.w700,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -2419,34 +2375,33 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _buildSectionValueCard(
-        label: label,
-        value: value,
-        icon: Icons.check_circle_outline,
-      ),
+    return Column(
+      children: [
+        _buildInfoRow(label, value),
+        Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100),
+      ],
     );
   }
 
   Widget _buildChip(String text, IconData icon, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 16),
-          SizedBox(width: 5),
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 6),
           Text(
             text,
             style: TextStyle(
-              color: Colors.grey[700],
+              color: color.withOpacity(0.9),
               fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -2510,56 +2465,57 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   Widget _buildLifestyle(Map<String, dynamic> lifestyle) {
-    List<Widget> habitChips = [];
+    final List<Widget> habitChips = [];
 
     if (lifestyle['smoke'] == 'Yes') {
-      habitChips.add(_buildChip('Smoker (${lifestyle['smoketype']})', Icons.smoking_rooms, Colors.orange));
+      habitChips.add(_buildChip(
+        'Smoker${_isMissing(lifestyle['smoketype']) ? '' : ' (${lifestyle['smoketype']})'}',
+        Icons.smoking_rooms,
+        Colors.orange,
+      ));
     } else if (!_isMissing(lifestyle['smoke'])) {
       habitChips.add(_buildChip('Non-Smoker', Icons.smoke_free, Colors.green));
     }
 
     if (lifestyle['drinks'] == 'Yes') {
-      habitChips.add(_buildChip('Drinker (${lifestyle['drinktype']})', Icons.local_bar, Colors.orange));
+      habitChips.add(_buildChip(
+        'Drinker${_isMissing(lifestyle['drinktype']) ? '' : ' (${lifestyle['drinktype']})'}',
+        Icons.local_bar,
+        Colors.deepOrange,
+      ));
     } else if (!_isMissing(lifestyle['drinks'])) {
-      habitChips.add(_buildChip('Non-Drinker', Icons.no_drinks, Colors.green));
+      habitChips.add(_buildChip('Non-Drinker', Icons.no_drinks, Colors.teal));
     }
 
     if (!_isMissing(lifestyle['diet'])) {
-      habitChips.add(_buildChip(_stringValue(lifestyle['diet']), Icons.eco, Colors.green));
+      final normalizedDiet = _stringValue(lifestyle['diet']).toLowerCase();
+      final isVegetarian = normalizedDiet.contains('veg') && !normalizedDiet.contains('non');
+      habitChips.add(_buildChip(
+        _stringValue(lifestyle['diet']),
+        isVegetarian ? Icons.eco : Icons.restaurant,
+        isVegetarian ? Colors.green : Colors.deepOrange,
+      ));
     }
 
     return _buildSection(
       title: 'Lifestyle',
       icon: Icons.self_improvement,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (habitChips.isEmpty)
-            Text(
-              'No lifestyle information added yet.',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+      content: habitChips.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No lifestyle information added yet.',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
               ),
             )
-          else ...[
-            Text(
-              'Habits:',
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
+          : Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: habitChips,
               ),
             ),
-            SizedBox(height: 8),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: habitChips,
-            ),
-          ],
-        ],
-      ),
       onEdit: () => _editLifestyle(),
     );
   }
@@ -2610,83 +2566,72 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     required VoidCallback onEdit,
   }) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withOpacity(0.14),
-                          AppColors.primaryLight.withOpacity(0.06),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: AppColors.primary, size: 20),
-                  ),
-                  SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                      Text(
-                        'Keep this section complete and up to date',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.04),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
-              _buildSectionAction(onTap: onEdit),
-            ],
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
+                _buildSectionAction(onTap: onEdit),
+              ],
+            ),
           ),
-          SizedBox(height: 18),
-          content,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: content,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildPreferenceRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _buildSectionValueCard(
-        label: label,
-        value: value,
-        icon: Icons.favorite_border,
-      ),
+    return Column(
+      children: [
+        _buildInfoRow(label, value),
+        Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100),
+      ],
     );
   }
 }
