@@ -27,6 +27,7 @@ import '../../profile/myprofile.dart';
 import '../../purposal/Purposalmodel.dart';
 import '../../purposal/purposalScreen.dart';
 import '../../purposal/purposalservice.dart';
+import '../../purposal/requestcard.dart' show showUpgradeDialog;
 import '../../service/Service_chat.dart';
 import 'machprofilescreen.dart';
 
