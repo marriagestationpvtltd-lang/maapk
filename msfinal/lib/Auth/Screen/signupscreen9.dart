@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
+import '../../ReUsable/dropdownwidget.dart';
 import '../../service/location_service.dart';
 import '../../service/partner_pref_api.dart';
 import '../../service/updatepage.dart';
@@ -56,15 +57,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   // Options data
   final List<String> _ageOptions = List.generate(44, (index) => (18 + index).toString());
 
-  List<String> get _heightOptions {
-    return List.generate(121, (index) {
-      int cm = 100 + index;
-      double totalInches = cm / 2.54;
-      int feet = totalInches ~/ 12;
-      int inches = (totalInches % 12).round();
-      return "$cm cm ($feet' $inches\")";
-    });
-  }
+  late final List<String> _heightOptions;
 
   final List<String> _maritalStatusOptions = [
     'Any',
@@ -143,6 +136,15 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   @override
   void initState() {
     super.initState();
+
+    // Cache large list once to avoid repeated generation during build
+    _heightOptions = List.generate(121, (index) {
+      int cm = 100 + index;
+      double totalInches = cm / 2.54;
+      int feet = totalInches ~/ 12;
+      int inches = (totalInches % 12).round();
+      return "$cm cm ($feet' $inches\")";
+    });
 
     _animationController = AnimationController(
       vsync: this,
@@ -1089,15 +1091,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                 Row(
                   children: [
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Min Age',
-                        value: _minAge,
+                      child: TypingDropdown<String>(
+                        title: 'Min Age',
                         items: _ageOptions,
                         itemLabel: (age) => '$age years',
                         hint: 'Min',
+                        selectedItem: _minAge,
+                        showError: _fieldErrors['age'] != null && _minAge == null,
                         prefixIcon: Icons.calendar_today,
-                        hasError: _fieldErrors['age'] != null && _minAge == null,
-                        isRequired: true,
                         onChanged: (value) {
                           setState(() {
                             _minAge = value;
@@ -1110,15 +1111,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Max Age',
-                        value: _maxAge,
+                      child: TypingDropdown<String>(
+                        title: 'Max Age',
                         items: _ageOptions,
                         itemLabel: (age) => '$age years',
                         hint: 'Max',
+                        selectedItem: _maxAge,
+                        showError: _fieldErrors['age'] != null && _maxAge == null,
                         prefixIcon: Icons.calendar_today,
-                        hasError: _fieldErrors['age'] != null && _maxAge == null,
-                        isRequired: true,
                         onChanged: (value) {
                           setState(() {
                             _maxAge = value;
@@ -1171,15 +1171,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                 Row(
                   children: [
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Min Height',
-                        value: _minHeight,
+                      child: TypingDropdown<String>(
+                        title: 'Min Height',
                         items: _heightOptions,
                         itemLabel: (height) => height,
                         hint: 'Min',
+                        selectedItem: _minHeight,
+                        showError: _fieldErrors['height'] != null && _minHeight == null,
                         prefixIcon: Icons.height,
-                        hasError: _fieldErrors['height'] != null && _minHeight == null,
-                        isRequired: true,
                         onChanged: (value) {
                           setState(() {
                             _minHeight = value;
@@ -1192,15 +1191,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: EnhancedDropdown<String>(
-                        label: 'Max Height',
-                        value: _maxHeight,
+                      child: TypingDropdown<String>(
+                        title: 'Max Height',
                         items: _heightOptions,
                         itemLabel: (height) => height,
                         hint: 'Max',
+                        selectedItem: _maxHeight,
+                        showError: _fieldErrors['height'] != null && _maxHeight == null,
                         prefixIcon: Icons.height,
-                        hasError: _fieldErrors['height'] != null && _maxHeight == null,
-                        isRequired: true,
                         onChanged: (value) {
                           setState(() {
                             _maxHeight = value;
