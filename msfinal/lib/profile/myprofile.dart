@@ -102,7 +102,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchActivePackage(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://digitallami.com/Api2/user_package.php?userid=$userId'),
+        Uri.parse('https://digitallami.com/Api2/user_package.php?userid=$userId'),
       );
 
       if (response.statusCode != 200) {
@@ -1765,7 +1765,13 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           _buildDetailRow('Sub Caste', _displayValue(personalDetail['subCommunityName'])),
           _buildDetailRow('Manglik', _displayValue(personalDetail['manglik'])),
           _buildDetailRow('Diet', _displayValue(lifestyle['diet'])),
-          _buildDetailRow('Disability', _displayValue(personalDetail['disability'], fallback: 'None')),
+          _buildDetailRow(
+            'Disability',
+            _displayValue(
+              _firstFilled([personalDetail['disability'], personalDetail['Disability']]),
+              fallback: 'Not specified',
+            ),
+          ),
           _buildDetailRow('Blood Group', _displayValue(personalDetail['bloodGroup'])),
           _buildDetailRow('Birth Time', _displayValue(personalDetail['birthtime'])),
           _buildDetailRow('Birth Place', _displayValue(personalDetail['birthcity'])),
