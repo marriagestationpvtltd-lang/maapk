@@ -420,9 +420,10 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                         ],
+                       ],
+                       ),
+                     ),
                 const SizedBox(height: 16),
                 ListTile(
                   leading: Container(
