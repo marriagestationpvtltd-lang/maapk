@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../constant/app_colors.dart';
 import 'Email.dart';
 import 'ohonelogin.dart';
 
@@ -25,6 +25,8 @@ class _LoginScreensState extends State<LoginScreens> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
