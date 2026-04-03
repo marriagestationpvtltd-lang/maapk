@@ -4,12 +4,10 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
@@ -39,9 +37,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
-  final AudioRecorder _record = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isRecording = false;
+  bool _isSending = false;
   String? _replyToID;
   Map<String, dynamic>? _replyToMessage;
   final ScrollController _scrollController = ScrollController();
@@ -111,7 +108,6 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   void dispose() {
     _controller.dispose();
     _messageFocusNode.dispose();
-    _record.dispose();
     _audioPlayer.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -229,11 +225,17 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   }
 
   Future<void> _sendText() async {
+    if (_isSending) return;
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
       _controller.clear();
       _messageFocusNode.requestFocus();
-      await _sendMessage('text', text);
+      setState(() { _isSending = true; });
+      try {
+        await _sendMessage('text', text);
+      } finally {
+        if (mounted) setState(() { _isSending = false; });
+      }
     }
   }
 
@@ -271,42 +273,6 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       TaskSnapshot snap = await task;
       String url = await snap.ref.getDownloadURL();
       await _sendMessage('image', 'Image', imageUrl: url);
-    }
-  }
-
-  Future<void> _startRecording() async {
-    var status = await Permission.microphone.request();
-    if (status.isGranted) {
-      try {
-        await _record.start(const RecordConfig(),
-            path:
-                '${Directory.systemTemp.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a');
-        setState(() => _isRecording = true);
-      } catch (e) {
-        print('Error starting recording: $e');
-      }
-    } else {
-      print('Microphone permission denied');
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    try {
-      String? path = await _record.stop();
-      setState(() => _isRecording = false);
-      if (path != null) {
-        File file = File(path);
-        String fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-        UploadTask task = FirebaseStorage.instance
-            .ref('adminchat/${widget.senderID}/voice/$fileName')
-            .putFile(file);
-        TaskSnapshot snap = await task;
-        String url = await snap.ref.getDownloadURL();
-        await _sendMessage(
-            'voice', jsonEncode({'url': url, 'duration': '0:15'}));
-      }
-    } catch (e) {
-      print('Error stopping recording: $e');
     }
   }
 
@@ -1494,21 +1460,6 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               },
             ),
           const SizedBox(width: 8),
-          if (!widget.isAdmin)
-            GestureDetector(
-              onLongPressStart: (_) => _startRecording(),
-              onLongPressEnd: (_) => _stopRecording(),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  _isRecording ? Icons.mic : Icons.mic_none,
-                  color:
-                      _isRecording ? _accentColor : _primaryGradient.colors[0],
-                  size: 28,
-                ),
-              ),
-            ),
-          const SizedBox(width: 12),
           Expanded(
             child: Container(
               decoration: BoxDecoration(

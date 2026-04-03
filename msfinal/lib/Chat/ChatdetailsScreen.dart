@@ -12,9 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:ms2026/Chat/screen_state_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 
 import '../Calling/OutgoingCall.dart';
@@ -57,7 +55,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Uuid _uuid = Uuid();
-  final AudioRecorder _audioRecorder = AudioRecorder();
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -81,11 +78,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   bool isEditing = false;
   final TextEditingController _editController = TextEditingController();
 
-  // Audio recording
-  bool _isRecording = false;
-  String? _currentRecordingPath;
-  Timer? _recordingTimer;
-  int _recordingSeconds = 0;
+  // Send guard to prevent duplicate messages
+  bool _isSending = false;
 
   // Audio playback
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -246,9 +240,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _editController.dispose();
     _scrollController.dispose();
     _messageFocusNode.dispose();
-    _audioRecorder.dispose();
     _audioPlayer.dispose();
-    _recordingTimer?.cancel();
     _swipeAnimationController?.dispose();
     super.dispose();
   }
@@ -310,10 +302,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   // SEND MESSAGE (with reply support)
-// SEND MESSAGE (with reply support)
   Future<void> _sendMessage() async {
+    if (_isSending) return;
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty) return;
+
+    // Clear input immediately to prevent duplicate sends
+    _messageController.clear();
+    if (mounted) setState(() { _isSending = true; });
 
     try {
       final timestamp = DateTime.now();
@@ -351,9 +347,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         };
       }
 
-      // Clear text field IMMEDIATELY
-      _messageController.clear();
-
       // Clear reply/edit states
       _cancelReply();
       _cancelEdit();
@@ -385,9 +378,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() { _isSending = false; });
     }
   }
-  // EDIT MESSAGE
   Future<void> _editMessage() async {
     if (editingMessage == null || _editController.text.trim().isEmpty) return;
 
@@ -431,205 +425,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
-
-
-  // VOICE RECORDING METHODS
-
-  Future<void> _startRecording() async {
-    try {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (!hasPermission) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Microphone permission required'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      final directory = await getTemporaryDirectory();
-      final path = '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      await _audioRecorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000, sampleRate: 44100),
-        path: path,
-      );
-
-      _recordingSeconds = 0;
-      _currentRecordingPath = path;
-      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (mounted) {
-          setState(() => _recordingSeconds++);
-        }
-      });
-
-      if (mounted) setState(() => _isRecording = true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start recording: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _stopRecording() async {
-
-    try {
-      _recordingTimer?.cancel();
-
-      if (!_isRecording) return;
-
-      final recordingPath = await _audioRecorder.stop();
-
-      if (mounted) {
-        setState(() {
-          _isRecording = false;
-        });
-      }
-
-      if (recordingPath != null && _recordingSeconds >= 1) {
-        await _sendVoiceMessage(recordingPath);
-      } else {
-        await _cancelRecording();
-        if (_recordingSeconds < 1) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Recording too short'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error stopping recording: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to stop recording: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _recordingSeconds = 0;
-        });
-      }
-    }
-  }
-
-  Future<void> _cancelRecording() async {
-    _recordingTimer?.cancel();
-
-    if (_isRecording) {
-      await _audioRecorder.stop();
-      if (mounted) {
-        setState(() {
-          _isRecording = false;
-        });
-      }
-
-      if (_currentRecordingPath != null) {
-        final file = File(_currentRecordingPath!);
-        if (await file.exists()) {
-          await file.delete();
-        }
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _recordingSeconds = 0;
-      });
-    }
-  }
-
-  // SEND VOICE MESSAGE (with reply support)
-  Future<void> _sendVoiceMessage(String audioPath) async {
-    try {
-      final timestamp = DateTime.now();
-      final messageId = _uuid.v4();
-      final fileName = 'voice_messages/${widget.chatRoomId}/$messageId.m4a';
-
-      // Upload audio to Firebase Storage
-      final ref = _storage.ref().child(fileName);
-      await ref.putFile(File(audioPath));
-      final audioUrl = await ref.getDownloadURL();
-
-      // Prepare message data
-      final messageData = {
-        'messageId': messageId,
-        'senderId': widget.currentUserId,
-        'receiverId': widget.receiverId,
-        'message': audioUrl,
-        'messageType': 'voice',
-        'duration': _recordingSeconds,
-        'timestamp': timestamp,
-        'isRead': false,
-        'isDeletedForSender': false,
-        'isDeletedForReceiver': false,
-      };
-
-      // Add reply data if replying to a message
-      if (isReplying && repliedMessage != null) {
-        messageData['repliedTo'] = {
-          'messageId': repliedMessage!['messageId'],
-          'message': repliedMessage!['message'],
-          'senderId': repliedMessage!['senderId'],
-          'senderName': repliedMessage!['senderId'] == widget.currentUserId
-              ? widget.currentUserName
-              : widget.receiverName,
-          'messageType': repliedMessage!['messageType'] ?? 'text',
-        };
-      }
-
-      // Create message document
-      await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .doc(messageId)
-          .set(messageData);
-
-      // Update chat room
-      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'lastMessage': '🎤 Voice message',
-        'lastMessageType': 'voice',
-        'lastMessageTime': timestamp,
-        'lastMessageSenderId': widget.currentUserId,
-        'unreadCount.${widget.receiverId}': FieldValue.increment(1),
-      });
-
-      // Delete local recording file
-      final file = File(audioPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      _cancelReply();
-      _cancelEdit();
-      _scrollToBottom();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send voice message: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _recordingSeconds = 0;
-        });
-      }
-    }
-  }
 
   // MESSAGE ACTIONS
   Future<void> _deleteMessage(bool deleteForEveryone) async {
@@ -820,10 +615,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         );
       }
     });
-  }
-
-  String _formatRecordingTime() {
-    return _formatDuration(_recordingSeconds);
   }
 
   // VOICE PLAYBACK
@@ -1581,11 +1372,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  onPressed: hasText
-                      ? (isEditing ? _editMessage : _sendMessage)
-                      : _startRecording,
-                  icon: Icon(
-                    hasText ? Icons.send : Icons.mic,
+                  onPressed: hasText ? (isEditing ? _editMessage : _sendMessage) : null,
+                  icon: const Icon(
+                    Icons.send,
                     color: Colors.white,
                     size: 22,
                   ),
@@ -1599,82 +1388,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
   }
 
-  Widget _bottomSection() => _isRecording ? _voiceRecorderBar() : _bottomInputBar();
-
-  Widget _voiceRecorderBar() {
-    return Container(
-      padding: const EdgeInsets.only(left: 10, right: 10, bottom: 16, top: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF0F0),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: const Color(0xFFF90E18).withOpacity(0.2)),
-        ),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: _cancelRecording,
-              child: const CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.delete_outline, color: Colors.grey),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.mic, color: Color(0xFFF90E18), size: 18),
-            const SizedBox(width: 6),
-            Text(
-              _formatRecordingTime(),
-              style: const TextStyle(
-                color: Color(0xFFF90E18),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Container(
-                height: 30,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Center(
-                  child: Text(
-                    'Recording...',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            GestureDetector(
-              onTap: _stopRecording,
-              child: const CircleAvatar(
-                radius: 20,
-                backgroundColor: Color(0xFFF90E18),
-                child: Icon(Icons.send, color: Colors.white, size: 18),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _bottomSection() => _bottomInputBar();
 
   Widget _buildMessagesList() {
     return StreamBuilder<QuerySnapshot>(
