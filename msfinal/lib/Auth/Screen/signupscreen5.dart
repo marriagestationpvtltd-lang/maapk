@@ -164,7 +164,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Stack(
           children: [
