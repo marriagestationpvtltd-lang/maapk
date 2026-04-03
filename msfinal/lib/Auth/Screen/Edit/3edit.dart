@@ -202,14 +202,14 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
     // Specs
     if (data['haveSpecs'] != null) {
-      final value = data['haveSpecs'];
-      _hasSpecs = value == true || value == 1 || value == '1';
+      final value = data['haveSpecs'].toString().toLowerCase();
+      _hasSpecs = value == 'true' || value == '1' || value == 'yes';
     }
 
     // Disability
     if (data['anyDisability'] != null) {
-      final value = data['anyDisability'];
-      _hasDisability = value == true || value == 1 || value == '1';
+      final value = data['anyDisability'].toString().toLowerCase();
+      _hasDisability = value == 'true' || value == '1' || value == 'yes';
     } else if (data['disability'] != null) {
       final value = data['disability'].toString().toLowerCase();
       _hasDisability = value == 'yes' || value == '1' || value == 'true';
