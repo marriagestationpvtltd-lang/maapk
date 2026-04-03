@@ -194,6 +194,8 @@ class RegistrationStepContainer extends StatelessWidget {
   final String continueText;
   final bool isLoading;
   final bool canContinue;
+  final ScrollController? scrollController;
+  final ScrollPhysics? scrollPhysics;
 
   const RegistrationStepContainer({
     Key? key,
@@ -203,6 +205,8 @@ class RegistrationStepContainer extends StatelessWidget {
     this.continueText = 'Continue',
     this.isLoading = false,
     this.canContinue = true,
+    this.scrollController,
+    this.scrollPhysics,
   }) : super(key: key);
 
   @override
@@ -211,7 +215,10 @@ class RegistrationStepContainer extends StatelessWidget {
       children: [
         Expanded(
           child: SingleChildScrollView(
+            controller: scrollController,
+            physics: scrollPhysics ?? const ClampingScrollPhysics(),
             padding: const EdgeInsets.all(20),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: child,
           ),
         ),

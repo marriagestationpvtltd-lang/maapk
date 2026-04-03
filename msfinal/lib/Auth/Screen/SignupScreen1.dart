@@ -11,6 +11,7 @@ import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../ReUsable/dateconverter.dart';
+import '../../ReUsable/smart_scroll_behavior.dart';
 import '../SuignupModel/signup_model.dart';
 
 class YourDetailsPage extends StatefulWidget {
@@ -20,7 +21,8 @@ class YourDetailsPage extends StatefulWidget {
   State<YourDetailsPage> createState() => _YourDetailsPageState();
 }
 
-class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProviderStateMixin {
+class _YourDetailsPageState extends State<YourDetailsPage>
+    with SingleTickerProviderStateMixin, SmartScrollBehavior {
   // Form controllers
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -28,6 +30,22 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
   late TextEditingController _phoneController;
+
+  // Focus nodes for smart scrolling
+  late FocusNode _firstNameFocus;
+  late FocusNode _lastNameFocus;
+  late FocusNode _emailFocus;
+  late FocusNode _passwordFocus;
+  late FocusNode _confirmPasswordFocus;
+  late FocusNode _phoneFocus;
+
+  // Global keys for smart scrolling
+  final GlobalKey _firstNameKey = GlobalKey();
+  final GlobalKey _lastNameKey = GlobalKey();
+  final GlobalKey _emailKey = GlobalKey();
+  final GlobalKey _passwordKey = GlobalKey();
+  final GlobalKey _confirmPasswordKey = GlobalKey();
+  final GlobalKey _phoneKey = GlobalKey();
 
   // Form state
   String selectedNationality = "";
@@ -140,6 +158,22 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
     _confirmPasswordController = TextEditingController();
     _phoneController = TextEditingController();
 
+    // Initialize focus nodes
+    _firstNameFocus = FocusNode();
+    _lastNameFocus = FocusNode();
+    _emailFocus = FocusNode();
+    _passwordFocus = FocusNode();
+    _confirmPasswordFocus = FocusNode();
+    _phoneFocus = FocusNode();
+
+    // Register fields for smart scrolling
+    registerField(_firstNameFocus, _firstNameKey);
+    registerField(_lastNameFocus, _lastNameKey);
+    registerField(_emailFocus, _emailKey);
+    registerField(_passwordFocus, _passwordKey);
+    registerField(_confirmPasswordFocus, _confirmPasswordKey);
+    registerField(_phoneFocus, _phoneKey);
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -168,6 +202,15 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
+
+    // Dispose focus nodes
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmPasswordFocus.dispose();
+    _phoneFocus.dispose();
+
     _animationController.dispose();
     super.dispose();
   }
@@ -686,6 +729,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: RegistrationStepContainer(
+                scrollController: scrollController,
                 onContinue: model.isSubmitting ? null : _submitSignup,
                 onBack: () => Navigator.pop(context),
                 continueText: 'Continue',
@@ -861,42 +905,50 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                     Row(
                       children: [
                         Expanded(
-                          child: EnhancedTextField(
-                            label: 'First Name',
-                            hint: 'Enter first name',
-                            controller: _firstNameController,
-                            prefixIcon: Icons.person_outline,
-                            hasError: _fieldErrors['firstName'] != null,
-                            errorText: _fieldErrors['firstName'],
-                            onChanged: (value) {
-                              model.setFirstName(value);
-                              if (_hasValidationErrors) {
-                                setState(() {
-                                  _fieldErrors['firstName'] = _validateFirstName(value);
-                                });
-                              }
-                            },
-                            validator: _validateFirstName,
+                          child: Container(
+                            key: _firstNameKey,
+                            child: EnhancedTextField(
+                              label: 'First Name',
+                              hint: 'Enter first name',
+                              controller: _firstNameController,
+                              focusNode: _firstNameFocus,
+                              prefixIcon: Icons.person_outline,
+                              hasError: _fieldErrors['firstName'] != null,
+                              errorText: _fieldErrors['firstName'],
+                              onChanged: (value) {
+                                model.setFirstName(value);
+                                if (_hasValidationErrors) {
+                                  setState(() {
+                                    _fieldErrors['firstName'] = _validateFirstName(value);
+                                  });
+                                }
+                              },
+                              validator: _validateFirstName,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: EnhancedTextField(
-                            label: 'Last Name',
-                            hint: 'Enter last name',
-                            controller: _lastNameController,
-                            prefixIcon: Icons.person_outline,
-                            hasError: _fieldErrors['lastName'] != null,
-                            errorText: _fieldErrors['lastName'],
-                            onChanged: (value) {
-                              model.setLastName(value);
-                              if (_hasValidationErrors) {
-                                setState(() {
-                                  _fieldErrors['lastName'] = _validateLastName(value);
-                                });
-                              }
-                            },
-                            validator: _validateLastName,
+                          child: Container(
+                            key: _lastNameKey,
+                            child: EnhancedTextField(
+                              label: 'Last Name',
+                              hint: 'Enter last name',
+                              controller: _lastNameController,
+                              focusNode: _lastNameFocus,
+                              prefixIcon: Icons.person_outline,
+                              hasError: _fieldErrors['lastName'] != null,
+                              errorText: _fieldErrors['lastName'],
+                              onChanged: (value) {
+                                model.setLastName(value);
+                                if (_hasValidationErrors) {
+                                  setState(() {
+                                    _fieldErrors['lastName'] = _validateLastName(value);
+                                  });
+                                }
+                              },
+                              validator: _validateLastName,
+                            ),
                           ),
                         ),
                       ],
@@ -905,161 +957,138 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                     const SizedBox(height: 16),
 
                     // Email
-                    EnhancedTextField(
-                      label: 'Email Address',
-                      hint: 'your.email@example.com',
-                      controller: _emailController,
-                      prefixIcon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      hasError: _fieldErrors['email'] != null,
-                      errorText: _fieldErrors['email'],
-                      onChanged: (value) {
-                        model.setEmail(value);
-                        if (_hasValidationErrors) {
-                          setState(() {
-                            _fieldErrors['email'] = _validateEmail(value);
-                          });
-                        }
-                      },
-                      validator: _validateEmail,
+                    Container(
+                      key: _emailKey,
+                      child: EnhancedTextField(
+                        label: 'Email Address',
+                        hint: 'your.email@example.com',
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        prefixIcon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        hasError: _fieldErrors['email'] != null,
+                        errorText: _fieldErrors['email'],
+                        onChanged: (value) {
+                          model.setEmail(value);
+                          if (_hasValidationErrors) {
+                            setState(() {
+                              _fieldErrors['email'] = _validateEmail(value);
+                            });
+                          }
+                        },
+                        validator: _validateEmail,
+                      ),
                     ),
 
                     const SizedBox(height: 16),
 
                     // Password
-                    EnhancedTextField(
-                      label: 'Password',
-                      hint: 'Create a strong password',
-                      controller: _passwordController,
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: _obscurePassword,
-                      hasError: _fieldErrors['password'] != null,
-                      errorText: _fieldErrors['password'],
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: AppColors.textSecondary,
+                    Container(
+                      key: _passwordKey,
+                      child: EnhancedTextField(
+                        label: 'Password',
+                        hint: 'Create a strong password',
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: _obscurePassword,
+                        hasError: _fieldErrors['password'] != null,
+                        errorText: _fieldErrors['password'],
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: AppColors.textSecondary,
+                          ),
+                          onPressed: () {
+                            setState(() => _obscurePassword = !_obscurePassword);
+                          },
                         ),
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
+                        onChanged: (value) {
+                          model.setPassword(value);
+                          if (_hasValidationErrors) {
+                            setState(() {
+                              _fieldErrors['password'] = _validatePassword(value);
+                              if (_confirmPasswordController.text.isNotEmpty) {
+                                _fieldErrors['confirmPassword'] =
+                                    _validateConfirmPassword(_confirmPasswordController.text);
+                              }
+                            });
+                          }
                         },
+                        validator: _validatePassword,
                       ),
-                      onChanged: (value) {
-                        model.setPassword(value);
-                        if (_hasValidationErrors) {
-                          setState(() {
-                            _fieldErrors['password'] = _validatePassword(value);
-                            if (_confirmPasswordController.text.isNotEmpty) {
-                              _fieldErrors['confirmPassword'] =
-                                  _validateConfirmPassword(_confirmPasswordController.text);
-                            }
-                          });
-                        }
-                      },
-                      validator: _validatePassword,
                     ),
 
                     const SizedBox(height: 16),
 
                     // Confirm Password
-                    EnhancedTextField(
-                      label: 'Confirm Password',
-                      hint: 'Re-enter your password',
-                      controller: _confirmPasswordController,
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: _obscureConfirm,
-                      hasError: _fieldErrors['confirmPassword'] != null,
-                      errorText: _fieldErrors['confirmPassword'],
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                          color: AppColors.textSecondary,
+                    Container(
+                      key: _confirmPasswordKey,
+                      child: EnhancedTextField(
+                        label: 'Confirm Password',
+                        hint: 'Re-enter your password',
+                        controller: _confirmPasswordController,
+                        focusNode: _confirmPasswordFocus,
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: _obscureConfirm,
+                        hasError: _fieldErrors['confirmPassword'] != null,
+                        errorText: _fieldErrors['confirmPassword'],
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                            color: AppColors.textSecondary,
+                          ),
+                          onPressed: () {
+                            setState(() => _obscureConfirm = !_obscureConfirm);
+                          },
                         ),
-                        onPressed: () {
-                          setState(() => _obscureConfirm = !_obscureConfirm);
+                        onChanged: (value) {
+                          _confirmPassword = value;
+                          if (_hasValidationErrors) {
+                            setState(() {
+                              _fieldErrors['confirmPassword'] = _validateConfirmPassword(value);
+                            });
+                          }
                         },
+                        validator: _validateConfirmPassword,
                       ),
-                      onChanged: (value) {
-                        _confirmPassword = value;
-                        if (_hasValidationErrors) {
-                          setState(() {
-                            _fieldErrors['confirmPassword'] = _validateConfirmPassword(value);
-                          });
-                        }
-                      },
-                      validator: _validateConfirmPassword,
                     ),
 
                     const SizedBox(height: 16),
 
                     // Phone Number
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8, left: 4),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Phone Number',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                '*',
-                                style: TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _fieldErrors['phone'] != null
-                                      ? AppColors.error
-                                      : AppColors.border,
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _fieldErrors['phone'] != null
-                                        ? AppColors.error.withOpacity(0.1)
-                                        : AppColors.shadowLight,
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                    Container(
+                      key: _phoneKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 8, left: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Phone Number',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
                                   ),
-                                ],
-                              ),
-                              child: CountryCodePicker(
-                                onChanged: (country) {
-                                  setState(() {
-                                    countryCode = country.dialCode ?? '+977';
-                                  });
-                                },
-                                initialSelection: 'NP',
-                                favorite: const ['+977', 'IN', 'US'],
-                                showCountryOnly: false,
-                                showOnlyCountryWhenClosed: false,
-                                alignLeft: false,
-                                padding: EdgeInsets.zero,
-                              ),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '*',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Container(
+                          ),
+                          Row(
+                            children: [
+                              Container(
                                 height: 56,
                                 decoration: BoxDecoration(
                                   color: AppColors.white,
@@ -1080,18 +1109,56 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                                     ),
                                   ],
                                 ),
-                                child: TextField(
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(15),
-                                  ],
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary,
+                                child: CountryCodePicker(
+                                  onChanged: (country) {
+                                    setState(() {
+                                      countryCode = country.dialCode ?? '+977';
+                                    });
+                                  },
+                                  initialSelection: 'NP',
+                                  favorite: const ['+977', 'IN', 'US'],
+                                  showCountryOnly: false,
+                                  showOnlyCountryWhenClosed: false,
+                                  alignLeft: false,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _fieldErrors['phone'] != null
+                                          ? AppColors.error
+                                          : AppColors.border,
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _fieldErrors['phone'] != null
+                                            ? AppColors.error.withOpacity(0.1)
+                                            : AppColors.shadowLight,
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
+                                  child: TextField(
+                                    controller: _phoneController,
+                                    focusNode: _phoneFocus,
+                                    keyboardType: TextInputType.phone,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(15),
+                                    ],
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   decoration: const InputDecoration(
                                     hintText: 'Phone number',
                                     hintStyle: TextStyle(
@@ -1145,7 +1212,7 @@ class _YourDetailsPageState extends State<YourDetailsPage> with SingleTickerProv
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
 
                     const SizedBox(height: 32),
