@@ -162,7 +162,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
     final normalizedMax = _clampAgeValue(maxAge ?? _maxAge);
 
     if (normalizedMin > normalizedMax) {
-      _minAge = normalizedMin;
+      _minAge = normalizedMax;
       _maxAge = normalizedMin;
       return;
     }

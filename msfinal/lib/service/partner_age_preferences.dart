@@ -35,8 +35,7 @@ PartnerAgePreferenceBounds resolvePartnerAgePreferenceBounds({
       ? (fallbackMaxAge < minAge ? minAge : fallbackMaxAge)
       : ((_calculateAge(parsedBirthDate) +
                   PartnerAgePreferenceBounds.maximumAgeOffsetFromUserAge)
-              .clamp(minAge, PartnerAgePreferenceBounds.absoluteMaximumAge)
-          as int);
+              .clamp(minAge, PartnerAgePreferenceBounds.absoluteMaximumAge));
 
   return PartnerAgePreferenceBounds(
     minAge: minAge,

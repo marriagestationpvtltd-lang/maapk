@@ -324,7 +324,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     if (normalizedMin != null &&
         normalizedMax != null &&
         int.parse(normalizedMin) > int.parse(normalizedMax)) {
-      _minAge = normalizedMin;
+      _minAge = normalizedMax;
       _maxAge = normalizedMin;
       return;
     }
