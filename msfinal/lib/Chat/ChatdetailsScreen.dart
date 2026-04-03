@@ -110,6 +110,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
 
+  final LinearGradient _primaryGradient = const LinearGradient(
+    colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  final LinearGradient _secondaryGradient = const LinearGradient(
+    colors: [Color(0xFFFFE4E6), Color(0xFFFFF1F2)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  final Color _accentColor = const Color(0xFFDB2777);
+  final Color _backgroundColor = const Color(0xFFF8FAFC);
+  final Color _textColor = const Color(0xFF1F2937);
+  final Color _lightTextColor = const Color(0xFF6B7280);
+
   @override
   void initState() {
     super.initState();
@@ -644,17 +659,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF0F0),
+        gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
         border: Border(
           left: BorderSide(
-            color: const Color(0xFFF90E18),
+            color: _accentColor,
             width: 4,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF90E18).withOpacity(0.08),
+            color: _accentColor.withOpacity(0.10),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -668,36 +683,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               children: [
                 Text(
                   'Replying to $senderName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFFF90E18),
+                    color: _accentColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 3),
                 if (messageType == 'text')
-                  Text(
-                    message,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                  )
-                else if (messageType == 'image')
-                  Row(
-                    children: [
-                      const Icon(Icons.image, size: 15, color: Color(0xFFF90E18)),
-                      const SizedBox(width: 4),
-                      Text('Photo', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                    ],
-                  )
-                else if (messageType == 'voice')
-                  Row(
-                    children: [
-                      const Icon(Icons.mic, size: 15, color: Color(0xFFF90E18)),
-                      const SizedBox(width: 4),
-                      Text('Voice message', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                    ],
-                  ),
+                    Text(
+                      message,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: _lightTextColor),
+                    )
+                  else if (messageType == 'image')
+                    Row(
+                      children: [
+                        Icon(Icons.image, size: 15, color: _accentColor),
+                        const SizedBox(width: 4),
+                        Text('Photo',
+                            style: TextStyle(fontSize: 13, color: _lightTextColor)),
+                      ],
+                    )
+                  else if (messageType == 'voice')
+                    Row(
+                      children: [
+                        Icon(Icons.mic, size: 15, color: _accentColor),
+                        const SizedBox(width: 4),
+                        Text('Voice message',
+                            style: TextStyle(fontSize: 13, color: _lightTextColor)),
+                      ],
+                    ),
               ],
             ),
           ),
@@ -725,14 +742,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
+        gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
-        border: const Border(
-          left: BorderSide(color: Color(0xFF2196F3), width: 4),
+        border: Border(
+          left: BorderSide(color: _accentColor, width: 4),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.08),
+            color: _accentColor.withOpacity(0.08),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -744,11 +761,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Editing message',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF2196F3),
+                    color: _accentColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -757,7 +774,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   editingMessage!['message'],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 13, color: _lightTextColor),
                 ),
               ],
             ),
@@ -880,9 +897,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
                     child: Text(
                       userName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey,
+                        color: _lightTextColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -895,13 +912,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     margin: const EdgeInsets.only(bottom: 6),
                     decoration: BoxDecoration(
-                      color: isMine
-                          ? const Color(0xFFF90E18).withOpacity(0.10)
-                          : const Color(0xFFF90E18).withOpacity(0.06),
+                      gradient: _secondaryGradient,
                       borderRadius: BorderRadius.circular(10),
                       border: Border(
                         left: BorderSide(
-                          color: const Color(0xFFF90E18),
+                          color: _accentColor,
                           width: 3.5,
                         ),
                       ),
@@ -911,9 +926,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       children: [
                         Text(
                           repliedTo['senderName'] ?? 'User',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFFF90E18),
+                            color: _accentColor,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -928,7 +943,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[800],
+                            color: _lightTextColor,
                           ),
                         ),
                       ],
@@ -938,29 +953,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  constraints: const BoxConstraints(maxWidth: 320),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
                   decoration: BoxDecoration(
-                    color: isMine
-                      ? const Color(0xFFDCF8C6)  // WhatsApp-like light green for sent messages
-                      : Colors.white,
+                    gradient: isMine ? _primaryGradient : _secondaryGradient,
                     borderRadius: isMine
                         ? const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(2),
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(4),
                     )
                         : const BorderRadius.only(
-                      topLeft: Radius.circular(2),
-                      topRight: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(4),
+                      bottomRight: Radius.circular(20),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
@@ -975,13 +990,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         messageId: messageData['messageId'] ?? '',
                       ),
                       if (isEdited)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 4),
                           child: Text(
                             'Edited',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Colors.grey,
+                              color: isMine ? Colors.white70 : _lightTextColor,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -996,7 +1011,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     Text(
                       time,
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: isMine ? Colors.white70 : _lightTextColor,
                         fontSize: 12,
                       ),
                     ),
@@ -1110,13 +1125,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   height: 36,
                   decoration: BoxDecoration(
                     color: isMine
-                      ? const Color(0xFF128C7E)  // Dark green for sent voice messages
-                      : const Color(0xFFF90E18).withOpacity(0.12),
+                      ? Colors.white.withOpacity(0.20)
+                      : _accentColor.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     isCurrentlyPlaying ? Icons.pause : Icons.play_arrow,
-                    color: isMine ? Colors.white : const Color(0xFFF90E18),
+                    color: isMine ? Colors.white : _accentColor,
                     size: 20,
                   ),
                 ),
@@ -1133,15 +1148,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           minHeight: 3,
                           backgroundColor: Colors.grey.withOpacity(0.25),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            isMine ? const Color(0xFF128C7E) : const Color(0xFFF90E18),
+                            isMine ? Colors.white : _accentColor,
                           ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         displayTime,
-                        style: const TextStyle(
-                          color: Colors.black54,
+                        style: TextStyle(
+                          color: isMine ? Colors.white70 : _lightTextColor,
                           fontSize: 12,
                         ),
                       ),
@@ -1155,8 +1170,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       default:
         return Text(
           text,
-          style: const TextStyle(
-            color: Color(0xFF303030),
+          style: TextStyle(
+            color: isMine ? Colors.white : _textColor,
             fontSize: 16,
             height: 1.4,
           ),
@@ -1305,10 +1320,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                   constraints: const BoxConstraints(minHeight: 48),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    gradient: _secondaryGradient,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.grey.withOpacity(0.25),
+                      color: _accentColor.withOpacity(0.18),
                       width: 1,
                     ),
                     boxShadow: [
@@ -1363,12 +1378,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               ),
               const SizedBox(width: 8),
               Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                decoration: BoxDecoration(
+                  gradient: _primaryGradient,
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -1548,7 +1559,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     // Add loading indicator at the top if loading more
     if (_isLoadingMore) {
       messageWidgets.add(
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(16.0),
           child: Center(
             child: SizedBox(
@@ -1556,7 +1567,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF90E18)),
+                valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
               ),
             ),
           ),
@@ -1649,15 +1660,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: _primaryGradient,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF90E18).withOpacity(0.3),
+                    color: _accentColor.withOpacity(0.30),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -1708,7 +1715,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                gradient: _secondaryGradient,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -1969,7 +1976,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFECE5DD),  // WhatsApp-like beige background
+      backgroundColor: _backgroundColor,
       body: Stack(
         children: [
           Column(
@@ -1977,7 +1984,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               _buildHeader(context),
               Expanded(
                 child: Container(
-                  color: const Color(0xFFFAF0F0),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_backgroundColor, _backgroundColor.withOpacity(0.92)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
                   child: _buildMessagesList(),
                 ),
               ),
@@ -1995,15 +2008,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 45, left: 6, right: 6, bottom: 12),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+      decoration: BoxDecoration(
+        gradient: _primaryGradient,
         boxShadow: [
           BoxShadow(
-            color: Color(0x33F90E18),
+            color: _accentColor.withOpacity(0.25),
             blurRadius: 8,
             offset: Offset(0, 3),
           ),
