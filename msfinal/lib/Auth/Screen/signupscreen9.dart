@@ -21,6 +21,9 @@ class PartnerPreferencesPage extends StatefulWidget {
 }
 
 class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with SingleTickerProviderStateMixin {
+  static const int _defaultMaximumPartnerAge =
+      PartnerAgePreferenceBounds.defaultMaximumAge;
+
   // Form state
   String? _minAge;
   String? _maxAge;
@@ -57,9 +60,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
 
   // Options data
   int _minimumPartnerAge = PartnerAgePreferenceBounds.minimumAllowedAge;
-  int _maximumPartnerAge = 60;
+  int _maximumPartnerAge = _defaultMaximumPartnerAge;
   List<String> _ageOptions = List.generate(
-    (60 - PartnerAgePreferenceBounds.minimumAllowedAge) + 1,
+    (_defaultMaximumPartnerAge - PartnerAgePreferenceBounds.minimumAllowedAge) + 1,
     (index) => (PartnerAgePreferenceBounds.minimumAllowedAge + index).toString(),
   );
 

@@ -1,5 +1,8 @@
 class PartnerAgePreferenceBounds {
   static const int minimumAllowedAge = 21;
+  static const int defaultMaximumAge = 60;
+  static const int maximumAgeOffsetFromUserAge = 20;
+  static const int absoluteMaximumAge = 120;
 
   final int minAge;
   final int maxAge;
@@ -19,7 +22,7 @@ class PartnerAgePreferenceBounds {
 
 PartnerAgePreferenceBounds resolvePartnerAgePreferenceBounds({
   Map<String, dynamic>? userData,
-  int fallbackMaxAge = 60,
+  int fallbackMaxAge = PartnerAgePreferenceBounds.defaultMaximumAge,
 }) {
   final parsedBirthDate = _parseBirthDate(
     userData?['dateofbirth'] ??
@@ -30,7 +33,10 @@ PartnerAgePreferenceBounds resolvePartnerAgePreferenceBounds({
   final minAge = PartnerAgePreferenceBounds.minimumAllowedAge;
   final maxAge = parsedBirthDate == null
       ? (fallbackMaxAge < minAge ? minAge : fallbackMaxAge)
-      : ((_calculateAge(parsedBirthDate) + 20).clamp(minAge, 120) as int);
+      : ((_calculateAge(parsedBirthDate) +
+                  PartnerAgePreferenceBounds.maximumAgeOffsetFromUserAge)
+              .clamp(minAge, PartnerAgePreferenceBounds.absoluteMaximumAge)
+          as int);
 
   return PartnerAgePreferenceBounds(
     minAge: minAge,
