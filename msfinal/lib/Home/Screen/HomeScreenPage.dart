@@ -819,9 +819,21 @@ String usertye = '';
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       elevation: 0,
-      shadowColor: Colors.black.withOpacity(0.08),
-      scrolledUnderElevation: 2,
+      shadowColor: Colors.transparent,
+      scrolledUnderElevation: 0,
       titleSpacing: 16,
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFF90E18), Color(0xFFFF6B6B), Color(0xFFFFE0E0)],
+              stops: [0.0, 0.4, 1.0],
+            ),
+          ),
+        ),
+      ),
       title: Row(
         children: [
           Container(
@@ -1032,7 +1044,7 @@ String usertye = '';
     final int percent = (progress * 100).round();
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFF90E18), Color(0xFFD81B60)],
@@ -1166,9 +1178,9 @@ String usertye = '';
 
     final stats = [
       {'icon': Icons.favorite_rounded, 'value': '$matchCount', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
-      {'icon': Icons.star_rounded, 'value': '$premiumCount', 'label': 'Premium', 'color': const Color(0xFFFFD700)},
+      {'icon': Icons.star_rounded, 'value': '$premiumCount', 'label': 'Premium', 'color': const Color(0xFFFFA000)},
       {'icon': Icons.person_rounded, 'value': '$profilePercent%', 'label': 'Profile', 'color': const Color(0xFF2196F3)},
-      {'icon': Icons.handshake_rounded, 'value': '$servicesCount', 'label': 'Services', 'color': const Color(0xFF2196F3)},
+      {'icon': Icons.handshake_rounded, 'value': '$servicesCount', 'label': 'Services', 'color': const Color(0xFF00897B)},
     ];
 
     return Container(
@@ -1278,20 +1290,20 @@ String usertye = '';
             child: GestureDetector(
               onTap: onTap,
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 5),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: gradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: gradient[0].withOpacity(0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 5),
+                      color: gradient[0].withOpacity(0.28),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -1733,7 +1745,7 @@ String usertye = '';
   Widget _buildShortlistedProfiles() {
     if (_isLoadingShortlist) {
       return const SizedBox(
-        height: 220,
+        height: 180,
         child: Center(
           child: CircularProgressIndicator(
             color: Color(0xFFF90E18),
@@ -1745,7 +1757,7 @@ String usertye = '';
 
     if (_shortlistedProfiles.isEmpty) {
       return SizedBox(
-        height: 220,
+        height: 180,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1763,7 +1775,7 @@ String usertye = '';
     }
 
     return SizedBox(
-      height: 220,
+      height: 180,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _shortlistedProfiles.length,
@@ -1802,8 +1814,8 @@ String usertye = '';
               }
             },
             child: Container(
-              width: 160,
-              margin: const EdgeInsets.only(right: 14),
+              width: 150,
+              margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -1815,81 +1827,107 @@ String usertye = '';
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16)),
-                        child: imageUrl.isNotEmpty
-                            ? Image.network(
-                                imageUrl,
-                                width: double.infinity,
-                                height: 130,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  height: 130,
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                      child: Icon(Icons.person_rounded,
-                                          size: 50, color: Colors.grey)),
-                                ),
-                              )
-                            : Container(
-                                height: 130,
-                                color: Colors.grey.shade100,
-                                child: const Center(
-                                    child: Icon(Icons.person_rounded,
-                                        size: 50, color: Colors.grey)),
-                              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    // Full-height image
+                    imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey.shade100,
+                              child: const Center(
+                                  child: Icon(Icons.person_rounded,
+                                      size: 50, color: Colors.grey)),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey.shade100,
+                            child: const Center(
+                                child: Icon(Icons.person_rounded,
+                                    size: 50, color: Colors.grey)),
+                          ),
+                    // Bottom gradient overlay
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 90,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.transparent, Colors.black],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
                       ),
-                      if (isVerified)
-                        const Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(Icons.verified,
-                              color: Colors.red, size: 18),
-                        ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayName,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (city.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on,
-                                  size: 12, color: Colors.grey),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                child: Text(
-                                  city,
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.grey),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
                     ),
-                  ),
-                ],
+                    // Name & city text at bottom
+                    Positioned(
+                      bottom: 8,
+                      left: 10,
+                      right: 10,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                    color: Colors.black87,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 1))
+                              ],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (city.isNotEmpty)
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on,
+                                    size: 12, color: Colors.white70),
+                                const SizedBox(width: 2),
+                                Expanded(
+                                  child: Text(
+                                    city,
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.white70),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Verified badge
+                    if (isVerified)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.verified_rounded,
+                              color: Color(0xFF2196F3), size: 14),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           );
@@ -2707,8 +2745,8 @@ String usertye = '';
         Row(
           children: [
             Container(
-              width: 4,
-              height: 28,
+              width: 3,
+              height: 20,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFF90E18), Color(0xFFD81B60)],
@@ -2718,41 +2756,34 @@ String usertye = '';
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Text(
               title,
               style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
                 color: Color(0xFF1A1A2E),
-                letterSpacing: -0.3,
+                letterSpacing: -0.2,
               ),
             ),
           ],
         ),
         if (showSeeAll)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF90E18).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'See All',
-                  style: TextStyle(
-                    color: Color(0xFFF90E18),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'See All',
+                style: TextStyle(
+                  color: const Color(0xFFF90E18).withOpacity(0.85),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-                SizedBox(width: 4),
-                Icon(Icons.arrow_forward_rounded,
-                    color: Color(0xFFF90E18), size: 14),
-              ],
-            ),
+              ),
+              const SizedBox(width: 2),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Color(0xFFF90E18), size: 16),
+            ],
           ),
       ],
     );
@@ -2837,11 +2868,13 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
               bannerImages.length,
                   (index) => AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: _currentPage == index ? 20 : 8,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                height: 5,
+                width: _currentPage == index ? 18 : 5,
                 decoration: BoxDecoration(
-                  color: Colors.red, // 🔴 red dot indicator
+                  color: _currentPage == index
+                      ? const Color(0xFFF90E18)
+                      : const Color(0xFFF90E18).withOpacity(0.25),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
