@@ -493,12 +493,14 @@ void _navigateToCallPage(Map<String, dynamic> data) {
 }
 
 Future<void> setupFirebaseMessaging() async {
-  // Set up iOS foreground notification presentation
+  // Set up iOS foreground notification presentation.
+  // Disable auto-display so our onMessage handler has full control over
+  // when to show notifications (e.g. suppressing while user is on chat screen).
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
+      alert: false,
+      badge: false,
+      sound: false,
     );
   }
 
