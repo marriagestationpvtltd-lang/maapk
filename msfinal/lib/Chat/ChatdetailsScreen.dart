@@ -1082,7 +1082,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     child: Text(
                       userName,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: Colors.grey,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1113,7 +1113,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         Text(
                           repliedTo['senderName'] ?? 'User',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: Color(0xFFF90E18),
                             fontWeight: FontWeight.w700,
                           ),
@@ -1128,7 +1128,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Colors.grey[800],
                           ),
                         ),
@@ -1138,24 +1138,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 ],
 
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  constraints: const BoxConstraints(maxWidth: 300),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  constraints: const BoxConstraints(maxWidth: 320),
                   decoration: BoxDecoration(
                     color: isMine
                       ? const Color(0xFFDCF8C6)  // WhatsApp-like light green for sent messages
                       : Colors.white,
                     borderRadius: isMine
                         ? const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(0),
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(2),
                     )
                         : const BorderRadius.only(
-                      topLeft: Radius.circular(0),
-                      topRight: Radius.circular(8),
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(8),
+                      topLeft: Radius.circular(2),
+                      topRight: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -1198,7 +1198,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       time,
                       style: TextStyle(
                         color: Colors.grey.shade600,
-                        fontSize: 11,
+                        fontSize: 12,
                       ),
                     ),
                     if (isMine) ...[
@@ -1343,7 +1343,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         displayTime,
                         style: const TextStyle(
                           color: Colors.black54,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -1358,8 +1358,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           text,
           style: const TextStyle(
             color: Color(0xFF303030),
-            fontSize: 15,
-            height: 1.35,
+            fontSize: 16,
+            height: 1.4,
           ),
         );
     }
