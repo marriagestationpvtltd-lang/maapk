@@ -129,9 +129,9 @@ class MatchedProfile {
   String get profession => designation.isNotEmpty ? designation : "Not specified";
   String get maritalStatus => "Not specified"; // Not in API
   String get qualification => "Not specified"; // Not in API
-  String get imageUrl => profilePicture != null
+  String get imageUrl => profilePicture != null && profilePicture!.isNotEmpty
       ? "https://digitallami.com/Api2/$profilePicture"
-      : "https://via.placeholder.com/150"; // Placeholder for null images
+      : '';
 
   bool get isVerifiedBool => isVerified == 1;
 

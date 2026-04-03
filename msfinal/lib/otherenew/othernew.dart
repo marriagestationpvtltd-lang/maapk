@@ -14,7 +14,6 @@ import '../Package/PackageScreen.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import 'modelfile.dart';
-import 'package.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -283,10 +282,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final result = jsonDecode(response.body);
 
-      print("Profile view response: $result");
 
     } catch (e) {
-      print("Error adding profile view: $e");
     }
   }
 
@@ -339,12 +336,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
 
-      print('=== USER DATA LOADED ===');
-      print('userId: $userId');
-      print('name: $name');
 
     } catch (e) {
-      print('Error loading user data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -379,6 +372,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final profileResponse = results[0] as ProfileResponse;
       final matchedProfiles = results[1] as List<MatchedProfile>;
+      // Sort: new members (higher userId) first
+      matchedProfiles.sort((a, b) => b.userid.compareTo(a.userid));
 
       if (mounted) {
         final userProfile = Provider.of<UserProfile>(context, listen: false);
@@ -575,7 +570,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _MatchOverviewSection(
                 matchedPreferencesCount: userProfile.matchedPreferencesCount,
                 totalPreferencesCount: userProfile.totalPreferencesCount,
-                imageUrl: userProfile.avatarUrl,
                 red: red,
               ),
             const SizedBox(height: 16),
@@ -620,11 +614,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Navigate to upgrade package screen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PackageScreen(),
+                    builder: (context) => const SubscriptionPage(),
                   ),
                 );
               },
@@ -813,6 +806,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final matchedProfiles = await service.fetchMatchedProfiles(
         userId: myid.toString(), // Current user ID
       );
+      // Sort: new members (higher userId) first
+      matchedProfiles.sort((a, b) => b.userid.compareTo(a.userid));
 
       // Update the profile with both sets of data
       final userProfile = Provider.of<UserProfile>(context, listen: false);
@@ -1968,7 +1963,7 @@ class _ContactInfoSection extends StatelessWidget {
                           Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const PackageScreen(),
+                                builder: (context) => const SubscriptionPage(),
                               )
                           );
                         },
@@ -2380,18 +2375,10 @@ class _ContactInfoSection extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-              print('\n=== NAVIGATING TO CHAT ===');
-              print('Current User ID: $currentUserId');
-              print('Current User Name: $currentUserName');
-              print('Other Person ID: $userId');
-              print('Other Person Name: $userName');
-              print('Document Status: $docStatus');
-              print('User Type: $userType');
 
               // ✅ VERIFIED DOCUMENT AND PAID MEMBER → Can chat
               if (docStatus == "approved" && userType == "paid") {
                 try {
-                  print('✅ Access granted: Verified document + Paid member');
 
                   // 🔥 Generate chatRoomId (sorted)
                   List<String> ids = [currentUserId, userId];
@@ -2457,7 +2444,6 @@ class _ContactInfoSection extends StatelessWidget {
                     ),
                   );
                 } catch (e) {
-                  print("❌ Error navigating to chat: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Failed to open chat"),
@@ -2469,7 +2455,6 @@ class _ContactInfoSection extends StatelessWidget {
 
               // ❌ DOCUMENT NOT UPLOADED AND FREE MEMBER → Show ID Verification
               else if (docStatus == "not_uploaded" && userType == 'free') {
-                print('⚠️ Access denied: Document not uploaded + Free member');
                 Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -2480,31 +2465,26 @@ class _ContactInfoSection extends StatelessWidget {
 
               // ❌ FREE MEMBER BUT DOCUMENT APPROVED → Show Upgrade Dialog
               else if (userType == "free" && docStatus == 'approved') {
-                print('⚠️ Access denied: Free member with verified document - Show upgrade dialog');
                 _showUpgradeChatDialog(context);
               }
 
               // ❌ PAID MEMBER BUT DOCUMENT NOT APPROVED → Show Document Verification
               else if (userType == "paid" && docStatus != 'approved') {
-                print('⚠️ Access denied: Paid member but document not verified');
                 _showDocumentVerificationDialog(context);
               }
 
               // ❌ DOCUMENT PENDING → Show Pending Status
               else if (docStatus == "pending") {
-                print('⚠️ Access denied: Document verification pending');
                 _showDocumentPendingDialog(context);
               }
 
               // ❌ DOCUMENT REJECTED → Show Re-upload Option
               else if (docStatus == "rejected") {
-                print('⚠️ Access denied: Document rejected');
                 _showDocumentRejectedDialog(context);
               }
 
               // ❌ ANY OTHER CASE → Default to Upgrade
               else {
-                print('⚠️ Access denied: Unknown status - Show upgrade dialog');
                 _showUpgradeChatDialog(context);
               }
             },
@@ -2992,18 +2972,36 @@ class _DetailsGridSection<T> extends StatelessWidget {
 class _MatchOverviewSection extends StatelessWidget {
   final int matchedPreferencesCount;
   final int totalPreferencesCount;
-  final String imageUrl;
   final Color red;
 
   const _MatchOverviewSection({
     required this.matchedPreferencesCount,
     required this.totalPreferencesCount,
-    required this.imageUrl,
     required this.red,
   });
 
+  Color _matchColor(double percent) {
+    if (percent >= 0.80) return const Color(0xFF2E7D32);
+    if (percent >= 0.60) return const Color(0xFF1565C0);
+    if (percent >= 0.40) return const Color(0xFFE65100);
+    return const Color(0xFFC62828);
+  }
+
+  String _matchLabel(double percent) {
+    if (percent >= 0.80) return '🌟 Excellent Match';
+    if (percent >= 0.60) return '👍 Good Match';
+    if (percent >= 0.40) return '🤝 Fair Match';
+    return '💡 Low Match';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final total = totalPreferencesCount > 0 ? totalPreferencesCount : 1;
+    final double ratio = matchedPreferencesCount / total;
+    final int percent = (ratio * 100).round();
+    final Color color = _matchColor(ratio);
+    final String label = _matchLabel(ratio);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -3016,51 +3014,91 @@ class _MatchOverviewSection extends StatelessWidget {
             blurRadius: 10,
           ),
         ],
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
       ),
       child: Column(
         children: <Widget>[
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: NetworkImage(imageUrl),
-                onBackgroundImageError: (_, __) {},
-                child: imageUrl.isEmpty
-                    ? const Icon(Icons.person, size: 28)
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              Flexible(
-                child: Text(
-                  "$matchedPreferencesCount/$totalPreferencesCount Of Preferences Match",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
+              // Circular progress indicator with percentage
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: CircularProgressIndicator(
+                        value: ratio,
+                        strokeWidth: 8,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    ),
+                    Text(
+                      '$percent%',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: color,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 16),
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: NetworkImage(imageUrl),
-                onBackgroundImageError: (_, __) {},
-                child: imageUrl.isEmpty
-                    ? const Icon(Icons.person, size: 28)
-                    : null,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Partner Performance',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$matchedPreferencesCount out of $totalPreferencesCount preferences match',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: matchedPreferencesCount /
-                  (totalPreferencesCount > 0 ? totalPreferencesCount : 1),
-              minHeight: 10,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(red),
+              value: ratio,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
         ],
@@ -3466,7 +3504,7 @@ class _MatchedProfileCard extends StatelessWidget {
                     height: 120,
                     width: double.infinity,
                     color: Colors.grey.shade300,
-                    child: profile.imageUrl != "https://via.placeholder.com/150"
+                    child: profile.imageUrl.isNotEmpty
                         ? Image.network(
                       profile.imageUrl,
                       fit: BoxFit.cover,
@@ -3487,25 +3525,26 @@ class _MatchedProfileCard extends StatelessWidget {
               ),
 
               // Match Percent Badge
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "${profile.matchPercent}%",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+              if (profile.matchPercent > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getMatchColor(profile.matchPercent),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${profile.matchPercent}%",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               // Verified Badge
               if (profile.isVerifiedBool)
@@ -3680,6 +3719,13 @@ class _MatchedProfileCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _getMatchColor(int percent) {
+    if (percent >= 80) return const Color(0xFF2E7D32);
+    if (percent >= 60) return const Color(0xFF1565C0);
+    if (percent >= 40) return const Color(0xFFE65100);
+    return const Color(0xFFC62828);
   }
 
   // Helper methods for photo request status

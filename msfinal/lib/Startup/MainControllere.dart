@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../ReUsable/Navbar.dart'; // AppNavbar with onItemSelected callback
 import '../Home/Screen/HomeScreenPage.dart';
 import '../liked/liked.dart';
-import '../purposal/purposalScreen.dart';
 import '../Chat/ChatlistScreen.dart';
 import '../profile/myprofile.dart';
 
@@ -49,19 +48,15 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
     }
   }
 
-  // Build the pages. ChatListScreen requires senderId/name, so we pass when available.
+  // Build the pages. Index 0=Home, 1=Liked, 2=Chat, 3=Account
   List<Widget> _buildScreens() {
     return [
-      MatrimonyHomeScreen(), // index 0
-      ProposalsPage(),       // index 1
-      // Liked page - replace with your actual liked widget when ready
-      FavoritePeoplePage(),     // Chat - pass user data when available; otherwise show placeholder
+      MatrimonyHomeScreen(),  // index 0
+      FavoritePeoplePage(),   // index 1
       _senderId != null
-          ? ChatListScreen(
-
-      )
-          : Center(child: Text('Loading chat...')), // index 3
-      MatrimonyProfilePage(), // index 4
+          ? ChatListScreen()
+          : const Center(child: Text('Loading chat...')), // index 2
+      MatrimonyProfilePage(), // index 3
     ];
   }
 
@@ -70,7 +65,6 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
     final screens = _buildScreens();
 
     return Scaffold(
-
       body: IndexedStack(
         index: _selectedIndex,
         children: screens,
