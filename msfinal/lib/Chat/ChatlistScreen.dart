@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
+import 'adminchat.dart';
 
 class ChatListScreen extends StatefulWidget {
   ChatListScreen({super.key});
@@ -40,6 +42,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool _isLoadingMore = false;
   int _cachedTotalRooms = 0;
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription<QuerySnapshot>? _adminChatSubscription;
+  String _adminLastMessage = '';
+  DateTime? _adminLastMessageTime;
+  int _adminUnreadCount = 0;
+  bool _adminLoading = true;
+  String _userCity = '';
+  static const String _adminUserId = '1';
+  static const String _adminDisplayName = 'Admin Support';
+  final LinearGradient _adminGradient = const LinearGradient(
+    colors: [Color(0xFF0F172A), Color(0xFF1D4ED8)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   @override
   void initState() {
@@ -51,6 +66,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   void dispose() {
+    _adminChatSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -82,6 +98,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
       final userData = jsonDecode(userDataString);
       final rawId = userData["id"];
       final userIdString = rawId.toString().trim();
+      final detectedCity = (userData['city'] ??
+              userData['current_city'] ??
+              userData['address'] ??
+              '')
+          .toString();
 
       UserMasterData user = await fetchUserMasterData(userIdString);
 
@@ -94,6 +115,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           name = user.firstName;
           isLoading = false;
           docstatus = user.docStatus;
+          _userCity = detectedCity;
         });
       }
 
@@ -102,6 +124,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       print('name: $name');
 
       await _loadPendingChatRequests(user.id?.toString() ?? userIdString);
+      _startAdminChatListener(user.id?.toString() ?? userIdString);
 
     } catch (e) {
       print('Error loading user data: $e');
@@ -150,6 +173,317 @@ class _ChatListScreenState extends State<ChatListScreen> {
       print('Error loading chat requests: $e');
       if (mounted) setState(() => _requestsLoading = false);
     }
+  }
+
+  Future<void> _startAdminChatListener(String uid) async {
+    _adminChatSubscription?.cancel();
+
+    if (mounted) {
+      setState(() {
+        _adminLoading = true;
+      });
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final lastSeenString = prefs.getString('admin_chat_last_seen_$uid');
+    final DateTime? lastSeen = lastSeenString != null
+        ? DateTime.tryParse(lastSeenString)
+        : null;
+
+    _adminChatSubscription = FirebaseFirestore.instance
+        .collection('adminchat')
+        .where('senderid', whereIn: [uid, _adminUserId])
+        .where('receiverid', whereIn: [uid, _adminUserId])
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      if (snapshot.docs.isEmpty) {
+        setState(() {
+          _adminLastMessage = '';
+          _adminLastMessageTime = null;
+          _adminUnreadCount = 0;
+          _adminLoading = false;
+        });
+        return;
+      }
+
+      final Map<String, dynamic> latestData =
+          snapshot.docs.first.data() as Map<String, dynamic>;
+      final Timestamp? ts = latestData['timestamp'] as Timestamp?;
+      final DateTime? latestTime = ts?.toDate();
+      final String type = latestData['type']?.toString() ?? 'text';
+
+      String preview;
+      if (type == 'image') {
+        preview = '📷 Image';
+      } else if (type == 'voice') {
+        preview = '🎤 Voice note';
+      } else if (type == 'doc') {
+        preview = '📄 Document';
+      } else {
+        preview = latestData['message']?.toString() ?? '';
+      }
+
+      int unread = 0;
+      if (lastSeen != null) {
+        unread = snapshot.docs.where((doc) {
+          final Map<String, dynamic> data =
+              doc.data() as Map<String, dynamic>;
+          final Timestamp? timestamp = data['timestamp'] as Timestamp?;
+          final DateTime? time = timestamp?.toDate();
+          final String receiverId = data['receiverid']?.toString() ?? '';
+          return receiverId == uid &&
+              time != null &&
+              time.isAfter(lastSeen);
+        }).length;
+      } else {
+        unread = snapshot.docs
+            .where((doc) =>
+                (doc.data() as Map<String, dynamic>)['receiverid']
+                    ?.toString() ==
+                uid)
+            .length;
+      }
+
+      setState(() {
+        _adminLastMessage = preview;
+        _adminLastMessageTime = latestTime;
+        _adminUnreadCount = unread;
+        _adminLoading = false;
+      });
+    });
+  }
+
+  Future<void> _markAdminChatSeen() async {
+    if (userId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'admin_chat_last_seen_$userId', DateTime.now().toIso8601String());
+    if (mounted) {
+      setState(() {
+        _adminUnreadCount = 0;
+      });
+    }
+  }
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return '';
+    return DateFormat('hh:mm a').format(time);
+  }
+
+  Widget _buildLocationChip(String label, {bool highlight = false}) {
+    final bool hasLabel = label.trim().isNotEmpty;
+    final String display = hasLabel ? label : 'Location not shared';
+    final Color baseColor =
+        highlight ? const Color(0xFF1D4ED8) : const Color(0xFF6B7280);
+    final Color background =
+        highlight ? const Color(0xFFE0E7FF) : const Color(0xFFF3F4F6);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: baseColor.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.location_on_rounded, size: 14, color: baseColor),
+          const SizedBox(width: 6),
+          Text(
+            display,
+            style: TextStyle(
+              color: baseColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPinnedAdminCard() {
+    final String subtitle = _adminLoading
+        ? 'Loading admin updates...'
+        : (_adminLastMessage.isNotEmpty
+            ? _adminLastMessage
+            : 'Message us anytime for account help');
+    final String timeLabel = _formatTime(_adminLastMessageTime);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () async {
+          await _markAdminChatSeen();
+          if (!mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminChatScreen(
+                senderID: userId,
+                userName: name,
+                isAdmin: false,
+              ),
+            ),
+          );
+          await _markAdminChatSeen();
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: _adminGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Colors.white.withOpacity(0.18),
+                    child: const Icon(Icons.support_agent,
+                        color: Colors.white, size: 28),
+                  ),
+                  Positioned(
+                    bottom: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.push_pin,
+                              size: 12, color: Color(0xFF1D4ED8)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Pinned',
+                            style: TextStyle(
+                              color: Color(0xFF1D4ED8),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          _adminDisplayName,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        if (_adminUnreadCount > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$_adminUnreadCount new',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        if (timeLabel.isNotEmpty)
+                          Text(
+                            timeLabel,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _buildLocationChip(
+                          _userCity.isNotEmpty ? _userCity : 'Set your city',
+                          highlight: true,
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.16),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.shield_moon_outlined,
+                                  size: 14, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text(
+                                'Admin support',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleAcceptChatRequest(ProposalModel proposal) async {
@@ -522,6 +856,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           child: Column(
             children: [
               _buildChatRequestsSection(),
+              _buildPinnedAdminCard(),
               if (_totalUnreadCount > 0)
                 Container(
                   color: const Color(0xFFF90E18).withOpacity(0.08),
@@ -646,9 +981,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
             final participantImages = Map<String, String>.from(data['participantImages'] ?? {});
             final unreadCount = Map<String, int>.from(data['unreadCount'] ?? {});
             final lastMessage = data['lastMessage'] ?? '';
-            final lastMessageTime = (data['lastMessageTime'] as Timestamp).toDate();
+            final Timestamp? lastMessageTimestamp =
+                data['lastMessageTime'] as Timestamp?;
+            final DateTime? lastMessageTime = lastMessageTimestamp?.toDate();
             final lastMessageType = data['lastMessageType'] ?? 'text';
             final lastMessageSenderId = data['lastMessageSenderId'] ?? '';
+            final participantLocations = data['participantLocations'] != null
+                ? Map<String, dynamic>.from(data['participantLocations'])
+                : <String, dynamic>{};
+            final dynamic rawLocation =
+                participantLocations[otherParticipantId];
+            final String locationLabel =
+                (rawLocation?.toString().trim().isNotEmpty ?? false)
+                    ? rawLocation.toString().trim()
+                    : 'Location not shared';
+            final bool hasLocation =
+                (rawLocation?.toString().trim().isNotEmpty ?? false);
+            final int unreadForMe = unreadCount[userId] ?? 0;
 
             print('\n=== Building Chat Item $index ===');
             print('Participants: $participants');
@@ -700,7 +1049,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             }
 
             // Format time
-            String formattedTime = DateFormat('hh:mm a').format(lastMessageTime);
+            String formattedTime = _formatTime(lastMessageTime);
 
             return InkWell(
               onTap: () {
@@ -732,21 +1081,63 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
               },
               child: Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.white, Color(0xFFF8FAFC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: unreadForMe > 0
+                        ? const Color(0xFFFFE4E6)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Profile Image with online status
                     Stack(
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: Colors.grey[300],
+                          backgroundColor: Colors.grey[200],
                           backgroundImage: NetworkImage(
                             participantImages[otherParticipantId] ??
                             "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg"
                           ),
                         ),
+                        if (unreadForMe > 0)
+                          Positioned(
+                            bottom: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF90E18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '$unreadForMe',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
 
@@ -758,7 +1149,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               // Other Person's Name
                               Expanded(
@@ -766,74 +1156,82 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   otherPersonName,
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: (unreadCount[userId] ?? 0) > 0
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
-                                    color: Colors.black87,
+                                    fontWeight: unreadForMe > 0
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    color: const Color(0xFF0F172A),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
 
                               // Time
-                              Text(
-                                formattedTime,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: (unreadCount[userId] ?? 0) > 0
-                                      ? const Color(0xFFF90E18)
-                                      : Colors.grey[600],
-                                  fontWeight: (unreadCount[userId] ?? 0) > 0
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                              if (formattedTime.isNotEmpty)
+                                Text(
+                                  formattedTime,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: unreadForMe > 0
+                                        ? const Color(0xFFF90E18)
+                                        : Colors.grey[600],
+                                    fontWeight: unreadForMe > 0
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
 
                           const SizedBox(height: 5),
 
-                          Row(
+                          Text(
+                            messagePreview,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: unreadForMe > 0
+                                  ? const Color(0xFF0F172A)
+                                  : Colors.grey[700],
+                              fontWeight: unreadForMe > 0
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
                             children: [
-                              // Message Preview
-                              Expanded(
-                                child: Text(
-                                  messagePreview,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: (unreadCount[userId] ?? 0) > 0
-                                        ? Colors.black87
-                                        : Colors.grey[600],
-                                    fontWeight: (unreadCount[userId] ?? 0) > 0
-                                        ? FontWeight.w500
-                                        : FontWeight.normal,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              _buildLocationChip(
+                                locationLabel,
+                                highlight: hasLocation,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A)
+                                      .withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.chat_bubble_outline_rounded,
+                                        size: 14, color: Color(0xFF0F172A)),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Tap to continue chat',
+                                      style: TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-
-                              // Unread Count Badge
-                              if ((unreadCount[userId] ?? 0) > 0)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF90E18),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '${unreadCount[userId]}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ],
