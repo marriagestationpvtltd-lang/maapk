@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ms2026/Home/Screen/premiummember.dart';
 import 'package:ms2026/Home/Screen/profilecard.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../Auth/Screen/signupscreen10.dart';
 import '../../Auth/SuignupModel/signup_model.dart';
+import '../../Chat/ChatdetailsScreen.dart';
 import '../../Chat/ChatlistScreen.dart';
 import '../../liked/liked.dart';
 import '../../Models/masterdata.dart';
@@ -22,7 +24,9 @@ import '../../main.dart';
 import '../../online/onlineservice.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../profile/myprofile.dart';
+import '../../purposal/Purposalmodel.dart';
 import '../../purposal/purposalScreen.dart';
+import '../../purposal/purposalservice.dart';
 import '../../service/Service_chat.dart';
 import 'machprofilescreen.dart';
 
@@ -42,7 +46,11 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   String _errorMessage = '';
   List<Map<String, dynamic>> _premiumMembers = [];
   List<Map<String, dynamic>> _otherServices = [];
+  List<MatchedUser> _photoRequestProfiles = [];
+  List<ProposalModel> _chatRequestProfiles = [];
   bool _loading = true;
+  bool _photoRequestsLoading = true;
+  bool _chatRequestsLoading = true;
 
   int userid = 0;
   String _userId = '';
@@ -122,6 +130,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       _checkDocumentStatus(),
       _fetchPremiumMembers(),
       _fetchOtherServices(),
+      _fetchChatRequestProfiles(),
     ]);
   }
 
@@ -129,6 +138,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     try {
       setState(() {
         _isLoading = true;
+        _photoRequestsLoading = true;
         _errorMessage = '';
       });
 
@@ -152,9 +162,22 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         final result = jsonDecode(response.body);
 
         if (result['success'] == true) {
+          final rawProfiles = List<dynamic>.from(result['matched_users'] ?? []);
+          final photoProfiles = rawProfiles
+              .map((item) => MatchedUser.fromJson(
+                  Map<String, dynamic>.from(item as Map<dynamic, dynamic>)))
+              .where((profile) {
+            final status = profile.photoRequestStatus.toLowerCase();
+            return status == 'accepted' || status == 'pending';
+          }).toList()
+            ..sort((a, b) => _requestStatusPriority(a.photoRequestStatus)
+                .compareTo(_requestStatusPriority(b.photoRequestStatus)));
+
           setState(() {
-            _matchedProfilesApi = result['matched_users'] ?? [];
+            _matchedProfilesApi = rawProfiles;
+            _photoRequestProfiles = photoProfiles;
             _isLoading = false;
+            _photoRequestsLoading = false;
           });
         } else {
           throw Exception(result['message'] ?? 'Failed to load matched profiles');
@@ -166,6 +189,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
+        _photoRequestProfiles = [];
+        _photoRequestsLoading = false;
       });
       print('Error fetching matched profiles: $e');
     }
@@ -289,6 +314,47 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       debugPrint('Exception: $e');
     }}
 
+  Future<void> _fetchChatRequestProfiles() async {
+    try {
+      setState(() {
+        _chatRequestsLoading = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) {
+        setState(() {
+          _chatRequestProfiles = [];
+          _chatRequestsLoading = false;
+        });
+        return;
+      }
+
+      final userData = jsonDecode(userDataString);
+      final currentUserId = userData['id'].toString();
+
+      final results = await Future.wait([
+        ProposalService.fetchProposals(currentUserId, 'sent'),
+        ProposalService.fetchProposals(currentUserId, 'accepted'),
+      ]);
+
+      setState(() {
+        _chatRequestProfiles = _mergeChatRequests(
+          currentUserId: currentUserId,
+          sentRequests: results[0],
+          acceptedRequests: results[1],
+        );
+        _chatRequestsLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetching chat request profiles: $e');
+      setState(() {
+        _chatRequestProfiles = [];
+        _chatRequestsLoading = false;
+      });
+    }
+  }
+
 
 
 
@@ -344,6 +410,7 @@ String usertye = '';
     _checkDocumentStatus();
     _fetchPremiumMembers();
     _fetchOtherServices();
+    _fetchChatRequestProfiles();
     OnlineStatusService().start();
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _refreshAllData();
@@ -444,12 +511,26 @@ String usertye = '';
                       child: _buildSectionHeader('Matched Profiles', showSeeAll: true),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _buildMatchedProfilesFromApi(),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildSectionHeader('Other Services', showSeeAll: false),
+                   const SizedBox(height: 14),
+                   _buildMatchedProfilesFromApi(),
+                   const SizedBox(height: 24),
+                   Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: _buildSectionHeader('Photo Request Profiles', showSeeAll: false),
+                   ),
+                   const SizedBox(height: 14),
+                   _buildPhotoRequestProfiles(),
+                   const SizedBox(height: 24),
+                   Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: _buildSectionHeader('Chat Request Profiles', showSeeAll: false),
+                   ),
+                   const SizedBox(height: 14),
+                   _buildChatRequestProfiles(),
+                   const SizedBox(height: 24),
+                   Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: _buildSectionHeader('Other Services', showSeeAll: false),
                   ),
                   const SizedBox(height: 14),
                   Padding(
@@ -1307,6 +1388,385 @@ String usertye = '';
     );
   }
 
+  Widget _buildPhotoRequestProfiles() {
+    if (_photoRequestsLoading) {
+      return _buildRequestLoadingState();
+    }
+
+    if (_photoRequestProfiles.isEmpty) {
+      return _buildRequestEmptyState(
+        icon: Icons.photo_library_outlined,
+        message: 'No photo request profiles yet',
+      );
+    }
+
+    return SizedBox(
+      height: 285,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _photoRequestProfiles.length,
+        padding: const EdgeInsets.only(left: 16, right: 8),
+        itemBuilder: (context, index) {
+          final profile = _photoRequestProfiles[index];
+          final status = profile.photoRequestStatus.toLowerCase();
+          final statusColor = _statusColor(status);
+          final imageUrl = _resolveApiImageUrl(
+            profile.allPhotos.isNotEmpty ? profile.allPhotos.first : '',
+          );
+
+          return GestureDetector(
+            onTap: () {
+              if (status == 'accepted') {
+                _openPhotoRequestProfile(profile.userId.toString());
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProposalsPage()),
+                );
+              }
+            },
+            child: Container(
+              width: 190,
+              margin: const EdgeInsets.only(right: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.07),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        child: Stack(
+                          children: [
+                            imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: 160,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _buildRequestFallbackImage(),
+                                  )
+                                : _buildRequestFallbackImage(),
+                            if (!profile.shouldShowClearImage)
+                              Positioned.fill(
+                                child: BackdropFilter(
+                                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.18),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: _buildRequestStatusChip(
+                          status == 'accepted' ? 'Accepted' : 'Pending',
+                          statusColor,
+                        ),
+                      ),
+                      if (profile.matchPercent > 0)
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${profile.matchPercent}%',
+                              style: const TextStyle(
+                                color: Color(0xFFF90E18),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile.memberid != 'N/A' && profile.memberid.isNotEmpty
+                                ? 'MS ${profile.memberid} ${profile.lastName}'.trim()
+                                : 'MS ${profile.userId} ${profile.lastName}'.trim(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${profile.age} yrs${profile.city.isNotEmpty ? ' · ${profile.city}' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            status == 'accepted'
+                                ? 'Photo request accepted'
+                                : 'Photo request pending',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 34,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: statusColor,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: () {
+                                if (status == 'accepted') {
+                                  _openPhotoRequestProfile(profile.userId.toString());
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProposalsPage(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                status == 'accepted' ? 'View Profile' : 'Pending',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildChatRequestProfiles() {
+    if (_chatRequestsLoading) {
+      return _buildRequestLoadingState();
+    }
+
+    if (_chatRequestProfiles.isEmpty) {
+      return _buildRequestEmptyState(
+        icon: Icons.chat_bubble_outline_rounded,
+        message: 'No chat request profiles yet',
+      );
+    }
+
+    return SizedBox(
+      height: 285,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _chatRequestProfiles.length,
+        padding: const EdgeInsets.only(left: 16, right: 8),
+        itemBuilder: (context, index) {
+          final request = _chatRequestProfiles[index];
+          final status = (request.status ?? '').toLowerCase();
+          final statusColor = _statusColor(status);
+          final imageUrl = _resolveApiImageUrl(request.profilePicture ?? '');
+
+          return GestureDetector(
+            onTap: () {
+              if (status == 'accepted') {
+                _openChatRequest(request);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProposalsPage()),
+                );
+              }
+            },
+            child: Container(
+              width: 190,
+              margin: const EdgeInsets.only(right: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.07),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 160,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildRequestFallbackImage(),
+                              )
+                            : _buildRequestFallbackImage(),
+                      ),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: _buildRequestStatusChip(
+                          status == 'accepted' ? 'Accepted' : 'Pending',
+                          statusColor,
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Icon(
+                            Icons.chat_bubble_rounded,
+                            color: statusColor,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'MS ${request.memberid ?? ''} ${request.firstName ?? ''} ${request.lastName ?? ''}'
+                                .trim(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${request.occupation ?? 'Member'}${(request.city ?? '').isNotEmpty ? ' · ${request.city}' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            status == 'accepted'
+                                ? 'Chat request accepted'
+                                : 'Chat request pending',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 34,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: statusColor,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: () {
+                                if (status == 'accepted') {
+                                  _openChatRequest(request);
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProposalsPage(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                status == 'accepted' ? 'Open Chat' : 'Pending',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildPremiumMembers() {
     if (_premiumMembers.isEmpty) {
       return SizedBox(
@@ -1809,6 +2269,303 @@ String usertye = '';
     );
   }
 
+  List<ProposalModel> _mergeChatRequests({
+    required String currentUserId,
+    required List<ProposalModel> sentRequests,
+    required List<ProposalModel> acceptedRequests,
+  }) {
+    final Map<String, ProposalModel> mergedRequests = {};
+
+    void addRequests(List<ProposalModel> requests) {
+      for (final request in requests) {
+        final requestType = (request.requestType ?? '').toLowerCase();
+        final status = (request.status ?? '').toLowerCase();
+        final isSentByCurrentUser = request.senderId?.toString() == currentUserId;
+
+        if (requestType != 'chat' || !isSentByCurrentUser) {
+          continue;
+        }
+
+        if (status != 'accepted' && status != 'pending') {
+          continue;
+        }
+
+        final key = request.proposalId ??
+            '${request.senderId}_${request.receiverId}_${request.requestType}';
+        final existing = mergedRequests[key];
+
+        if (existing == null ||
+            _requestStatusPriority(status) <
+                _requestStatusPriority(existing.status)) {
+          mergedRequests[key] = request;
+        }
+      }
+    }
+
+    addRequests(sentRequests);
+    addRequests(acceptedRequests);
+
+    final requests = mergedRequests.values.toList()
+      ..sort((a, b) {
+        final statusCompare = _requestStatusPriority(a.status)
+            .compareTo(_requestStatusPriority(b.status));
+        if (statusCompare != 0) {
+          return statusCompare;
+        }
+
+        final aName = '${a.firstName ?? ''} ${a.lastName ?? ''}'.trim();
+        final bName = '${b.firstName ?? ''} ${b.lastName ?? ''}'.trim();
+        return aName.compareTo(bName);
+      });
+
+    return requests;
+  }
+
+  int _requestStatusPriority(String? status) {
+    switch ((status ?? '').toLowerCase()) {
+      case 'accepted':
+        return 0;
+      case 'pending':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return const Color(0xFF2E7D32);
+      case 'pending':
+        return const Color(0xFFF9A825);
+      default:
+        return const Color(0xFFF90E18);
+    }
+  }
+
+  String _resolveApiImageUrl(String rawImage) {
+    if (rawImage.isEmpty) {
+      return '';
+    }
+
+    if (rawImage.startsWith('http')) {
+      return rawImage;
+    }
+
+    final normalizedPath = rawImage.startsWith('/')
+        ? rawImage.substring(1)
+        : rawImage;
+    return 'https://digitallami.com/Api2/$normalizedPath';
+  }
+
+  Widget _buildRequestLoadingState() {
+    return SizedBox(
+      height: 250,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: const Color(0xFFF90E18),
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestEmptyState({
+    required IconData icon,
+    required String message,
+  }) {
+    return SizedBox(
+      height: 250,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 48, color: Colors.grey.shade300),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestFallbackImage() {
+    return Container(
+      width: double.infinity,
+      height: 160,
+      color: Colors.grey.shade100,
+      child: const Center(
+        child: Icon(Icons.person_rounded, size: 60, color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _buildRequestStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  void _openProfile(String profileUserId) {
+    if (docstatus == 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProfileLoader(
+            userId: profileUserId,
+            myId: userid.toString(),
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+      );
+    }
+  }
+
+  void _openPhotoRequestProfile(String profileUserId) {
+    if (docstatus != 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+      );
+      return;
+    }
+
+    if (usertye == 'free') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SubscriptionPage()),
+      );
+      return;
+    }
+
+    _openProfile(profileUserId);
+  }
+
+  Future<void> _openChatRequest(ProposalModel request) async {
+    try {
+      if (docstatus == "not_uploaded" ||
+          docstatus == "rejected" ||
+          docstatus == "pending") {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+        );
+        return;
+      }
+
+      if (usertye == "free") {
+        showUpgradeDialog(context);
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) {
+        return;
+      }
+
+      final userData = jsonDecode(userDataString);
+      final currentUserIdStr = userData['id'].toString();
+      final currentUserName =
+          '${userData['id'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+      final currentUserImage =
+          _resolveApiImageUrl(userData['profilePicture']?.toString() ?? '');
+
+      final isCurrentUserSender = currentUserIdStr == request.senderId;
+      final otherUserId = isCurrentUserSender
+          ? (request.receiverId ?? '')
+          : (request.senderId ?? '');
+
+      if (otherUserId.isEmpty) {
+        return;
+      }
+
+      final otherUserName =
+          'MS: ${request.memberid ?? ''} ${request.firstName ?? ''} ${request.lastName ?? ''}'
+              .trim();
+      final otherUserImage = _resolveApiImageUrl(request.profilePicture ?? '');
+
+      final userIds = [currentUserIdStr, otherUserId]..sort();
+      final chatRoomId = userIds.join('_');
+
+      final chatRoomDoc = await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .doc(chatRoomId)
+          .get();
+
+      if (!chatRoomDoc.exists) {
+        await FirebaseFirestore.instance
+            .collection('chatRooms')
+            .doc(chatRoomId)
+            .set({
+          'chatRoomId': chatRoomId,
+          'participants': [currentUserIdStr, otherUserId],
+          'participantNames': {
+            currentUserIdStr: currentUserName,
+            otherUserId: otherUserName,
+          },
+          'participantImages': {
+            currentUserIdStr: currentUserImage,
+            otherUserId: otherUserImage,
+          },
+          'unreadCount': {
+            currentUserIdStr: 0,
+            otherUserId: 0,
+          },
+          'lastMessage': '',
+          'lastMessageType': 'text',
+          'lastMessageTime': DateTime.now(),
+          'lastMessageSenderId': '',
+          'createdAt': DateTime.now(),
+          'updatedAt': DateTime.now(),
+        });
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            chatRoomId: chatRoomId,
+            receiverId: otherUserId,
+            receiverName:
+                otherUserName.isNotEmpty ? otherUserName : 'User $otherUserId',
+            receiverImage: otherUserImage.isNotEmpty
+                ? otherUserImage
+                : 'https://via.placeholder.com/150',
+            currentUserId: currentUserIdStr,
+            currentUserName: currentUserName.isNotEmpty
+                ? currentUserName
+                : 'User $currentUserIdStr',
+            currentUserImage: currentUserImage.isNotEmpty
+                ? currentUserImage
+                : 'https://via.placeholder.com/150',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error opening chat request: $e');
+    }
+  }
+
 
 
   Widget _buildSectionHeader(String title, {bool showSeeAll = true}) {
@@ -1964,4 +2721,3 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
     );
   }
 }
-
