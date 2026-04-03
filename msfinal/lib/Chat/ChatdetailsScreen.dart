@@ -662,7 +662,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
         border: Border(
-          left: const BorderSide(
+          left: BorderSide(
             color: _accentColor,
             width: 4,
           ),
@@ -745,7 +745,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         gradient: _secondaryGradient,
         borderRadius: BorderRadius.circular(12),
         border: Border(
-          left: const BorderSide(color: _accentColor, width: 4),
+          left: BorderSide(color: _accentColor, width: 4),
         ),
         boxShadow: [
           BoxShadow(
@@ -916,7 +916,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       gradient: _secondaryGradient,
                       borderRadius: BorderRadius.circular(10),
                       border: Border(
-                        left: const BorderSide(
+                        left: BorderSide(
                           color: _accentColor,
                           width: 3.5,
                         ),
