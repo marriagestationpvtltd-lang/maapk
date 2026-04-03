@@ -571,6 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 matchedPreferencesCount: userProfile.matchedPreferencesCount,
                 totalPreferencesCount: userProfile.totalPreferencesCount,
                 red: red,
+                imageUrl: userProfile.imageUrl,
               ),
             const SizedBox(height: 16),
 
@@ -2971,12 +2972,26 @@ class _MatchOverviewSection extends StatelessWidget {
   final int matchedPreferencesCount;
   final int totalPreferencesCount;
   final Color red;
+  final String imageUrl;
 
   const _MatchOverviewSection({
     required this.matchedPreferencesCount,
     required this.totalPreferencesCount,
     required this.red,
+    this.imageUrl = '',
   });
+
+  Color _matchColor(double ratio) {
+    if (ratio >= 0.75) return Colors.green;
+    if (ratio >= 0.5) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _matchLabel(double ratio) {
+    if (ratio >= 0.75) return 'Great Match';
+    if (ratio >= 0.5) return 'Good Match';
+    return 'Low Match';
+  }
 
   int get matchPercentage => totalPreferencesCount > 0
       ? ((matchedPreferencesCount / totalPreferencesCount) * 100).round()
