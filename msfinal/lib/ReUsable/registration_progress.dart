@@ -1,8 +1,93 @@
 // Professional Registration Progress Indicator
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../constant/app_colors.dart';
 import '../Startup/onboarding.dart';
+import '../Auth/SuignupModel/signup_model.dart';
+
+// ---------------------------------------------------------------------------
+// Shared back-navigation helpers used by both RegistrationStepHeader and
+// RegistrationStepContainer.
+// ---------------------------------------------------------------------------
+
+/// Navigates to [OnboardingScreen], clearing the entire navigation stack.
+void _navigateToOnboarding(BuildContext context) {
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+    (route) => false,
+  );
+}
+
+/// Shows a logout-confirmation dialog when the user has a partially registered
+/// account.  Returns `true` if the user confirmed logout, `false` to stay.
+Future<bool> _showLogoutConfirmation(BuildContext context) async {
+  final result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text(
+        'Registration Incomplete',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      content: const Text(
+        'Your registration process is not complete. '
+        'Do you want to logout of your account?',
+        style: TextStyle(
+          fontSize: 14,
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text(
+            'Stay',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          child: const Text(
+            'Logout',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
+  return result == true;
+}
+
+/// Handles the back-navigation logic shared across all registration screens.
+///
+/// - If the account is already registered (bearer token is present), a
+///   confirmation dialog is shown before logging out.
+/// - Otherwise the user is taken directly to [OnboardingScreen].
+Future<void> _handleRegistrationBack(
+  BuildContext context,
+  SignupModel model,
+) async {
+  if (model.bearerToken?.isNotEmpty == true) {
+    final shouldLogout = await _showLogoutConfirmation(context);
+    if (!shouldLogout) return; // User chose to stay — do nothing.
+    await model.logout();
+    if (context.mounted) _navigateToOnboarding(context);
+  } else {
+    _navigateToOnboarding(context);
+  }
+}
 
 class RegistrationProgress extends StatelessWidget {
   final int currentStep;
@@ -129,26 +214,24 @@ class RegistrationStepHeader extends StatelessWidget {
                 ),
                 child: Material(
                   color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      // Navigate to onboarding screen instead of just popping
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const OnboardingScreen(),
+                  child: Consumer<SignupModel>(
+                    builder: (context, model, _) {
+                      return InkWell(
+                        // Use the shared back-navigation helper so this button
+                        // has the same logout-confirmation behaviour as all
+                        // other back-navigation entry points.
+                        onTap: () => _handleRegistrationBack(context, model),
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Icon(
+                            Icons.arrow_back_ios_new,
+                            size: 20,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                        (route) => false,
                       );
                     },
-                    borderRadius: BorderRadius.circular(12),
-                    child: const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 20,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
                   ),
                 ),
               ),
@@ -220,152 +303,172 @@ class RegistrationStepContainer extends StatelessWidget {
     this.scrollPhysics,
   }) : super(key: key);
 
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Navigate to onboarding instead of allowing default pop
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const OnboardingScreen(),
-          ),
-          (route) => false,
-        );
-        return false; // Prevent default back navigation
-      },
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              controller: scrollController,
-              physics: scrollPhysics ?? const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(20),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: child,
-            ),
-          ),
-          // Bottom action buttons
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight,
-                  blurRadius: 12,
-                  offset: const Offset(0, -4),
+    // Capture the keyboard inset at build time so the scroll area can always
+    // be scrolled to reveal any field that would otherwise be hidden behind
+    // the software keyboard.  The action buttons intentionally stay at the
+    // screen bottom and are covered by the keyboard — this keeps the content
+    // area focused and uncluttered while the keyboard is open.
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Consumer<SignupModel>(
+      builder: (context, model, _) {
+        return WillPopScope(
+          onWillPop: () async {
+            await _handleRegistrationBack(context, model);
+            return false; // Navigation is handled manually above.
+          },
+          child: Column(
+            children: [
+              // ---------------------------------------------------------------
+              // Scrollable content area
+              // ---------------------------------------------------------------
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  physics: scrollPhysics ?? const ClampingScrollPhysics(),
+                  // The extra bottom padding lets the user scroll the last
+                  // field above the keyboard so it is always reachable.
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + keyboardInset),
+                  child: child,
                 ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: Row(
-                children: [
-                  if (onBack != null) ...[
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton(
-                        onPressed: isLoading ? null : () {
-                          // Navigate to onboarding instead of pop
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const OnboardingScreen(),
-                            ),
-                            (route) => false,
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(
-                            color: AppColors.border,
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
+              ),
+
+              // ---------------------------------------------------------------
+              // Action buttons — these stay fixed at the bottom of the screen.
+              // The keyboard slides over them; they are not pushed upward.
+              // ---------------------------------------------------------------
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight,
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
                     ),
-                    const SizedBox(width: 12),
                   ],
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: canContinue
-                          ? AppColors.primaryGradient
-                          : const LinearGradient(
-                              colors: [AppColors.borderLight, AppColors.border],
-                            ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: canContinue
-                          ? [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      // Back button (only rendered when [onBack] is provided)
+                      if (onBack != null) ...[
+                        Expanded(
+                          flex: 1,
+                          child: OutlinedButton(
+                            onPressed: isLoading
+                                ? null
+                                : () => _handleRegistrationBack(context, model),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(
+                                color: AppColors.border,
+                                width: 1.5,
                               ),
-                            ]
-                          : [],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: isLoading ? null : onContinue,
-                        borderRadius: BorderRadius.circular(12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Back',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+
+                      // Continue button
+                      Expanded(
+                        flex: 2,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: isLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      color: AppColors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        continueText,
-                                        style: TextStyle(
-                                          color: canContinue ? AppColors.white : AppColors.textSecondary,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color: canContinue ? AppColors.white : AppColors.textSecondary,
-                                      ),
+                          decoration: BoxDecoration(
+                            gradient: canContinue
+                                ? AppColors.primaryGradient
+                                : const LinearGradient(
+                                    colors: [
+                                      AppColors.borderLight,
+                                      AppColors.border,
                                     ],
                                   ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: canContinue
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: isLoading ? null : onContinue,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: isLoading
+                                      ? const SizedBox(
+                                          height: 24,
+                                          width: 24,
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.white,
+                                            strokeWidth: 2.5,
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              continueText,
+                                              style: TextStyle(
+                                                color: canContinue
+                                                    ? AppColors.white
+                                                    : AppColors.textSecondary,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Icon(
+                                              Icons.arrow_forward_ios,
+                                              size: 16,
+                                              color: canContinue
+                                                  ? AppColors.white
+                                                  : AppColors.textSecondary,
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      ],
-    ),
+        );
+      },
     );
   }
 }

@@ -192,6 +192,9 @@ class _YourDetailsPageState extends State<YourDetailsPage>
       if (model.languages.isEmpty) {
         model.setLanguages(selectedLanguages.join(', '));
       }
+      // Auto-focus the first text field so the keyboard opens immediately
+      // when the page is presented, providing a seamless entry experience.
+      _firstNameFocus.requestFocus();
     });
   }
 
@@ -726,6 +729,9 @@ class _YourDetailsPageState extends State<YourDetailsPage>
       builder: (context, model, child) {
         return Scaffold(
           backgroundColor: AppColors.background,
+          // Keyboard should not resize the scaffold — the action buttons stay at
+          // the bottom and the scroll area handles the keyboard inset independently.
+          resizeToAvoidBottomInset: false,
           body: SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,

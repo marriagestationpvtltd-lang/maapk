@@ -275,6 +275,7 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [

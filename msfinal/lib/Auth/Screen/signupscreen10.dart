@@ -343,6 +343,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen> with Single
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: _buildContent(),
       ),

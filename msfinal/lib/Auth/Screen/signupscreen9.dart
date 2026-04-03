@@ -1051,6 +1051,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
