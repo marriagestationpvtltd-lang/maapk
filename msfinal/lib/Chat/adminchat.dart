@@ -81,7 +81,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     _loadUserImage();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
-      _messageFocusNode.requestFocus();
+      // Auto-focus removed - users will click when ready to type
     });
 
 // Automatically send profile card if provided (optional)
@@ -853,17 +853,17 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
           children: [
             // ── Gradient header banner ──
             Container(
-              height: 70,
+              height: 60,
               decoration: BoxDecoration(
                 gradient: _primaryGradient,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  Icon(Icons.favorite, color: Colors.white.withOpacity(0.7), size: 18),
+                  Icon(Icons.favorite, color: Colors.white.withOpacity(0.7), size: 16),
                   const SizedBox(width: 6),
                   Text(
-                    'Matrimony Profile',
+                    'Profile Card',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -891,17 +891,16 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               ),
             ),
 
-            // ── Profile photo + name ──
+            // ── Profile photo + name (Centered layout) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
               child: Column(
                 children: [
                   Transform.translate(
                     offset: const Offset(0, -30),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Column(
                       children: [
-                        // Profile photo
+                        // Profile photo - centered
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -921,100 +920,107 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                                       sigmaY: 6.0,
                                     ),
                                     child: Container(
-                                      width: 72,
-                                      height: 72,
+                                      width: 80,
+                                      height: 80,
                                       color: Colors.grey.shade200,
                                       child: hasPhoto
                                           ? Image.network(
                                               photoUrl!,
                                               fit: BoxFit.cover,
                                               errorBuilder: (_, __, ___) =>
-                                                  Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                                  Icon(Icons.person, size: 40, color: Colors.grey.shade400),
                                             )
-                                          : Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                          : Icon(Icons.person, size: 40, color: Colors.grey.shade400),
                                     ),
                                   )
                                 : Container(
-                                    width: 72,
-                                    height: 72,
+                                    width: 80,
+                                    height: 80,
                                     color: Colors.grey.shade200,
                                     child: hasPhoto
                                         ? Image.network(
                                             photoUrl!,
                                             fit: BoxFit.cover,
                                             errorBuilder: (_, __, ___) =>
-                                                Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                                Icon(Icons.person, size: 40, color: Colors.grey.shade400),
                                           )
-                                        : Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                        : Icon(Icons.person, size: 40, color: Colors.grey.shade400),
                                   ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        // Name + meta
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 12),
+                        // Name + meta - centered below
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  displayName,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: _textColor,
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: _textColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 2),
-                                if (profileData['age'] != null && profileData['age'] != 'N/A')
-                                  Row(
-                                    children: [
-                                      Icon(Icons.cake_outlined, size: 12, color: _lightTextColor),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        '${profileData['age']}',
-                                        style: TextStyle(fontSize: 12, color: _lightTextColor),
-                                      ),
-                                    ],
+                                const SizedBox(width: 6),
+                                // Photo lock/unlock badge
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: shouldBlurPhoto ? Colors.orange.shade100 : Colors.green.shade100,
+                                    shape: BoxShape.circle,
                                   ),
-                                if (profileData['location'] != null &&
-                                    profileData['location'].toString().isNotEmpty &&
-                                    profileData['location'] != 'Location not specified')
-                                  Row(
-                                    children: [
-                                      Icon(Icons.location_on_outlined, size: 12, color: _lightTextColor),
-                                      const SizedBox(width: 3),
-                                      Expanded(
-                                        child: Text(
-                                          profileData['location'],
-                                          style: TextStyle(fontSize: 12, color: _lightTextColor),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                                  child: Icon(
+                                    shouldBlurPhoto ? Icons.lock_outline : Icons.lock_open_outlined,
+                                    size: 12,
+                                    color: shouldBlurPhoto ? Colors.orange.shade700 : Colors.green.shade700,
                                   ),
+                                ),
                               ],
                             ),
-                          ),
-                        ),
-                        // Photo lock/unlock badge
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: shouldBlurPhoto ? Colors.orange.shade100 : Colors.green.shade100,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              shouldBlurPhoto ? Icons.lock_outline : Icons.lock_open_outlined,
-                              size: 14,
-                              color: shouldBlurPhoto ? Colors.orange.shade700 : Colors.green.shade700,
-                            ),
-                          ),
+                            const SizedBox(height: 6),
+                            if (profileData['age'] != null && profileData['age'] != 'N/A')
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.cake_outlined, size: 13, color: _lightTextColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${profileData['age']} years',
+                                    style: TextStyle(fontSize: 13, color: _lightTextColor, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            if (profileData['location'] != null &&
+                                profileData['location'].toString().isNotEmpty &&
+                                profileData['location'] != 'Location not specified')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.location_on_outlined, size: 13, color: _lightTextColor),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        profileData['location'],
+                                        style: TextStyle(fontSize: 12, color: _lightTextColor),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -1210,46 +1216,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         ),
         elevation: 0,
         actions: [
-          if (!widget.isAdmin) ...[
-            IconButton(
-              icon: const Icon(Icons.call, color: Colors.white),
-              tooltip: 'Audio Call',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CallScreen(
-                      currentUserId: widget.senderID,
-                      currentUserName: widget.userName,
-                      currentUserImage: _currentUserImage,
-                      otherUserId: _adminUserId,
-                      otherUserName: _adminUserName,
-                      otherUserImage: '',
-                    ),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.videocam, color: Colors.white),
-              tooltip: 'Video Call',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoCallScreen(
-                      currentUserId: widget.senderID,
-                      currentUserName: widget.userName,
-                      currentUserImage: _currentUserImage,
-                      otherUserId: _adminUserId,
-                      otherUserName: _adminUserName,
-                      otherUserImage: '',
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+          // Call buttons removed as requested
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () {
