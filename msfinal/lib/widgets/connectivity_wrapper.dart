@@ -91,6 +91,7 @@ extension ConnectivityCheck on BuildContext {
     if (!hasInternet && mounted) {
       Navigator.of(this).push(
         MaterialPageRoute(
+          settings: const RouteSettings(name: NoInternetScreen.routeName),
           builder: (_) => const NoInternetScreen(),
         ),
       );

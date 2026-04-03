@@ -22,6 +22,7 @@ class NetworkHelper {
       if (navigateToNoInternet) {
         Navigator.of(context).push(
           MaterialPageRoute(
+            settings: const RouteSettings(name: NoInternetScreen.routeName),
             builder: (_) => const NoInternetScreen(),
           ),
         );
