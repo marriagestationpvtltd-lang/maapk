@@ -1310,7 +1310,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: isMine ? const Color(0xFFF90E18) : const Color(0xFFF90E18).withOpacity(0.12),
+                    color: isMine
+                      ? const Color(0xFF128C7E)  // Dark green for sent voice messages
+                      : const Color(0xFFF90E18).withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -1331,8 +1333,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           value: progressValue,
                           minHeight: 3,
                           backgroundColor: Colors.grey.withOpacity(0.25),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFFF90E18),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isMine ? const Color(0xFF128C7E) : const Color(0xFFF90E18),
                           ),
                         ),
                       ),
