@@ -444,7 +444,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF075E54),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Row(
           children: [
@@ -454,7 +463,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF25D366),
+                  color: Colors.white.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -485,22 +494,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
         body: Container(
-          color: const Color(0xFFECE5DD),
+          color: const Color(0xFFFAF0F0),
           child: Column(
             children: [
               _buildChatRequestsSection(),
               if (_totalUnreadCount > 0)
                 Container(
-                  color: const Color(0xFF25D366).withOpacity(0.1),
+                  color: const Color(0xFFF90E18).withOpacity(0.08),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.message, color: Color(0xFF25D366), size: 18),
+                      const Icon(Icons.message, color: Color(0xFFF90E18), size: 18),
                       const SizedBox(width: 8),
                       Text(
                         '$_totalUnreadCount unread messages in $_totalUnreadConversations conversations',
                         style: const TextStyle(
-                          color: Color(0xFF075E54),
+                          color: Color(0xFFF90E18),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -541,7 +550,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF075E54)));
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFF90E18)));
         }
 
         final chatRooms = snapshot.data!.docs;
@@ -732,7 +741,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: (unreadCount[userId] ?? 0) > 0
-                                      ? const Color(0xFF25D366)
+                                      ? const Color(0xFFF90E18)
                                       : Colors.grey[600],
                                   fontWeight: (unreadCount[userId] ?? 0) > 0
                                       ? FontWeight.w600
@@ -773,7 +782,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF25D366),
+                                    color: const Color(0xFFF90E18),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
