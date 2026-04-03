@@ -1,13 +1,13 @@
 // Professional Redesigned Partner Preferences Page - Step 10
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:ms2026/Auth/Screen/signupscreen5.dart';
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../constant/app_colors.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
+import '../../service/location_service.dart';
 import '../../service/partner_pref_api.dart';
 import '../../service/updatepage.dart';
 
@@ -33,11 +33,21 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   List<String> _selectedDistrict = [];
   List<String> _selectedEducation = [];
   List<String> _selectedOccupation = [];
+  List<String> _countryOptions = ['Any'];
+  List<String> _stateOptions = ['Any'];
+  List<String> _districtOptions = ['Any'];
+  final Map<String, int> _countryMap = {'Any': 0};
+  final Map<String, int> _stateMap = {'Any': 0};
+  final Map<String, int> _districtMap = {'Any': 0};
 
   // Validation
   bool _hasValidationErrors = false;
   Map<String, String?> _fieldErrors = {};
   bool _isSubmitting = false;
+  bool _isLoadingInitialData = false;
+  bool _isLoadingCountries = false;
+  bool _isLoadingStates = false;
+  bool _isLoadingDistricts = false;
 
   // Animation
   late AnimationController _animationController;
@@ -57,6 +67,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   }
 
   final List<String> _maritalStatusOptions = [
+    'Any',
     'Single',
     'Married',
     'Divorced',
@@ -65,6 +76,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   ];
 
   final List<String> _religionOptions = [
+    'Any',
     'Hindu',
     'Buddhist',
     'Christian',
@@ -75,6 +87,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   ];
 
   final List<String> _communityOptions = [
+    'Any',
     'Brahmin',
     'Chhetri',
     'Newar',
@@ -89,6 +102,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   ];
 
   final List<String> _motherTongueOptions = [
+    'Any',
     'Nepali',
     'Maithili',
     'Bhojpuri',
@@ -102,21 +116,8 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     'Other',
   ];
 
-  final List<String> _countryOptions = [
-    'Nepal',
-    'India',
-    'USA',
-    'UK',
-    'Canada',
-    'Australia',
-    'UAE',
-    'Qatar',
-    'Saudi Arabia',
-    'Japan',
-    'Other',
-  ];
-
   final List<String> _educationOptions = [
+    'Any',
     'High School',
     'Undergraduate',
     'Graduate',
@@ -127,6 +128,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
   ];
 
   final List<String> _occupationOptions = [
+    'Any',
     'Software Engineer',
     'Doctor',
     'Teacher',
@@ -153,6 +155,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     );
 
     _animationController.forward();
+    _loadInitialData();
   }
 
   @override
@@ -206,6 +209,311 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
     );
   }
 
+  List<String> _normalizeAnySelection(List<String> values) {
+    final cleaned = values
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    if (cleaned.contains('Any')) {
+      return ['Any'];
+    }
+
+    return cleaned.where((item) => item != 'Any').toList();
+  }
+
+  List<String> _parsePreferenceList(dynamic value) {
+    if (value == null) {
+      return [];
+    }
+
+    if (value is List) {
+      return _normalizeAnySelection(value.map((item) => item.toString()).toList());
+    }
+
+    if (value is String) {
+      return _normalizeAnySelection(value.split(','));
+    }
+
+    return [];
+  }
+
+  List<String> _resolveLocationSelection(
+    List<String> values,
+    Map<String, int> source,
+  ) {
+    return _normalizeAnySelection(
+      values.map((item) {
+        if (source.containsKey(item)) {
+          return item;
+        }
+
+        final id = int.tryParse(item);
+        if (id == null) {
+          return item;
+        }
+
+        return source.entries
+            .firstWhere(
+              (entry) => entry.value == id,
+              orElse: () => MapEntry(item, id),
+            )
+            .key;
+      }).toList(),
+    );
+  }
+
+  String? _heightValueFromApi(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final number = value.toString().trim();
+    if (number.isEmpty) {
+      return null;
+    }
+
+    for (final option in _heightOptions) {
+      if (option.startsWith('$number cm')) {
+        return option;
+      }
+    }
+
+    return '$number cm';
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoadingInitialData = true);
+
+    try {
+      await _loadCountries();
+      await _loadSavedPreferences();
+    } catch (e) {
+      debugPrint('Partner preferences init error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingInitialData = false);
+      }
+    }
+  }
+
+  Future<void> _loadCountries() async {
+    setState(() => _isLoadingCountries = true);
+
+    try {
+      final data = await LocationService.fetchCountries()
+          .timeout(const Duration(seconds: 30));
+      final countries = ['Any'];
+      final countryMap = <String, int>{'Any': 0};
+
+      for (final item in data) {
+        final name = item['name']?.toString().trim();
+        final id = int.tryParse(item['id'].toString());
+        if (name == null || name.isEmpty || id == null) {
+          continue;
+        }
+        countries.add(name);
+        countryMap[name] = id;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _countryOptions = countries;
+        _countryMap
+          ..clear()
+          ..addAll(countryMap);
+      });
+    } catch (e) {
+      debugPrint('Country load error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingCountries = false);
+      }
+    }
+  }
+
+  Future<void> _loadStatesForSelectedCountries({List<String>? preferredSelection}) async {
+    if (_selectedCountry.isEmpty || _selectedCountry.contains('Any')) {
+      if (!mounted) return;
+      setState(() {
+        _stateOptions = ['Any'];
+        _stateMap
+          ..clear()
+          ..addAll({'Any': 0});
+        _selectedState = _selectedCountry.contains('Any') ? ['Any'] : [];
+        _districtOptions = ['Any'];
+        _districtMap
+          ..clear()
+          ..addAll({'Any': 0});
+        _selectedDistrict = _selectedCountry.contains('Any') ? ['Any'] : [];
+      });
+      return;
+    }
+
+    setState(() => _isLoadingStates = true);
+
+    try {
+      final states = ['Any'];
+      final stateMap = <String, int>{'Any': 0};
+
+      for (final countryName in _selectedCountry) {
+        final countryId = _countryMap[countryName];
+        if (countryId == null || countryId == 0) {
+          continue;
+        }
+
+        final data = await LocationService.fetchStates(countryId)
+            .timeout(const Duration(seconds: 30));
+
+        for (final item in data) {
+          final name = item['name']?.toString().trim();
+          final id = int.tryParse(item['id'].toString());
+          if (name == null || name.isEmpty || id == null || stateMap.containsKey(name)) {
+            continue;
+          }
+          states.add(name);
+          stateMap[name] = id;
+        }
+      }
+
+      final selected = _normalizeAnySelection(preferredSelection ?? _selectedState)
+          .where((item) => stateMap.containsKey(item))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _stateOptions = states;
+        _stateMap
+          ..clear()
+          ..addAll(stateMap);
+        _selectedState = selected;
+      });
+    } catch (e) {
+      debugPrint('State load error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingStates = false);
+      }
+    }
+
+    await _loadDistrictsForSelectedStates(
+      preferredSelection: preferredSelection == null ? null : _selectedDistrict,
+    );
+  }
+
+  Future<void> _loadDistrictsForSelectedStates({List<String>? preferredSelection}) async {
+    if (_selectedState.isEmpty || _selectedState.contains('Any')) {
+      if (!mounted) return;
+      setState(() {
+        _districtOptions = ['Any'];
+        _districtMap
+          ..clear()
+          ..addAll({'Any': 0});
+        _selectedDistrict = _selectedState.contains('Any') ? ['Any'] : [];
+      });
+      return;
+    }
+
+    setState(() => _isLoadingDistricts = true);
+
+    try {
+      final districts = ['Any'];
+      final districtMap = <String, int>{'Any': 0};
+
+      for (final stateName in _selectedState) {
+        final stateId = _stateMap[stateName];
+        if (stateId == null || stateId == 0) {
+          continue;
+        }
+
+        final data = await LocationService.fetchCities(stateId)
+            .timeout(const Duration(seconds: 30));
+
+        for (final item in data) {
+          final name = item['name']?.toString().trim();
+          final id = int.tryParse(item['id'].toString());
+          if (name == null || name.isEmpty || id == null || districtMap.containsKey(name)) {
+            continue;
+          }
+          districts.add(name);
+          districtMap[name] = id;
+        }
+      }
+
+      final selected = _normalizeAnySelection(preferredSelection ?? _selectedDistrict)
+          .where((item) => districtMap.containsKey(item))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _districtOptions = districts;
+        _districtMap
+          ..clear()
+          ..addAll(districtMap);
+        _selectedDistrict = selected;
+      });
+    } catch (e) {
+      debugPrint('District load error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingDistricts = false);
+      }
+    }
+  }
+
+  Future<void> _loadSavedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    if (userDataString == null) {
+      return;
+    }
+
+    final userData = jsonDecode(userDataString);
+    final userId = int.tryParse(userData["id"].toString());
+    if (userId == null) {
+      return;
+    }
+
+    final result = await UserPartnerPreferenceService().fetchPartnerPreference(userId: userId);
+    final data = result?['data'];
+
+    final status = result?['status'];
+    if ((status != 'success' && status != true) || data is! Map<String, dynamic>) {
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _minAge = data['minage']?.toString();
+      _maxAge = data['maxage']?.toString();
+      _minHeight = _heightValueFromApi(data['minheight']);
+      _maxHeight = _heightValueFromApi(data['maxheight']);
+      _selectedMaritalStatus = _parsePreferenceList(data['maritalstatus']);
+      _selectedReligion = _parsePreferenceList(data['religion']);
+      _selectedCommunity = _parsePreferenceList(data['caste'] ?? data['community']);
+      _selectedMotherTongue = _parsePreferenceList(data['mothertoungue'] ?? data['mother_tongue']);
+      _selectedCountry = _resolveLocationSelection(
+        _parsePreferenceList(data['country']),
+        _countryMap,
+      );
+      _selectedState = _parsePreferenceList(data['state']);
+      _selectedDistrict = _parsePreferenceList(data['city'] ?? data['district']);
+      _selectedEducation = _parsePreferenceList(data['qualification'] ?? data['education']);
+      _selectedOccupation = _parsePreferenceList(data['proffession'] ?? data['occupation']);
+    });
+
+    await _loadStatesForSelectedCountries(preferredSelection: List<String>.from(_selectedState));
+    if (!mounted) return;
+    setState(() {
+      _selectedState = _resolveLocationSelection(_selectedState, _stateMap);
+    });
+    await _loadDistrictsForSelectedStates(preferredSelection: List<String>.from(_selectedDistrict));
+    if (!mounted) return;
+    setState(() {
+      _selectedDistrict = _resolveLocationSelection(_selectedDistrict, _districtMap);
+    });
+  }
+
   Future<void> _validateAndSubmit() async {
     if (!_validateForm()) {
       _showSnackBar('Please fill all required fields correctly', isError: true);
@@ -233,13 +541,29 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         return;
       }
 
-      final service = UserPartnerPreferenceService(
-        baseUrl: 'https://digitallami.com/Api2/save_partner_preference.php',
-      );
+      final service = UserPartnerPreferenceService();
 
       // Extract cm values from height strings (e.g., "170 cm (5' 7")" -> "170")
       final minHeightCm = _minHeight!.split(' ').first;
       final maxHeightCm = _maxHeight!.split(' ').first;
+      final countryIds = _selectedCountry.contains('Any')
+          ? ['0']
+          : _selectedCountry
+              .map((item) => _countryMap[item]?.toString())
+              .whereType<String>()
+              .toList();
+      final stateIds = _selectedState.contains('Any')
+          ? ['0']
+          : _selectedState
+              .map((item) => _stateMap[item]?.toString())
+              .whereType<String>()
+              .toList();
+      final districtIds = _selectedDistrict.contains('Any')
+          ? ['0']
+          : _selectedDistrict
+              .map((item) => _districtMap[item]?.toString())
+              .whereType<String>()
+              .toList();
 
       final result = await service.savePartnerPreference(
         userId: userId,
@@ -249,6 +573,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         heightTo: maxHeightCm,
         maritalStatus: _selectedMaritalStatus.join(', '),
         religion: _selectedReligion.join(', '),
+        countryIds: countryIds,
+        stateIds: stateIds,
+        cityIds: districtIds,
         community: _selectedCommunity.isNotEmpty ? _selectedCommunity.join(', ') : null,
         motherTongue: _selectedMotherTongue.isNotEmpty ? _selectedMotherTongue.join(', ') : null,
         country: _selectedCountry.isNotEmpty ? _selectedCountry.join(', ') : null,
@@ -260,7 +587,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
 
       setState(() => _isSubmitting = false);
 
-      if (result['status'] == 'success') {
+      if (result['status'] == 'success' || result['status'] == true) {
         await UpdateService.updatePageNumber(
           userId: userId.toString(),
           pageNo: 8,
@@ -271,7 +598,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => FamilyDetailsPage(),
+            pageBuilder: (context, animation, secondaryAnimation) => const IDVerificationScreen(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(1.0, 0.0);
               const end = Offset.zero;
@@ -404,15 +731,20 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: InkWell(
-                            onTap: () {
-                              setModalState(() {
-                                if (isSelected) {
-                                  tempSelected.remove(option);
-                                } else {
-                                  tempSelected.add(option);
-                                }
-                              });
-                            },
+                             onTap: () {
+                               setModalState(() {
+                                 if (isSelected) {
+                                   tempSelected.remove(option);
+                                 } else {
+                                   if (option == 'Any') {
+                                     tempSelected = ['Any'];
+                                   } else {
+                                     tempSelected.remove('Any');
+                                     tempSelected.add(option);
+                                   }
+                                 }
+                               });
+                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
                               padding: const EdgeInsets.all(16),
@@ -721,11 +1053,11 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: RegistrationStepContainer(
-            onContinue: _isSubmitting ? null : _validateAndSubmit,
+            onContinue: (_isSubmitting || _isLoadingInitialData) ? null : _validateAndSubmit,
             onBack: () => Navigator.pop(context),
             continueText: 'Continue',
-            canContinue: !_isSubmitting,
-            isLoading: _isSubmitting,
+            canContinue: !_isSubmitting && !_isLoadingInitialData,
+            isLoading: _isSubmitting || _isLoadingInitialData,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -739,6 +1071,11 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                 ),
 
                 const SizedBox(height: 32),
+
+                if (_isLoadingInitialData) ...[
+                  const LinearProgressIndicator(minHeight: 2),
+                  const SizedBox(height: 24),
+                ],
 
                 // Age Range Section
                 SectionHeader(
@@ -926,14 +1263,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _maritalStatusOptions,
                       selectedOptions: _selectedMaritalStatus,
                       icon: Icons.favorite_border,
-                      onConfirm: (selected) {
-                        setState(() {
-                          _selectedMaritalStatus = selected;
-                          if (_hasValidationErrors) {
-                            _fieldErrors['maritalStatus'] = selected.isEmpty
-                                ? 'Please select at least one option'
-                                : null;
-                          }
+                       onConfirm: (selected) {
+                          setState(() {
+                            _selectedMaritalStatus = _normalizeAnySelection(selected);
+                            if (_hasValidationErrors) {
+                              _fieldErrors['maritalStatus'] = _selectedMaritalStatus.isEmpty
+                                  ? 'Please select at least one option'
+                                  : null;
+                            }
                         });
                       },
                     );
@@ -955,14 +1292,14 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _religionOptions,
                       selectedOptions: _selectedReligion,
                       icon: Icons.church,
-                      onConfirm: (selected) {
-                        setState(() {
-                          _selectedReligion = selected;
-                          if (_hasValidationErrors) {
-                            _fieldErrors['religion'] = selected.isEmpty
-                                ? 'Please select at least one option'
-                                : null;
-                          }
+                       onConfirm: (selected) {
+                          setState(() {
+                            _selectedReligion = _normalizeAnySelection(selected);
+                            if (_hasValidationErrors) {
+                              _fieldErrors['religion'] = _selectedReligion.isEmpty
+                                  ? 'Please select at least one option'
+                                  : null;
+                            }
                         });
                       },
                     );
@@ -991,9 +1328,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _communityOptions,
                       selectedOptions: _selectedCommunity,
                       icon: Icons.group,
-                      onConfirm: (selected) {
-                        setState(() => _selectedCommunity = selected);
-                      },
+                       onConfirm: (selected) {
+                         setState(() => _selectedCommunity = _normalizeAnySelection(selected));
+                       },
                     );
                   },
                 ),
@@ -1011,9 +1348,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _motherTongueOptions,
                       selectedOptions: _selectedMotherTongue,
                       icon: Icons.language,
-                      onConfirm: (selected) {
-                        setState(() => _selectedMotherTongue = selected);
-                      },
+                       onConfirm: (selected) {
+                         setState(() => _selectedMotherTongue = _normalizeAnySelection(selected));
+                       },
                     );
                   },
                 ),
@@ -1035,17 +1372,86 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                   selectedItems: _selectedCountry,
                   icon: Icons.flag,
                   onTap: () {
+                    if (_isLoadingCountries) return;
                     _showMultiSelectDialog(
                       title: 'Select Country',
                       options: _countryOptions,
                       selectedOptions: _selectedCountry,
                       icon: Icons.flag,
-                      onConfirm: (selected) {
-                        setState(() => _selectedCountry = selected);
+                       onConfirm: (selected) {
+                         final normalized = _normalizeAnySelection(selected);
+                         setState(() {
+                           _selectedCountry = normalized;
+                           _selectedState = normalized.contains('Any') ? ['Any'] : [];
+                           _selectedDistrict = normalized.contains('Any') ? ['Any'] : [];
+                         });
+                         _loadStatesForSelectedCountries();
                       },
                     );
                   },
                 ),
+
+                if (_isLoadingCountries) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(minHeight: 2),
+                ],
+
+                const SizedBox(height: 16),
+
+                _buildMultiSelectField(
+                  label: 'State',
+                  selectedItems: _selectedState,
+                  icon: Icons.map_outlined,
+                  onTap: () {
+                    if (_selectedCountry.isEmpty || _isLoadingStates) return;
+                    _showMultiSelectDialog(
+                      title: 'Select State',
+                      options: _stateOptions,
+                      selectedOptions: _selectedState,
+                      icon: Icons.map_outlined,
+                      onConfirm: (selected) {
+                        final normalized = _normalizeAnySelection(selected);
+                        setState(() {
+                          _selectedState = normalized;
+                          _selectedDistrict = normalized.contains('Any') ? ['Any'] : [];
+                        });
+                         _loadDistrictsForSelectedStates();
+                      },
+                    );
+                  },
+                ),
+
+                if (_isLoadingStates) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(minHeight: 2),
+                ],
+
+                const SizedBox(height: 16),
+
+                _buildMultiSelectField(
+                  label: 'District',
+                  selectedItems: _selectedDistrict,
+                  icon: Icons.location_city_outlined,
+                  onTap: () {
+                    if (_selectedState.isEmpty || _isLoadingDistricts) return;
+                    _showMultiSelectDialog(
+                      title: 'Select District',
+                      options: _districtOptions,
+                      selectedOptions: _selectedDistrict,
+                      icon: Icons.location_city_outlined,
+                      onConfirm: (selected) {
+                        setState(() {
+                          _selectedDistrict = _normalizeAnySelection(selected);
+                        });
+                      },
+                    );
+                  },
+                ),
+
+                if (_isLoadingDistricts) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(minHeight: 2),
+                ],
 
                 const SizedBox(height: 32),
 
@@ -1069,9 +1475,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _educationOptions,
                       selectedOptions: _selectedEducation,
                       icon: Icons.school,
-                      onConfirm: (selected) {
-                        setState(() => _selectedEducation = selected);
-                      },
+                       onConfirm: (selected) {
+                         setState(() => _selectedEducation = _normalizeAnySelection(selected));
+                       },
                     );
                   },
                 ),
@@ -1089,9 +1495,9 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                       options: _occupationOptions,
                       selectedOptions: _selectedOccupation,
                       icon: Icons.business_center,
-                      onConfirm: (selected) {
-                        setState(() => _selectedOccupation = selected);
-                      },
+                       onConfirm: (selected) {
+                         setState(() => _selectedOccupation = _normalizeAnySelection(selected));
+                       },
                     );
                   },
                 ),

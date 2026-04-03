@@ -2,11 +2,40 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class UserPartnerPreferenceService {
-  final String baseUrl;
+  final String saveUrl;
+  final String fetchUrl;
 
-  UserPartnerPreferenceService({required this.baseUrl});
+  UserPartnerPreferenceService({
+    this.saveUrl = 'https://digitallami.com/Api2/user_partner.php',
+    this.fetchUrl = 'https://digitallami.com/Api2/get_partner_preferences.php',
+  });
 
-  /// Save or update partner preference
+  Future<Map<String, dynamic>?> fetchPartnerPreference({
+    required int userId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$fetchUrl?userid=$userId'),
+      );
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final data = json.decode(response.body);
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+    } catch (e) {
+      return {
+        'status': 'error',
+        'message': e.toString(),
+      };
+    }
+
+    return null;
+  }
+
   Future<Map<String, dynamic>> savePartnerPreference({
     required int userId,
     required String ageFrom,
@@ -15,6 +44,9 @@ class UserPartnerPreferenceService {
     required String heightTo,
     required String maritalStatus,
     required String religion,
+    List<String> countryIds = const [],
+    List<String> stateIds = const [],
+    List<String> cityIds = const [],
     String? community,
     String? motherTongue,
     String? country,
@@ -23,33 +55,50 @@ class UserPartnerPreferenceService {
     String? education,
     String? occupation,
   }) async {
-    final url = Uri.parse(baseUrl);
+    final url = Uri.parse(saveUrl);
 
-    // Prepare request body
-    final body = <String, String>{
-      'user_id': userId.toString(),
-      'age_from': ageFrom,
-      'age_to': ageTo,
-      'height_from': heightFrom,
-      'height_to': heightTo,
-      'marital_status': maritalStatus,
+    final body = <String, dynamic>{
+      'userid': userId.toString(),
+      'minage': ageFrom,
+      'maxage': ageTo,
+      'minheight': heightFrom,
+      'maxheight': heightTo,
+      'maritalstatus': maritalStatus,
+      'profilewithchild': '',
+      'familytype': '',
       'religion': religion,
-      if (community != null) 'community': community,
-      if (motherTongue != null) 'mother_tongue': motherTongue,
-      if (country != null) 'country': country,
-      if (state != null) 'state': state,
-      if (district != null) 'district': district,
-      if (education != null) 'education': education,
-      if (occupation != null) 'occupation': occupation,
+      'caste': community ?? '',
+      'subcaste': '',
+      'mothertoungue': motherTongue ?? '',
+      'herscopeblief': '',
+      'manglik': '',
+      'country': countryIds.join(','),
+      'state': stateIds.join(','),
+      'city': cityIds.join(','),
+      'qualification': education ?? '',
+      'educationmedium': '',
+      'proffession': occupation ?? '',
+      'workingwith': '',
+      'annualincome': '',
+      'diet': '',
+      'smokeaccept': '',
+      'drinkaccept': '',
+      'disabilityaccept': '',
+      'complexion': '',
+      'bodytype': '',
+      'otherexpectation': '',
+      'country_names': country ?? '',
+      'state_names': state ?? '',
+      'district_names': district ?? '',
     };
 
     try {
       final response = await http.post(
         url,
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json; charset=UTF-8',
         },
-        body: body,
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
