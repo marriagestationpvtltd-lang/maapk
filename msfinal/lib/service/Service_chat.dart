@@ -62,11 +62,12 @@ class _ServiceChatPageState extends State<ServiceChatPage> {
   // ---------------- SEND FUNCTIONS ----------------
   Future<void> _sendText() async {
     if (_controller.text.trim().isEmpty) return;
+    final messageText = _controller.text.trim();
+    _controller.clear(); // Clear immediately
     await _sendMessage(
       type: 'text',
-      message: _controller.text.trim(),
+      message: messageText,
     );
-    _controller.clear();
   }
 
   Future<void> _sendThanks() async {
