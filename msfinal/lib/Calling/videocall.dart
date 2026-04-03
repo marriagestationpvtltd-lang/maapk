@@ -417,7 +417,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   void _exit() {
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -760,7 +760,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _timeoutTimer?.cancel();
     _responseSubscription?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 }

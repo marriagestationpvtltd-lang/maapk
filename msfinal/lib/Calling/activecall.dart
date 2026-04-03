@@ -181,7 +181,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   void dispose() {
     _callTimer?.cancel();
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 

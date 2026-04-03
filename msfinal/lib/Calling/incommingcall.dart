@@ -295,7 +295,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 
   void _end() {
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -427,7 +427,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   void dispose() {
     _ringTimer?.cancel();
     _callTimer?.cancel();
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 

@@ -199,7 +199,7 @@ class CallForegroundService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "MarriageStation::CallWakeLock"
         ).apply {
-            acquire()
+            acquire(60 * 60 * 1000L)
             Log.d(TAG, "WakeLock acquired")
         }
     }

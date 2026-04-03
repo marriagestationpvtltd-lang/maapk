@@ -385,7 +385,7 @@ class _CallScreenState extends State<CallScreen> {
 
 
   void _exit() {
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -538,7 +538,7 @@ class _CallScreenState extends State<CallScreen> {
     _callTimer?.cancel();
     _responseSubscription?.cancel();
     _ringtonePlayer.dispose();
-    _stopForegroundService();
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 
