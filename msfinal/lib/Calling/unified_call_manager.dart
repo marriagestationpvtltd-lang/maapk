@@ -35,10 +35,10 @@ class UnifiedCallManager extends ChangeNotifier {
   bool get isCallActive => _currentCallState?.isActive ?? false;
   bool get isMinimized => _currentCallState?.isMinimized ?? false;
   String? get callType => _currentCallState?.callType;
-  String? get otherUserName => _currentCallState?.isIncoming
+  String? get otherUserName => _currentCallState?.isIncoming == true
       ? _currentCallState?.callerName
       : _currentCallState?.receiverName;
-  String? get otherUserId => _currentCallState?.isIncoming
+  String? get otherUserId => _currentCallState?.isIncoming == true
       ? _currentCallState?.callerId
       : _currentCallState?.receiverId;
   String get statusText => _getStatusText();
