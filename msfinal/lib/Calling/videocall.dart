@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -11,6 +12,7 @@ import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
 import 'call_foreground_service.dart';
+import 'widgets/connection_status_overlay.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String currentUserId;
@@ -62,10 +64,26 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Duration _duration = Duration.zero;
 
   StreamSubscription? _responseSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  String? _connectionStatus;
 
   // Audio player for ringtone
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
+
+  // PiP (local video preview) draggable offset (from top-right)
+  Offset _pipOffset = const Offset(20, 40);
+  static const double _kPipWidth = 120.0;
+  static const double _kPipHeight = 160.0;
+  static const double _kPipPadding = 8.0;
+
+  // Auto-hide controls after 3 s idle
+  static const Duration _kControlsHideDelay = Duration(seconds: 3);
+  bool _showControls = true;
+  Timer? _controlsHideTimer;
+
+  // Remote camera muted state
+  bool _remoteCameraOff = false;
 
   // Call history tracking
   String? _callHistoryId;
@@ -78,6 +96,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _setupAudioPlayer();
     _startCall();
     _listenForCallResponse();
+    _listenConnectivity();
+    _scheduleControlsHide();
   }
 
   // ================= SETUP AUDIO PLAYER =================
@@ -295,8 +315,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             _stopRingtone();
             _startCallTimer();
             _syncOverlayState();
+            _scheduleControlsHide(); // Start auto-hide once call is active
           },
           onUserOffline: (_, __, ___) => _endCall(),
+          onUserMuteVideo: (_, uid, muted) {
+            if (uid == _remoteUid) {
+              setState(() => _remoteCameraOff = muted);
+            }
+          },
           onError: (code, msg) => debugPrint('Agora error: $code $msg'),
         ),
       );
@@ -492,6 +518,33 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
+  // ================= CONNECTIVITY =================
+  void _listenConnectivity() {
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      final hasConnection = results.any((r) => r != ConnectivityResult.none);
+      setState(() {
+        _connectionStatus = hasConnection ? null : 'Reconnecting...';
+      });
+    });
+  }
+
+  // ================= AUTO-HIDE CONTROLS =================
+  void _scheduleControlsHide() {
+    _controlsHideTimer?.cancel();
+    if (_callActive) {
+      _controlsHideTimer = Timer(_kControlsHideDelay, () {
+        if (mounted) setState(() => _showControls = false);
+      });
+    }
+  }
+
+  void _onTapScreen() {
+    setState(() => _showControls = true);
+    _scheduleControlsHide();
+  }
+
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
@@ -505,208 +558,265 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: Stack(
-            children: [
-            // Remote video (full screen)
-            if (_remoteUid != null)
-              AgoraVideoView(
-                controller: VideoViewController.remote(
-                  rtcEngine: _engine,
-                  canvas: VideoCanvas(uid: _remoteUid),
-                  connection: RtcConnection(channelId: _channel),
-                ),
-              )
-            else if (_callActive)
-              Container(
-                color: Colors.black,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.blue.shade800,
-                        child: const Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        widget.otherUserName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _remoteAccepted ? 'Connecting video...' : 'Calling...',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ],
+          child: GestureDetector(
+            onTap: _onTapScreen,
+            child: Stack(
+              children: [
+              // Remote video (full screen) — show avatar when camera is off
+              if (_remoteUid != null && !_remoteCameraOff)
+                AgoraVideoView(
+                  controller: VideoViewController.remote(
+                    rtcEngine: _engine,
+                    canvas: VideoCanvas(uid: _remoteUid),
+                    connection: RtcConnection(channelId: _channel),
                   ),
-                ),
-              )
-            else
-              Container(
-                color: Colors.black,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Ringing animation for outgoing calls
-                      if (_isCallRinging && widget.isOutgoingCall)
-                        _buildRingingAnimation(),
-
-                      Icon(
-                        _isCallRinging ? Icons.videocam_outlined : Icons.videocam,
-                        color: Colors.white54,
-                        size: 100,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        widget.otherUserName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                )
+              else if (_remoteUid != null && _remoteCameraOff)
+                Container(
+                  color: Colors.black87,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 55,
+                          backgroundImage: widget.otherUserImage.isNotEmpty
+                              ? NetworkImage(widget.otherUserImage) as ImageProvider
+                              : null,
+                          backgroundColor: Colors.grey.shade700,
+                          child: widget.otherUserImage.isEmpty
+                              ? const Icon(Icons.person, size: 60, color: Colors.white70)
+                              : null,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _isCallRinging ? 'Calling...' : 'Connecting...',
-                        style: const TextStyle(color: Colors.white70, fontSize: 18),
-                      ),
-                      const SizedBox(height: 10),
-                      if (_isCallRinging && _joined)
+                        const SizedBox(height: 16),
                         Text(
-                          'Waiting for answer...',
-                          style: TextStyle(color: Colors.orange.shade300),
+                          widget.otherUserName,
+                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                         ),
-
-                      // Ringtone status indicator
-                      if (_isPlayingRingtone && widget.isOutgoingCall)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.music_note, color: Colors.green, size: 16),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Playing ringtone ${_speakerOn ? '(Speaker)' : '(Earpiece)'}',
-                                style: const TextStyle(color: Colors.green, fontSize: 14),
-                              ),
-                            ],
+                        const SizedBox(height: 8),
+                        const Text('Camera off', style: TextStyle(color: Colors.white60)),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_callActive)
+                Container(
+                  color: Colors.black,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.blue.shade800,
+                          child: const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: Colors.white70,
                           ),
                         ),
-                    ],
+                        const SizedBox(height: 20),
+                        Text(
+                          widget.otherUserName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _remoteAccepted ? 'Connecting video...' : 'Calling...',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  color: Colors.black,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Ringing animation for outgoing calls
+                        if (_isCallRinging && widget.isOutgoingCall)
+                          _buildRingingAnimation(),
+
+                        Icon(
+                          _isCallRinging ? Icons.videocam_outlined : Icons.videocam,
+                          color: Colors.white54,
+                          size: 100,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          widget.otherUserName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _isCallRinging ? 'Calling...' : 'Connecting...',
+                          style: const TextStyle(color: Colors.white70, fontSize: 18),
+                        ),
+                        const SizedBox(height: 10),
+                        if (_isCallRinging && _joined)
+                          Text(
+                            'Waiting for answer...',
+                            style: TextStyle(color: Colors.orange.shade300),
+                          ),
+
+                        // Ringtone status indicator
+                        if (_isPlayingRingtone && widget.isOutgoingCall)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.music_note, color: Colors.green, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Playing ringtone ${_speakerOn ? '(Speaker)' : '(Earpiece)'}',
+                                  style: const TextStyle(color: Colors.green, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-            // Local video preview (small overlay)
-            if (_cameraOn && _joined)
-              Positioned(
-                top: 40,
-                right: 20,
-                width: 120,
-                height: 160,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: AgoraVideoView(
-                      controller: VideoViewController(
-                        rtcEngine: _engine,
-                        canvas: const VideoCanvas(uid: 0),
+              // Draggable local video preview (PiP)
+              if (_cameraOn && _joined)
+                Positioned(
+                  top: _pipOffset.dy,
+                  right: _pipOffset.dx,
+                  width: _kPipWidth,
+                  height: _kPipHeight,
+                  child: GestureDetector(
+                    onPanUpdate: (details) {
+                      final size = MediaQuery.sizeOf(context);
+                      setState(() {
+                        double newRight = _pipOffset.dx - details.delta.dx;
+                        double newTop = _pipOffset.dy + details.delta.dy;
+                        newRight = newRight.clamp(
+                            _kPipPadding, size.width - _kPipWidth - _kPipPadding);
+                        newTop = newTop.clamp(
+                            _kPipPadding, size.height - _kPipHeight - _kPipPadding);
+                        _pipOffset = Offset(newRight, newTop);
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: AgoraVideoView(
+                          controller: VideoViewController(
+                            rtcEngine: _engine,
+                            canvas: const VideoCanvas(uid: 0),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-             // Top info bar
-              Positioned(
-                top: 40,
-                left: 20,
-                right: 20,
-                child: Row(
+              // Animated controls overlay (auto-hide)
+              AnimatedOpacity(
+                opacity: _showControls ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Stack(
                   children: [
-                    Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                     decoration: BoxDecoration(
-                       color: Colors.black54,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: Row(
-                       children: [
-                         Icon(
-                           _callActive ? Icons.videocam :
-                           (_isCallRinging ? Icons.videocam_outlined : Icons.videocam),
-                           color: Colors.white,
-                           size: 20,
-                         ),
-                         const SizedBox(width: 8),
-                         Text(
-                           _callActive
-                               ? _format(_duration)
-                               : (_isCallRinging ? 'Calling...' : 'Connecting...'),
-                           style: const TextStyle(color: Colors.white),
-                         ),
-                       ],
-                     ),
+                    // Top info bar
+                    Positioned(
+                      top: 40,
+                      left: 20,
+                      right: 20,
+                      child: Row(
+                        children: [
+                          Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                           decoration: BoxDecoration(
+                             color: Colors.black54,
+                             borderRadius: BorderRadius.circular(20),
+                           ),
+                           child: Row(
+                             children: [
+                               Icon(
+                                 _callActive ? Icons.videocam :
+                                 (_isCallRinging ? Icons.videocam_outlined : Icons.videocam),
+                                 color: Colors.white,
+                                 size: 20,
+                               ),
+                               const SizedBox(width: 8),
+                               Text(
+                                 _callActive
+                                     ? _format(_duration)
+                                     : (_isCallRinging ? 'Calling...' : 'Connecting...'),
+                                 style: const TextStyle(color: Colors.white),
+                               ),
+                             ],
+                           ),
+                          ),
+                          const Spacer(),
+                          CallMinimizeButton(onPressed: _minimizeCall),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
-                    CallMinimizeButton(onPressed: _minimizeCall),
+
+                    // Bottom controls
+                    Positioned(
+                      bottom: 40,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                           _controlButton(
+                             icon: _micMuted ? Icons.mic_off : Icons.mic,
+                             color: Colors.white,
+                             onPressed: _callActive ? _toggleMute : null,
+                           ),
+                           _controlButton(
+                             icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
+                             color: Colors.white,
+                             onPressed: _joined ? _toggleVideo : null,
+                           ),
+                          _controlButton(
+                            icon: Icons.call_end,
+                            color: Colors.red,
+                            onPressed: _endCall,
+                            size: 56,
+                          ),
+                          _controlButton(
+                            icon: Icons.switch_camera,
+                            color: Colors.white,
+                            onPressed: _joined ? _toggleCamera : null,
+                          ),
+                          _controlButton(
+                            icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
+                            color: Colors.white,
+                            onPressed: (_joined || _isCallRinging) ? _toggleSpeaker : null,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-            // Bottom controls
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                   _controlButton(
-                     icon: _micMuted ? Icons.mic_off : Icons.mic,
-                     color: Colors.white,
-                     onPressed: _callActive ? _toggleMute : null,
-                   ),
-                   _controlButton(
-                     icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
-                     color: Colors.white,
-                     onPressed: _joined ? _toggleVideo : null,
-                   ),
-                  _controlButton(
-                    icon: Icons.call_end,
-                    color: Colors.red,
-                    onPressed: _endCall,
-                    size: 56,
-                  ),
-                  _controlButton(
-                    icon: Icons.switch_camera,
-                    color: Colors.white,
-                    onPressed: _joined ? _toggleCamera : null,
-                  ),
-                  _controlButton(
-                    icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
-                    color: Colors.white,
-                    onPressed: (_joined || _isCallRinging) ? _toggleSpeaker : null,
-                  ),
-                ],
-              ),
+              // Connectivity overlay banner (always on top)
+              ConnectionStatusOverlay(message: _connectionStatus),
+              ],
             ),
-            ],
           ),
         ),
       ),
@@ -771,6 +881,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
     _responseSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _controlsHideTimer?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
     unawaited(_stopForegroundService());
     super.dispose();

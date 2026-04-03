@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -11,6 +12,7 @@ import 'tokengenerator.dart';
 import 'call_history_model.dart';
 import 'call_history_service.dart';
 import 'call_foreground_service.dart';
+import 'widgets/connection_status_overlay.dart';
 
 class CallScreen extends StatefulWidget {
   final String currentUserId;
@@ -62,6 +64,10 @@ class _CallScreenState extends State<CallScreen> {
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  String? _connectionStatus;
+
+  static const Duration _kConnectivityLossTimeout = Duration(seconds: 30);
 
   // Call history tracking
   String? _callHistoryId;
@@ -74,6 +80,7 @@ class _CallScreenState extends State<CallScreen> {
     _setupAudioPlayer();
     _listenForCallResponse();
     _startCall();
+    _listenConnectivity();
   }
 
   // ================= SETUP AUDIO PLAYER =================
@@ -100,6 +107,8 @@ class _CallScreenState extends State<CallScreen> {
 
   }
 
+  bool _callDeclined = false; // true when remote explicitly rejected
+
   void _listenForCallResponse() {
     _responseSubscription = NotificationService.callResponses.listen((data) {
       final type = data['type']?.toString();
@@ -111,6 +120,7 @@ class _CallScreenState extends State<CallScreen> {
       if (type == 'call_response') {
         final accepted = data['accepted'] == 'true';
         if (!accepted) {
+          setState(() => _callDeclined = true);
           _endCall();
         }
       } else if (type == 'call_ended') {
@@ -324,9 +334,10 @@ class _CallScreenState extends State<CallScreen> {
       _timeoutTimer = Timer(const Duration(seconds: 30), () {
         if (_remoteUid == null) {
           if (widget.isOutgoingCall) {
+            // Send missed-call notification to the CALLEE (other user)
             NotificationService.sendMissedCallNotification(
-              callerId: widget.currentUserId,
-              callerName: widget.otherUserName,
+              callerId: widget.otherUserId,
+              callerName: widget.currentUserName,
             );
           }
           _endCall();
@@ -357,6 +368,8 @@ class _CallScreenState extends State<CallScreen> {
     if (_ending) return;
     _ending = true;
     final wasMinimized = CallOverlayManager().isMinimized;
+    final wasDeclined = _callDeclined;
+    final wasNoAnswer = !_callActive && !_callDeclined;
 
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
@@ -393,6 +406,20 @@ class _CallScreenState extends State<CallScreen> {
 
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+      // Show feedback snackbar after pop
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final scaffoldCtx = navigatorKey.currentContext;
+        if (scaffoldCtx != null) {
+          ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
+            SnackBar(
+              content: Text(
+                wasDeclined ? 'Call declined' : (wasNoAnswer ? 'No answer' : 'Call ended'),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
     }
   }
 
@@ -443,6 +470,24 @@ class _CallScreenState extends State<CallScreen> {
     }
   }
 
+  // ================= CONNECTIVITY =================
+  void _listenConnectivity() {
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      final hasConnection = results.any((r) => r != ConnectivityResult.none);
+      setState(() {
+        _connectionStatus = hasConnection ? null : 'Reconnecting...';
+      });
+      if (!hasConnection && _callActive) {
+        // Auto-end if connectivity fully drops for too long
+        Future.delayed(_kConnectivityLossTimeout, () {
+          if (mounted && _connectionStatus != null) _endCall();
+        });
+      }
+    });
+  }
+
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
@@ -456,20 +501,22 @@ class _CallScreenState extends State<CallScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                   child: Padding(
-                     padding: const EdgeInsets.only(right: 16, bottom: 24),
-                     child: CallMinimizeButton(onPressed: _minimizeCall),
-                   ),
-                 ),
-                // Ringing animation when call is ringing
-                if (_isCallRinging && widget.isOutgoingCall)
-                  _buildRingingAnimation(),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.topRight,
+                       child: Padding(
+                         padding: const EdgeInsets.only(right: 16, bottom: 24),
+                         child: CallMinimizeButton(onPressed: _minimizeCall),
+                       ),
+                     ),
+                    // Ringing animation when call is ringing
+                    if (_isCallRinging && widget.isOutgoingCall)
+                      _buildRingingAnimation(),
 
                 Icon(
                   _callActive
@@ -538,6 +585,10 @@ class _CallScreenState extends State<CallScreen> {
               ],
             ),
           ),
+          // Connectivity overlay banner
+          ConnectionStatusOverlay(message: _connectionStatus),
+        ],
+      ),
         ),
       ),
     );
@@ -548,6 +599,7 @@ class _CallScreenState extends State<CallScreen> {
     _timeoutTimer?.cancel();
     _callTimer?.cancel();
     _responseSubscription?.cancel();
+    _connectivitySubscription?.cancel();
     _ringtonePlayer.dispose();
     unawaited(_stopForegroundService());
     super.dispose();

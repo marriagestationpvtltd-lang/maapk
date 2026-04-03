@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'tokengenerator.dart';
@@ -6,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import 'call_foreground_service.dart';
+import 'widgets/connection_status_overlay.dart';
 
 class ActiveCallScreen extends StatefulWidget {
   final String channel;
@@ -42,6 +44,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   Duration _duration = Duration.zero;
   int _callStartTime = 0;
 
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  String? _connectionStatus;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +54,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     _initEngine();
     _startCallTimer();
     _initializeOverlay();
+    _listenConnectivity();
   }
 
   void _initializeOverlay() {
@@ -185,6 +191,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   void dispose() {
     _callTimer?.cancel();
+    _connectivitySubscription?.cancel();
     unawaited(_stopForegroundService());
     super.dispose();
   }
@@ -210,6 +217,17 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     }
   }
 
+  void _listenConnectivity() {
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      final hasConnection = results.any((r) => r != ConnectivityResult.none);
+      setState(() {
+        _connectionStatus = hasConnection ? null : 'Reconnecting...';
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -222,59 +240,65 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // Minimize button at the top
-              Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16, top: 12),
-                    child: CallMinimizeButton(onPressed: _minimizeCall),
-                  ),
-                ),
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.phone_in_talk, color: Colors.white, size: 80),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Call with ${widget.callerName}',
-                        style: const TextStyle(color: Colors.white, fontSize: 24),
+              Column(
+                children: [
+                  // Minimize button at the top
+                  Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16, top: 12),
+                        child: CallMinimizeButton(onPressed: _minimizeCall),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _formatDuration(_duration),
-                        style: const TextStyle(color: Colors.white70, fontSize: 18),
-                      ),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    ),
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                             icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
-                                 color: Colors.white, size: 40),
-                             onPressed: _toggleMute,
-                           ),
-                          IconButton(
-                            icon: const Icon(Icons.call_end, color: Colors.red, size: 60),
-                            onPressed: _endCall,
+                          const Icon(Icons.phone_in_talk, color: Colors.white, size: 80),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Call with ${widget.callerName}',
+                            style: const TextStyle(color: Colors.white, fontSize: 24),
                           ),
-                          IconButton(
-                             icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
-                                 color: Colors.white, size: 40),
-                             onPressed: _engineInitialized ? () {
-                               setState(() => _speakerOn = !_speakerOn);
-                               _engine.setEnableSpeakerphone(_speakerOn);
-                             } : null,
-                           ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _formatDuration(_duration),
+                            style: const TextStyle(color: Colors.white70, fontSize: 18),
+                          ),
+                          const SizedBox(height: 40),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                 icon: Icon(_micMuted ? Icons.mic_off : Icons.mic,
+                                     color: Colors.white, size: 40),
+                                 onPressed: _toggleMute,
+                               ),
+                              IconButton(
+                                icon: const Icon(Icons.call_end, color: Colors.red, size: 60),
+                                onPressed: _endCall,
+                              ),
+                              IconButton(
+                                 icon: Icon(_speakerOn ? Icons.volume_up : Icons.volume_off,
+                                     color: Colors.white, size: 40),
+                                 onPressed: _engineInitialized ? () {
+                                   setState(() => _speakerOn = !_speakerOn);
+                                   _engine.setEnableSpeakerphone(_speakerOn);
+                                 } : null,
+                               ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
+              // Connectivity overlay banner
+              ConnectionStatusOverlay(message: _connectionStatus),
             ],
           ),
         ),
