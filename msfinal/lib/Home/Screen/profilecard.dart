@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../Models/masterdata.dart';
+import '../../constant/app_colors.dart';
 import '../../main.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../pushnotification/pushservice.dart';
@@ -346,10 +346,10 @@ class ProfileSwipeUI extends StatefulWidget {
 }
 
 class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
-  final CardSwiperController controller = CardSwiperController();
+  final PageController _pageController = PageController();
   late MatchService matchService;
   late RequestService requestService;
-  late LikeService likeService; // NEW: Added like service
+  late LikeService likeService;
   List<MatchedUser> profiles = [];
   bool isLoading = true;
   String errorMessage = '';
@@ -361,7 +361,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
   var docstatus = 'not_uploaded';
   bool _showPopup = false;
   String _popupMessage = '';
-  bool _isProcessingLike = false; // NEW: To prevent multiple like actions
+  bool _isProcessingLike = false;
 
   @override
   void initState() {
@@ -369,10 +369,16 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     matchService = MatchService(
         apiUrl: widget.matchApiUrl, baseUrl: widget.baseUrl);
     requestService = RequestService(sendRequestUrl: widget.sendRequestApiUrl);
-    likeService = LikeService(likeApiUrl: widget.likeApiUrl); // NEW: Initialize like service
+    likeService = LikeService(likeApiUrl: widget.likeApiUrl);
     _loadProfiles();
     _checkDocumentStatus();
     loadMasterData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
@@ -794,7 +800,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     if (isLoading) {
       return const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
       );
     }
@@ -804,17 +810,22 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Icon(Icons.error_outline, color: AppColors.primary, size: 48),
+            const SizedBox(height: 12),
             Text(
               errorMessage,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(color: AppColors.primary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadProfiles,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: const Text('Retry'),
             ),
@@ -824,34 +835,144 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     }
 
     if (profiles.isEmpty) {
-      return const Center(
-        child: Text(
-          'No profiles found',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'No profiles found',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back later for new matches',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+            ),
+          ],
         ),
       );
     }
 
-    return CardSwiper(
-      controller: controller,
-      cardsCount: profiles.length,
-      numberOfCardsDisplayed: profiles.length > 3 ? 3 : profiles.length,
-      backCardOffset: const Offset(0, 40),
-      padding: const EdgeInsets.only(bottom: 30),
-      cardBuilder: (context, index, x, y) {
-        currentIndex = index;
-        final user = profiles[index];
-        return _buildProfileCard(user, index);
-      },
-      onSwipe: (previousIndex, currentIndex, direction) {
-        print('Swiped $direction from $previousIndex to $currentIndex');
-        return true;
-      },
-      onEnd: () {
-        print('No more cards');
-        return true;
-      },
+    return Column(
+      children: [
+        // Navigation header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              // Prev arrow
+              _NavArrowButton(
+                icon: Icons.chevron_left,
+                enabled: currentIndex > 0,
+                onTap: () {
+                  if (currentIndex > 0) {
+                    _pageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
+              ),
+              const Spacer(),
+              // Counter + label
+              Column(
+                children: [
+                  Text(
+                    '${currentIndex + 1} of ${profiles.length}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Text(
+                    'Suggested Profiles',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Next arrow
+              _NavArrowButton(
+                icon: Icons.chevron_right,
+                enabled: currentIndex < profiles.length - 1,
+                onTap: () {
+                  if (currentIndex < profiles.length - 1) {
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        // Profile cards
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: profiles.length,
+            onPageChanged: (index) {
+              setState(() {
+                currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildProfileCard(profiles[index], index),
+              );
+            },
+          ),
+        ),
+        // Page dots
+        if (profiles.length > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                profiles.length > 7 ? 7 : profiles.length,
+                (i) {
+                  final dotIndex = _slidingWindowDotIndex(i);
+                  final isActive = dotIndex == currentIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: isActive ? 18 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.primary
+                          : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
     );
+  }
+
+  /// Maps a dot position [i] (0–6) to the actual profile index using a
+  /// sliding window when there are more than 7 profiles.
+  int _slidingWindowDotIndex(int i) {
+    if (profiles.length <= 7) return i;
+    if (currentIndex <= 3) return i;
+    if (currentIndex >= profiles.length - 4) return profiles.length - 7 + i;
+    return currentIndex - 3 + i;
   }
 
   Widget _buildPopupMessage() {
@@ -905,65 +1026,32 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 20,
-            spreadRadius: -1,
-            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 18,
+            spreadRadius: -2,
+            offset: const Offset(0, 6),
           )
         ],
       ),
-      child: Stack(
+      child: Column(
         children: [
-          Positioned(
-            top: -8,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                Container(
-                  height: 14,
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 14,
-                  margin: const EdgeInsets.symmetric(horizontal: 28),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 14,
-                  margin: const EdgeInsets.symmetric(horizontal: 36),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(26)),
-                  child: _ImageSliderWithDots(
+          // ── Photo section (top ~55%) ──────────────────────────────
+          Expanded(
+            flex: 55,
+            child: ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Stack(
+                children: [
+                  _ImageSliderWithDots(
                     user: user,
                     photos: photos,
                     matchService: matchService,
                     onPhotoRequestTap: () {
-                      if(docstatus == 'approved') {
+                      if (docstatus == 'approved') {
                         _showSendRequestDialog(
                           context,
                           user.userId,
@@ -971,152 +1059,214 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
                           defaultRequestType: 'Photo',
                         );
                       } else {
-                        // Handle document status not approved
-                        if(docstatus == 'not_uploaded')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
-                        if(docstatus == 'pending')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
-                        if(docstatus == 'rejected')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => IDVerificationScreen()),
+                        );
                       }
                     },
                   ),
-                ),
-              ),
-              Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-
-                    SizedBox(width: 20,),
-
-                    GestureDetector(
-                      onTap: () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        final userDataString = prefs.getString('user_data');
-                        final userData = jsonDecode(userDataString!);
-                        final senderId = int.tryParse(userData["id"].toString());
-                        if(docstatus == 'approved')
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileLoader(userId: user.userId.toString(), myId: senderId.toString(),),
+                  // Match % badge – top right
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: _MatchBadge(percent: user.matchPercent),
+                  ),
+                  // Verified badge – top left
+                  if (user.isVerified)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                            )
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified,
+                                color: Colors.white, size: 14),
+                            SizedBox(width: 4),
+                            Text(
+                              'Verified',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          );
-                        if(docstatus == 'not_uploaded')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
-                        if(docstatus == 'pending')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
-                        if(docstatus == 'rejected')
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen(),));
-                      },
-                      child: _bottomBtn(Icons.remove_red_eye, "View Profile", Colors.red),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Gallery count badge
+                  if (user.gallery.isNotEmpty)
+                    Positioned(
+                      bottom: 10,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library_outlined,
+                                size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${user.gallery.length + 1} photos',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Info section (bottom ~45%) ────────────────────────────
+          Expanded(
+            flex: 45,
+            child: Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(20)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          user.displayName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Age & Height
+                  _InfoRow(
+                    icon: Icons.cake_outlined,
+                    text: '${user.age} yrs  •  ${user.heightDisplay}',
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Location
+                  _InfoRow(
+                    icon: Icons.location_on_outlined,
+                    text: user.location,
+                  ),
+
+                  // Designation
+                  if (user.designation.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                      icon: Icons.work_outline,
+                      text: user.designation,
                     ),
                   ],
-                ),
-              ),
-            ],
-          ),
-          // Like button - Updated to handle like action
-          Positioned(
-            top: 18,
-            left: 18,
-            child: GestureDetector(
-              onTap: () => _handleLikeAction(index, user),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: user.isLiked ? Colors.pink : Colors.red,
-                    width: 1,
-                  ),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: CircleAvatar(
-                  radius: 23,
-                  backgroundColor: Colors.white.withOpacity(0.9),
-                  child: Icon(
-                    user.isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: user.isLiked ? Colors.pink : Colors.red,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (user.isVerified)
-            Positioned(
-              top: 18,
-              right: 18,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: Colors.red,
-                      width: 1,
-                    )),
-                child: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Colors.white.withOpacity(0.9),
-                  child: const Icon(Icons.verified, color: Colors.red),
-                ),
-              ),
-            ),
-          Positioned(
-            top: 18,
-            right: user.isVerified ? 80 : 18,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getMatchColor(user.matchPercent),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: _getMatchColor(user.matchPercent).withOpacity(0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
+
+                  // Compatibility bar
+                  const SizedBox(height: 8),
+                  _CompatibilityBar(percent: user.matchPercent),
+
+                  const Spacer(),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      // Express Interest button
+                      Expanded(
+                        child: _ActionButton(
+                          label: user.isLiked
+                              ? 'Interested'
+                              : 'Express Interest',
+                          icon: user.isLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          isPrimary: false,
+                          isActive: user.isLiked,
+                          isLoading: _isProcessingLike,
+                          onTap: () => _handleLikeAction(index, user),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // View Profile button
+                      Expanded(
+                        child: _ActionButton(
+                          label: 'View Profile',
+                          icon: Icons.person_outline,
+                          isPrimary: true,
+                          onTap: () async {
+                            final prefs =
+                                await SharedPreferences.getInstance();
+                            final userDataString =
+                                prefs.getString('user_data');
+                            final userData = jsonDecode(userDataString!);
+                            final senderId = int.tryParse(
+                                userData["id"].toString());
+                            if (docstatus == 'approved') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfileLoader(
+                                    userId: user.userId.toString(),
+                                    myId: senderId.toString(),
+                                  ),
+                                ),
+                              );
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        IDVerificationScreen()),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              child: Text(
-                '${user.matchPercent}% Match',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ),
-          if (user.gallery.isNotEmpty)
-            Positioned(
-              top: 18,
-              left: 80,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.photo_library, size: 14, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${user.gallery.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1125,34 +1275,242 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
   Color _getMatchColor(int percent) {
     if (percent >= 80) return Colors.green;
     if (percent >= 50) return Colors.orange;
-    return Colors.red;
+    return AppColors.primary;
   }
+}
 
-  Widget _bottomBtn(IconData icon, String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
-        color: color,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+// ─── Helper widgets ───────────────────────────────────────────────────────────
+
+class _NavArrowButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _NavArrowButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: enabled
+              ? AppColors.primary.withOpacity(0.08)
+              : Colors.grey.shade100,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: enabled
+                ? AppColors.primary.withOpacity(0.3)
+                : Colors.grey.shade300,
           ),
-        ],
+        ),
+        child: Icon(
+          icon,
+          color: enabled ? AppColors.primary : Colors.grey.shade400,
+          size: 22,
+        ),
       ),
     );
   }
 }
+
+class _MatchBadge extends StatelessWidget {
+  final int percent;
+  const _MatchBadge({required this.percent});
+
+  Color get _color {
+    if (percent >= 80) return const Color(0xFF388E3C);
+    if (percent >= 50) return const Color(0xFFF57C00);
+    return AppColors.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _color,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _color.withOpacity(0.35),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Text(
+        '$percent% Match',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: AppColors.textSecondary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompatibilityBar extends StatelessWidget {
+  final int percent;
+  const _CompatibilityBar({required this.percent});
+
+  Color get _color {
+    if (percent >= 80) return const Color(0xFF388E3C);
+    if (percent >= 50) return const Color(0xFFF57C00);
+    return AppColors.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Compatibility',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            Text(
+              '$percent%',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percent / 100,
+            minHeight: 5,
+            backgroundColor: Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation<Color>(_color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isPrimary;
+  final bool isActive;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.isPrimary,
+    required this.onTap,
+    this.isActive = false,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = AppColors.primary;
+
+    if (isPrimary) {
+      return ElevatedButton.icon(
+        onPressed: isLoading ? null : onTap,
+        icon: isLoading
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(icon, size: 16),
+        label: Text(label, style: const TextStyle(fontSize: 13)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 0,
+        ),
+      );
+    }
+
+    // Outlined style for Express Interest
+    return OutlinedButton.icon(
+      onPressed: isLoading ? null : onTap,
+      icon: isLoading
+          ? SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              ),
+            )
+          : Icon(icon, size: 16, color: isActive ? primaryColor : AppColors.textSecondary),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          color: isActive ? primaryColor : AppColors.textSecondary,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        side: BorderSide(
+          color: isActive ? primaryColor : Colors.grey.shade300,
+        ),
+      ),
+    );
+  }
+}
+
 
 class _ImageSliderWithDots extends StatefulWidget {
   final MatchedUser user;
@@ -1205,19 +1563,19 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
           },
         ),
 
-        // Gradient overlay at bottom
+        // Subtle gradient at bottom (for visual continuity)
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
           child: Container(
-            height: 180,
+            height: 60,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
                 colors: [
-                  Colors.black.withOpacity(0.8),
+                  Colors.black.withOpacity(0.3),
                   Colors.transparent,
                 ],
               ),
@@ -1225,103 +1583,30 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
           ),
         ),
 
-        // User info overlay
-        Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    widget.user.displayName,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  if (widget.user.isVerified)
-                    const Icon(Icons.verified, color: Colors.white, size: 20),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Age ${widget.user.age} yrs, ${widget.user.heightDisplay}",
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 18, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      widget.user.location,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              if (widget.user.designation.isNotEmpty)
-                Row(
-                  children: [
-                    const Icon(Icons.work_outline,
-                        size: 18, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        widget.user.designation,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 4),
-              if (widget.user.gallery.isNotEmpty)
-                Text(
-                  '${widget.user.gallery.length} photos in gallery',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        // Page indicators
+        // Page indicators (top-center thin line dots)
         if (widget.photos.length > 1)
           Positioned(
-            right: 18,
-            bottom: widget.user.designation.isNotEmpty ? 200 : 180,
+            top: 10,
+            left: 40,
+            right: 40,
             child: Row(
               children: List.generate(
                 widget.photos.length,
-                    (index) => Container(
-                  margin: const EdgeInsets.only(bottom: 6, left: 5),
-                  width: _currentPage == index ? 18 : 10,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _currentPage == index
-                        ? Colors.red
-                        : Colors.white.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+(index) {
+                  final isActive = _currentPage == index;
+                  return Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.45),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -1336,14 +1621,13 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Lock icon - now clickable
                     GestureDetector(
                       onTap: widget.onPhotoRequestTap,
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.red.shade600.withOpacity(0.9),
+                          color: AppColors.primary.withOpacity(0.9),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
@@ -1355,15 +1639,15 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
                         child: const Icon(
                           Icons.lock,
                           color: Colors.white,
-                          size: 40,
+                          size: 36,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
+                    const SizedBox(height: 16),
+                    const Text(
                       'Photo Protected',
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -1584,7 +1868,7 @@ class _ImageSliderWithDotsState extends State<_ImageSliderWithDots> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Colors.orange.shade700,
                     ),
                   ),
                 ],
