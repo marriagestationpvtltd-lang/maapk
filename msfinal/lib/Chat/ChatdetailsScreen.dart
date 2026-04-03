@@ -1695,6 +1695,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         }
 
         final messages = snapshot.data!.docs;
+
+        // Schedule UI updates after first load completes
+        if (_isFirstLoad) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // Scroll to bottom after messages are loaded
+            _scrollToBottom();
+            // Auto-focus keyboard after scroll completes
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (mounted) {
+                _messageFocusNode.requestFocus();
+              }
+            });
+          });
+        }
+
         _isFirstLoad = false;
 
         // Update last document for pagination
