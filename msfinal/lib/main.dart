@@ -16,6 +16,7 @@ import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
 import 'Chat/call_overlay_manager.dart';
 import 'Chat/ChatdetailsScreen.dart';
+import 'Chat/screen_state_manager.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
 import 'Startup/onboarding.dart';
@@ -572,6 +573,25 @@ Future<void> setupFirebaseMessaging() async {
     // Trigger incoming call for new call notifications
     if (data['type'] == 'call' || data['type'] == 'video_call') {
       NotificationService.triggerIncomingCall(data);
+      // When app is in foreground, the calling UI opens directly via CallOverlayWrapper.
+      // Do NOT show a notification banner — it would appear alongside the call screen.
+      await NotificationInboxService.recordIncomingRemoteNotification(
+        data: data,
+        fallbackTitle: message.notification?.title,
+        fallbackBody: message.notification?.body,
+      );
+      return;
+    }
+
+    // call_response and call_ended are handled programmatically by the call screen UI.
+    // No notification banner is needed; just record them for the inbox.
+    if (data['type'] == 'call_response' || data['type'] == 'call_ended') {
+      await NotificationInboxService.recordIncomingRemoteNotification(
+        data: data,
+        fallbackTitle: message.notification?.title,
+        fallbackBody: message.notification?.body,
+      );
+      return;
     }
 
     await NotificationInboxService.recordIncomingRemoteNotification(
@@ -580,19 +600,12 @@ Future<void> setupFirebaseMessaging() async {
       fallbackBody: message.notification?.body,
     );
 
-    // Show WhatsApp-like notification for calls
-    if (data['type'] == 'call' || data['type'] == 'video_call') {
-      await _displayWhatsAppCallNotification(
-        data,
-        message.notification,
-        localPlugin: flutterLocalNotificationsPlugin,
-      );
-
-      // Note: Navigation is handled by CallOverlayWrapper's incoming call stream listener
-      // to avoid duplicate navigation
-    } else {
-      await _showStandardNotification(message);
+    // Suppress chat notifications when the recipient is actively viewing that chat
+    if (!shouldShowChatNotification(data)) {
+      return;
     }
+
+    await _showStandardNotification(message);
   });
 
   // Handle messages when app is in background but opened via notification

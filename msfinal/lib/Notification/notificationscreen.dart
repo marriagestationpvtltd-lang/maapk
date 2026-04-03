@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../otherenew/othernew.dart';
+import '../Chat/ChatdetailsScreen.dart';
 import '../pushnotification/pushservice.dart';
 import '../ReUsable/loading_widgets.dart';
 import 'notification_inbox_service.dart';
@@ -467,6 +468,50 @@ class _MatrimonyNotificationPageState
         notification['sender_id']?.toString();
   }
 
+  Future<void> _navigateToChat(Map<String, dynamic> notif) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null || !mounted) return;
+
+      final userData = json.decode(userDataString) as Map<String, dynamic>;
+      final currentUserId = userData['id']?.toString() ?? '';
+      final firstName = userData['firstName']?.toString().trim() ?? '';
+      final lastName = userData['lastName']?.toString().trim() ?? '';
+      final currentUserName =
+          [firstName, lastName].where((s) => s.isNotEmpty).join(' ').trim();
+
+      final senderId = notif['sender_id']?.toString() ??
+          notif['related_user_id']?.toString() ??
+          '';
+      if (senderId.isEmpty || currentUserId.isEmpty) return;
+
+      final chatRoomId = currentUserId.compareTo(senderId) < 0
+          ? '${currentUserId}_$senderId'
+          : '${senderId}_$currentUserId';
+
+      final senderName = notif['peer_name']?.toString() ?? 'User';
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatDetailScreen(
+            chatRoomId: chatRoomId,
+            receiverId: senderId,
+            receiverName: senderName,
+            receiverImage: '',
+            currentUserId: currentUserId,
+            currentUserName: currentUserName.isEmpty ? 'User' : currentUserName,
+            currentUserImage: '',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error navigating to chat from notification: $e');
+    }
+  }
+
   bool _shouldShowReminderAction(Map<String, dynamic> notification) {
     return notification['type'] == 'request_sent' &&
         (notification['request_status']?.toString().toLowerCase() ?? 'pending') ==
@@ -650,19 +695,25 @@ class _MatrimonyNotificationPageState
                                           await _markAsRead(notif['id']);
                                         }
 
-                                        final userId = _notificationUserId(notif);
-                                        if (userId == null || userId.isEmpty) {
-                                          return;
-                                        }
-
                                         if (!mounted) return;
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                ProfileScreen(userId: userId),
-                                          ),
-                                        );
+
+                                        final type = notif['type']?.toString() ?? '';
+                                        if (type == 'chat_message' || type == 'chat') {
+                                          await _navigateToChat(notif);
+                                        } else {
+                                          final userId = _notificationUserId(notif);
+                                          if (userId == null || userId.isEmpty) {
+                                            return;
+                                          }
+                                          if (!mounted) return;
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ProfileScreen(userId: userId),
+                                            ),
+                                          );
+                                        }
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.all(16),

@@ -137,7 +137,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _markMessagesAsRead();
 
     // Set chat as active when screen opens
-    ScreenStateManager().onChatScreenOpened(widget.chatRoomId, widget.currentUserId);
+    ScreenStateManager().onChatScreenOpened(
+      widget.chatRoomId,
+      widget.currentUserId,
+      partnerUserId: widget.receiverId,
+    );
 
     // Add observer for app lifecycle
     WidgetsBinding.instance.addObserver(this);
@@ -257,7 +261,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     switch (state) {
       case AppLifecycleState.resumed:
       // App came back to foreground, set chat as active
-        ScreenStateManager().onChatScreenOpened(widget.chatRoomId, widget.currentUserId);
+        ScreenStateManager().onChatScreenOpened(
+          widget.chatRoomId,
+          widget.currentUserId,
+          partnerUserId: widget.receiverId,
+        );
         _markMessagesAsRead();
         break;
       case AppLifecycleState.paused:
