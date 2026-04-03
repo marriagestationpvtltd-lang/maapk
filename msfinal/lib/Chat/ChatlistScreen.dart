@@ -47,14 +47,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
   DateTime? _adminLastMessageTime;
   int _adminUnreadCount = 0;
   bool _adminLoading = true;
-  String _userCity = '';
   static const String _adminUserId = '1';
   static const String _adminDisplayName = 'Admin Support';
-  final LinearGradient _adminGradient = const LinearGradient(
-    colors: [Color(0xFF0F172A), Color(0xFF1D4ED8)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 
   @override
   void initState() {
@@ -98,11 +92,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       final userData = jsonDecode(userDataString);
       final rawId = userData["id"];
       final userIdString = rawId.toString().trim();
-      final detectedCity = (userData['city'] ??
-              userData['current_city'] ??
-              userData['address'] ??
-              '')
-          .toString();
 
       UserMasterData user = await fetchUserMasterData(userIdString);
 
@@ -115,7 +104,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           name = user.firstName;
           isLoading = false;
           docstatus = user.docStatus;
-          _userCity = detectedCity;
         });
       }
 
@@ -273,51 +261,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return DateFormat('hh:mm a').format(time);
   }
 
-  Widget _buildLocationChip(String label, {bool highlight = false}) {
-    final bool hasLabel = label.trim().isNotEmpty;
-    final String display = hasLabel ? label : 'Location not shared';
-    final Color baseColor =
-        highlight ? const Color(0xFF1D4ED8) : const Color(0xFF6B7280);
-    final Color background =
-        highlight ? const Color(0xFFE0E7FF) : const Color(0xFFF3F4F6);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: baseColor.withOpacity(0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.location_on_rounded, size: 14, color: baseColor),
-          const SizedBox(width: 6),
-          Text(
-            display,
-            style: TextStyle(
-              color: baseColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPinnedAdminCard() {
     final String subtitle = _adminLoading
-        ? 'Loading admin updates...'
+        ? 'Loading...'
         : (_adminLastMessage.isNotEmpty
             ? _adminLastMessage
-            : 'Message us anytime for account help');
+            : 'Message us anytime for help');
     final String timeLabel = _formatTime(_adminLastMessageTime);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: () async {
           await _markAdminChatSeen();
           if (!mounted) return;
@@ -334,59 +289,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
           await _markAdminChatSeen();
         },
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            gradient: _adminGradient,
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+                color: const Color(0xFFF90E18).withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 26,
-                    backgroundColor: Colors.white.withOpacity(0.18),
-                    child: const Icon(Icons.support_agent,
-                        color: Colors.white, size: 28),
-                  ),
-                  Positioned(
-                    bottom: -4,
-                    right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.push_pin,
-                              size: 12, color: Color(0xFF1D4ED8)),
-                          SizedBox(width: 4),
-                          Text(
-                            'Pinned',
-                            style: TextStyle(
-                              color: Color(0xFF1D4ED8),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white.withOpacity(0.2),
+                child: const Icon(Icons.support_agent,
+                    color: Colors.white, size: 24),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,25 +324,25 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           _adminDisplayName,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 6),
                         if (_adminUnreadCount > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              '$_adminUnreadCount new',
+                              '$_adminUnreadCount',
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFF90E18),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -425,56 +352,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             timeLabel,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _buildLocationChip(
-                          _userCity.isNotEmpty ? _userCity : 'Set your city',
-                          highlight: true,
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.16),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.shield_moon_outlined,
-                                  size: 14, color: Colors.white),
-                              SizedBox(width: 6),
-                              Text(
-                                'Admin support',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
