@@ -10,6 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../Calling/OutgoingCall.dart';
+import '../Calling/videocall.dart';
+import '../otherenew/othernew.dart';
 
 class AdminChatScreen extends StatefulWidget {
   final String senderID;
@@ -31,6 +34,7 @@ class AdminChatScreen extends StatefulWidget {
 
 class _AdminChatScreenState extends State<AdminChatScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _messageFocusNode = FocusNode();
   final AudioRecorder _record = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isRecording = false;
@@ -71,6 +75,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
+      _messageFocusNode.requestFocus();
     });
 
 // Automatically send profile card if provided (optional)
@@ -84,6 +89,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _messageFocusNode.dispose();
     _record.dispose();
     _audioPlayer.dispose();
     _scrollController.dispose();
@@ -202,9 +208,11 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   }
 
   Future<void> _sendText() async {
-    if (_controller.text.trim().isNotEmpty) {
-      await _sendMessage('text', _controller.text.trim());
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
       _controller.clear();
+      _messageFocusNode.requestFocus();
+      await _sendMessage('text', text);
     }
   }
 
@@ -405,9 +413,36 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                           fontSize: 13,
                           color: _lightTextColor,
                           fontWeight: FontWeight.w600,
-                        ),
+                         ),
                       ),
                     ),
+                  // Profile card: render directly without gradient bubble
+                  if (data['type'] == 'profile_card') ...[
+                    _buildProfileCardMessage(data['profileData'], isMe),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment:
+                            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        children: [
+                          Text(
+                            formattedTime,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _lightTextColor,
+                            ),
+                          ),
+                          if (data['liked'] ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Icon(Icons.favorite,
+                                  size: 16, color: _accentColor),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ] else
                   Container(
                     constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.75),
@@ -455,8 +490,6 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                           _buildDocumentMessage(data['message'], isMe),
                         if (data['type'] == 'image')
                           _buildImageMessage(data['imageUrl'], isMe),
-                        if (data['type'] == 'profile_card')
-                          _buildProfileCardMessage(data['profileData'], isMe),
                         const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -759,7 +792,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     );
   }
 
-// Updated Profile Card Message with Blur Logic
+// Updated Profile Card Message with Pro-Level Design
   Widget _buildProfileCardMessage(
       Map<String, dynamic>? profileData, bool isMe) {
     if (profileData == null) {
@@ -770,269 +803,353 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     }
 
     final bool shouldBlurPhoto = profileData['shouldBlurPhoto'] ?? true;
+    final String userId = profileData['userId']?.toString() ?? '';
+    final String firstName = profileData['firstName']?.toString() ?? '';
+    final String lastName = profileData['lastName']?.toString() ?? '';
+    final String fullName = '$firstName $lastName'.trim();
+    final String displayName =
+        fullName.isNotEmpty ? fullName : (profileData['name']?.toString() ?? 'Unknown');
+    final String? photoUrl = profileData['profileImage']?.toString();
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 
     return Container(
-      width: 280,
-      padding: const EdgeInsets.all(12),
+      width: 300,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: _primaryGradient.colors[0].withOpacity(0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-// Header with ID
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _primaryGradient.colors[0].withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'MS: ${profileData['userId'] ?? 'N/A'}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _primaryGradient.colors[0],
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Gradient header banner ──
+            Container(
+              height: 70,
+              decoration: BoxDecoration(
+                gradient: _primaryGradient,
               ),
-              const Spacer(),
-              if (!shouldBlurPhoto)
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.lock_open,
-                      color: Colors.white, size: 12),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-// Profile Image and Basic Info
-          Row(
-            children: [
-// Profile Image with Blur Logic
-              Stack(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: shouldBlurPhoto
-                        ? ImageFiltered(
-                            imageFilter: ImageFilter.blur(
-                              sigmaX: 5.0,
-                              sigmaY: 5.0,
-                            ),
-                            child: Container(
-                              width: 70,
-                              height: 70,
-                              color: Colors.grey.shade200,
-                              child: profileData['profileImage'] != null &&
-                                      profileData['profileImage']
-                                          .toString()
-                                          .isNotEmpty
-                                  ? Image.network(
-                                      profileData['profileImage'],
-                                      width: 70,
-                                      height: 70,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(
-                                          Icons.person,
-                                          size: 35,
-                                          color: Colors.grey),
-                                    )
-                                  : const Icon(Icons.person,
-                                      size: 35, color: Colors.grey),
-                            ),
-                          )
-                        : Container(
-                            width: 70,
-                            height: 70,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: profileData['profileImage'] != null &&
-                                      profileData['profileImage']
-                                          .toString()
-                                          .isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(
-                                          profileData['profileImage']),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                              color: Colors.grey.shade200,
-                            ),
-                            child: profileData['profileImage'] == null ||
-                                    profileData['profileImage']
-                                        .toString()
-                                        .isEmpty
-                                ? const Icon(Icons.person,
-                                    size: 35, color: Colors.grey)
-                                : null,
-                          ),
+                  Icon(Icons.favorite, color: Colors.white.withOpacity(0.7), size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Matrimony Profile',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                  if (shouldBlurPhoto)
-                    Positioned(
-                      bottom: 2,
-                      right: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'MS-$userId',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Profile photo + name ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+              child: Column(
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -30),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Profile photo
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: shouldBlurPhoto
+                                ? ImageFiltered(
+                                    imageFilter: ImageFilter.blur(
+                                      sigmaX: 6.0,
+                                      sigmaY: 6.0,
+                                    ),
+                                    child: Container(
+                                      width: 72,
+                                      height: 72,
+                                      color: Colors.grey.shade200,
+                                      child: hasPhoto
+                                          ? Image.network(
+                                              photoUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                            )
+                                          : Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 72,
+                                    height: 72,
+                                    color: Colors.grey.shade200,
+                                    child: hasPhoto
+                                        ? Image.network(
+                                            photoUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                          )
+                                        : Icon(Icons.person, size: 38, color: Colors.grey.shade400),
+                                  ),
+                          ),
                         ),
-                        child: const Icon(Icons.lock,
-                            color: Colors.white, size: 10),
+                        const SizedBox(width: 12),
+                        // Name + meta
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  displayName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: _textColor,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                if (profileData['age'] != null && profileData['age'] != 'N/A')
+                                  Row(
+                                    children: [
+                                      Icon(Icons.cake_outlined, size: 12, color: _lightTextColor),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${profileData['age']}',
+                                        style: TextStyle(fontSize: 12, color: _lightTextColor),
+                                      ),
+                                    ],
+                                  ),
+                                if (profileData['location'] != null &&
+                                    profileData['location'].toString().isNotEmpty &&
+                                    profileData['location'] != 'Location not specified')
+                                  Row(
+                                    children: [
+                                      Icon(Icons.location_on_outlined, size: 12, color: _lightTextColor),
+                                      const SizedBox(width: 3),
+                                      Expanded(
+                                        child: Text(
+                                          profileData['location'],
+                                          style: TextStyle(fontSize: 12, color: _lightTextColor),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Photo lock/unlock badge
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: shouldBlurPhoto ? Colors.orange.shade100 : Colors.green.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              shouldBlurPhoto ? Icons.lock_outline : Icons.lock_open_outlined,
+                              size: 14,
+                              color: shouldBlurPhoto ? Colors.orange.shade700 : Colors.green.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Info chips ──
+                  Transform.translate(
+                    offset: const Offset(0, -22),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (profileData['religion'] != null && profileData['religion'] != 'N/A')
+                          _buildInfoChip(Icons.menu_book_outlined, profileData['religion']),
+                        if (profileData['community'] != null && profileData['community'] != 'N/A')
+                          _buildInfoChip(Icons.groups_outlined, profileData['community']),
+                        if (profileData['occupation'] != null && profileData['occupation'] != 'N/A')
+                          _buildInfoChip(Icons.work_outline, profileData['occupation']),
+                        if (profileData['education'] != null && profileData['education'] != 'N/A')
+                          _buildInfoChip(Icons.school_outlined, profileData['education']),
+                        if (profileData['height'] != null && profileData['height'] != 'N/A')
+                          _buildInfoChip(Icons.height, profileData['height']),
+                      ],
+                    ),
+                  ),
+
+                  // ── Bio ──
+                  if (profileData['bio'] != null &&
+                      profileData['bio'].toString().isNotEmpty &&
+                      profileData['bio'] != 'No bio available')
+                    Transform.translate(
+                      offset: const Offset(0, -14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _primaryGradient.colors[0].withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '"${profileData['bio']}"',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _lightTextColor,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(width: 12),
-// Name and Basic Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${profileData['firstName'] ?? ''} ${profileData['lastName'] ?? ''}'
-                          .trim(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: _textColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    if (profileData['location'] != null &&
-                        profileData['location'].toString().isNotEmpty &&
-                        profileData['location'] != 'Location not specified')
-                      Row(
-                        children: [
-                          Icon(Icons.location_on,
-                              size: 11, color: _lightTextColor),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              profileData['location'],
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: _lightTextColor,
+            ),
+
+            // ── Divider ──
+            Divider(height: 1, color: Colors.grey.shade200),
+
+            // ── Action buttons ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        if (userId.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AdminChatScreen(
+                                senderID: widget.isAdmin ? userId : widget.senderID,
+                                userName: displayName,
+                                isAdmin: widget.isAdmin,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 2),
-                    if (profileData['age'] != null &&
-                        profileData['age'] != 'N/A')
-                      Text(
-                        'Age: ${profileData['age']}',
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.chat_bubble_outline,
+                          size: 16, color: _primaryGradient.colors[0]),
+                      label: Text(
+                        'Chat',
                         style: TextStyle(
-                          fontSize: 10,
-                          color: _lightTextColor,
+                          color: _primaryGradient.colors[0],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
-                  ],
-                ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(width: 1, height: 28, color: Colors.grey.shade200),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        if (userId.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfileScreen(userId: userId),
+                            ),
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.person_outline,
+                          size: 16, color: _primaryGradient.colors[0]),
+                      label: Text(
+                        'View Profile',
+                        style: TextStyle(
+                          color: _primaryGradient.colors[0],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-// Details Grid
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
             ),
-            child: Column(
-              children: [
-                if (profileData['religion'] != null &&
-                    profileData['religion'] != 'N/A')
-                  _buildProfileDetailRow(
-                      Icons.menu_book, 'Religion', profileData['religion']),
-                if (profileData['community'] != null &&
-                    profileData['community'] != 'N/A')
-                  _buildProfileDetailRow(
-                      Icons.groups, 'Community', profileData['community']),
-                if (profileData['occupation'] != null &&
-                    profileData['occupation'] != 'N/A')
-                  _buildProfileDetailRow(
-                      Icons.work, 'Occupation', profileData['occupation']),
-                if (profileData['education'] != null &&
-                    profileData['education'] != 'N/A')
-                  _buildProfileDetailRow(
-                      Icons.school, 'Education', profileData['education']),
-                if (profileData['height'] != null &&
-                    profileData['height'] != 'N/A')
-                  _buildProfileDetailRow(
-                      Icons.height, 'Height', profileData['height']),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-// Bio
-          if (profileData['bio'] != null &&
-              profileData['bio'].toString().isNotEmpty &&
-              profileData['bio'] != 'No bio available')
-            Text(
-              profileData['bio'],
-              style: TextStyle(
-                fontSize: 11,
-                color: _lightTextColor,
-                fontStyle: FontStyle.italic,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _primaryGradient.colors[0].withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _primaryGradient.colors[0].withOpacity(0.2)),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: _primaryGradient.colors[0]),
-          const SizedBox(width: 6),
+          Icon(icon, size: 11, color: _primaryGradient.colors[0]),
+          const SizedBox(width: 4),
           Text(
-            '$label: ',
+            label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
+              color: _primaryGradient.colors[0],
               fontWeight: FontWeight.w500,
-              color: _textColor,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 10,
-                color: _lightTextColor,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ),
         ],
@@ -1065,6 +1182,42 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         ),
         elevation: 0,
         actions: [
+          if (!widget.isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.call, color: Colors.white),
+              tooltip: 'Audio Call',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CallScreen(
+                      currentUserId: widget.senderID,
+                      currentUserName: widget.userName,
+                      otherUserId: "1",
+                      otherUserName: "Admin",
+                    ),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.videocam, color: Colors.white),
+              tooltip: 'Video Call',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoCallScreen(
+                      currentUserId: widget.senderID,
+                      currentUserName: widget.userName,
+                      otherUserId: "1",
+                      otherUserName: "Admin",
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () {
@@ -1372,6 +1525,11 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               ),
               child: TextField(
                 controller: _controller,
+                focusNode: _messageFocusNode,
+                maxLines: null,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: 'Type a message...',
                   border: InputBorder.none,
