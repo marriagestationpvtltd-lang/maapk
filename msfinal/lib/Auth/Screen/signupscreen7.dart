@@ -19,7 +19,8 @@ class AstrologicDetailsPage extends StatefulWidget {
   State<AstrologicDetailsPage> createState() => _AstrologicDetailsPageState();
 }
 
-class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with SingleTickerProviderStateMixin {
+class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
+    with SingleTickerProviderStateMixin {
   bool submitted = false;
   bool isLoading = false;
   late AnimationController _animationController;
@@ -57,19 +58,42 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
   };
 
   // Dropdown options
-  final List<String> _beliefOptions = ['Yes', 'No', 'Doesn\'t matter'];
-  final List<String> _countryOptions = ['Nepal', 'India', 'USA', 'UK', 'Canada', 'Australia', 'Other'];
-  final List<String> _cityOptions = ['Kathmandu', 'Pokhara', 'Lalitpur', 'Bharatpur', 'Biratnagar', 'Birgunj', 'Butwal', 'Dharan', 'Nepalgunj', 'Other'];
-  final List<String> _zodiacSignOptions = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
-  final List<String> _monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  final List<String> _dayOptions = List.generate(31, (index) => (index + 1).toString().padLeft(2, '0'));
-  final List<String> _yearOptions = List.generate(100, (index) => (DateTime.now().year - 17 - index).toString());
+  final List<String> _countryOptions = [
+    'Nepal', 'India', 'USA', 'UK', 'Canada', 'Australia', 'Other'
+  ];
+  final List<String> _cityOptions = [
+    'Kathmandu', 'Pokhara', 'Lalitpur', 'Bharatpur', 'Biratnagar',
+    'Birgunj', 'Butwal', 'Dharan', 'Nepalgunj', 'Other'
+  ];
+  final List<String> _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  final List<String> _dayOptions =
+      List.generate(31, (i) => (i + 1).toString().padLeft(2, '0'));
+  final List<String> _yearOptions =
+      List.generate(100, (i) => (DateTime.now().year - 17 - i).toString());
+
+  // Zodiac data with symbols
+  final List<Map<String, String>> _zodiacData = [
+    {'name': 'Aries',       'symbol': '♈', 'dates': 'Mar 21–Apr 19'},
+    {'name': 'Taurus',      'symbol': '♉', 'dates': 'Apr 20–May 20'},
+    {'name': 'Gemini',      'symbol': '♊', 'dates': 'May 21–Jun 20'},
+    {'name': 'Cancer',      'symbol': '♋', 'dates': 'Jun 21–Jul 22'},
+    {'name': 'Leo',         'symbol': '♌', 'dates': 'Jul 23–Aug 22'},
+    {'name': 'Virgo',       'symbol': '♍', 'dates': 'Aug 23–Sep 22'},
+    {'name': 'Libra',       'symbol': '♎', 'dates': 'Sep 23–Oct 22'},
+    {'name': 'Scorpio',     'symbol': '♏', 'dates': 'Oct 23–Nov 21'},
+    {'name': 'Sagittarius', 'symbol': '♐', 'dates': 'Nov 22–Dec 21'},
+    {'name': 'Capricorn',   'symbol': '♑', 'dates': 'Dec 22–Jan 19'},
+    {'name': 'Aquarius',    'symbol': '♒', 'dates': 'Jan 20–Feb 18'},
+    {'name': 'Pisces',      'symbol': '♓', 'dates': 'Feb 19–Mar 20'},
+  ];
 
   @override
   void initState() {
     super.initState();
     _initializeNepaliDate();
-    // Set Nepal as default country
     _selectedCountryOfBirth = 'Nepal';
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -79,6 +103,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    _loadDefaultDateFromRegistration();
   }
 
   @override
@@ -87,64 +112,68 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
     super.dispose();
   }
 
+  /// Load the date of birth entered during registration (Step 1) and pre-fill
+  /// the birth date fields so the user can verify / modify if needed.
+  Future<void> _loadDefaultDateFromRegistration() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+
+      final userData = jsonDecode(userDataString) as Map<String, dynamic>;
+      final dob = userData['dateofbirth']?.toString() ?? '';
+
+      if (dob.isEmpty) return;
+
+      // Expected format: YYYY-MM-DD
+      final parts = dob.split('-');
+      if (parts.length != 3) return;
+
+      final year  = parts[0];
+      final month = int.tryParse(parts[1]) ?? 1;
+      final day   = parts[2].padLeft(2, '0');
+
+      if (month < 1 || month > 12) return;
+      if (!_yearOptions.contains(year)) return;
+
+      setState(() {
+        _isAD         = true;
+        _selectedYear  = year;
+        _selectedMonth = _monthNames[month - 1];
+        _selectedDay   = day;
+      });
+    } catch (_) {
+      // Silently ignore – user can still select manually.
+    }
+  }
+
   void _initializeNepaliDate() {
-    // Initialize Nepali months (Bikram Sambat)
     _nepaliMonths = [
       'Baisakh', 'Jestha', 'Ashad', 'Shrawan', 'Bhadra', 'Ashwin',
       'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
     ];
-
-    // Initialize Nepali month days (approximate)
     _nepaliMonthDays = {
-      'Baisakh': 31,
-      'Jestha': 31,
-      'Ashad': 31,
-      'Shrawan': 31,
-      'Bhadra': 31,
-      'Ashwin': 30,
-      'Kartik': 29,
-      'Mangsir': 29,
-      'Poush': 30,
-      'Magh': 29,
-      'Falgun': 30,
-      'Chaitra': 30,
+      'Baisakh': 31, 'Jestha': 31, 'Ashad': 31, 'Shrawan': 31,
+      'Bhadra': 31,  'Ashwin': 30, 'Kartik': 29, 'Mangsir': 29,
+      'Poush': 30,   'Magh': 29,   'Falgun': 30,  'Chaitra': 30,
     };
-
-    // Generate Nepali years (2000 BS to 2090 BS)
-    _nepaliYears = List.generate(91, (index) => (2000 + index).toString());
-
-    // Initialize with current values
-    if (_selectedMonth == null) {
-      _selectedMonth = _isAD ? _monthNames.first : _nepaliMonths.first;
-    }
-    if (_selectedYear == null) {
-      _selectedYear = _isAD ? _yearOptions.first : '2080';
-    }
-
-    // Initialize days
+    _nepaliYears = List.generate(91, (i) => (2000 + i).toString());
     _updateDays();
   }
 
   void _updateDays() {
     if (!_isAD && _selectedMonth != null) {
-      // For BS months
       final daysInMonth = _nepaliMonthDays[_selectedMonth] ?? 30;
-      _nepaliDays = List.generate(daysInMonth, (index) => (index + 1).toString().padLeft(2, '0'));
-
-      // Adjust selected day if it's out of range
+      _nepaliDays =
+          List.generate(daysInMonth, (i) => (i + 1).toString().padLeft(2, '0'));
       if (_selectedDay != null) {
-        final day = int.tryParse(_selectedDay!);
-        if (day != null && day > daysInMonth) {
-          _selectedDay = '01';
-        }
+        final d = int.tryParse(_selectedDay!);
+        if (d != null && d > daysInMonth) _selectedDay = '01';
       } else {
         _selectedDay = '01';
       }
     } else {
-      // For AD months
-      if (_selectedDay == null) {
-        _selectedDay = '01';
-      }
+      _selectedDay ??= '01';
     }
   }
 
@@ -377,10 +406,12 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
     });
   }
 
+  // ─── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF0EDF8),
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
@@ -392,17 +423,22 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // ── Progress header ──────────────────────────────────────
                 RegistrationStepHeader(
                   title: 'Astrological Details',
-                  subtitle: 'Share your horoscope and birth details for better compatibility',
+                  subtitle:
+                      'Share your horoscope and birth details for better compatibility',
                   currentStep: 8,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
 
-                // Skip Button
+                // ── Celestial hero banner ────────────────────────────────
+                _buildCelestialBanner(),
+                const SizedBox(height: 24),
+
+                // ── Skip button ──────────────────────────────────────────
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
@@ -410,321 +446,255 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
                     icon: const Icon(Icons.skip_next, size: 18),
                     label: const Text('Skip this step'),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
+                      foregroundColor: const Color(0xFF5C35A8),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
-                // Horoscope Belief Section
-                const SectionHeader(
+                // ── Horoscope Belief card ────────────────────────────────
+                _buildAstroCard(
+                  icon: Icons.auto_awesome_rounded,
                   title: 'Horoscope Belief',
                   subtitle: 'Do you believe in horoscope matching?',
-                  icon: Icons.auto_awesome_rounded,
-                ),
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: EnhancedRadioOption<String>(
-                        label: 'Yes',
-                        value: 'Yes',
-                        groupValue: _horoscopeBelief,
-                        onChanged: _handleHoroscopeBeliefChange,
-                        icon: Icons.check_circle_outline,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: EnhancedRadioOption<String>(
-                        label: 'No',
-                        value: 'No',
-                        groupValue: _horoscopeBelief,
-                        onChanged: _handleHoroscopeBeliefChange,
-                        icon: Icons.cancel_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: EnhancedRadioOption<String>(
-                        label: 'Doesn\'t matter',
-                        value: 'Doesn\'t matter',
-                        groupValue: _horoscopeBelief,
-                        onChanged: _handleHoroscopeBeliefChange,
-                        icon: Icons.help_outline,
-                      ),
-                    ),
-                  ],
-                ),
-                if (submitted && _errors['horoscopeBelief']!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildErrorText(_errors['horoscopeBelief']!),
-                ],
-
-                // Show details only if belief is "Yes"
-                if (_horoscopeBelief == 'Yes') ...[
-                  const SizedBox(height: 32),
-
-                  // Birth Location Section
-                  const SectionHeader(
-                    title: 'Birth Location',
-                    subtitle: 'Where were you born?',
-                    icon: Icons.location_on_outlined,
-                  ),
-                  const SizedBox(height: 20),
-
-                  EnhancedDropdown<String>(
-                    label: 'Country of Birth',
-                    value: _selectedCountryOfBirth,
-                    items: _countryOptions,
-                    itemLabel: (item) => item,
-                    hint: 'Select your birth country',
-                    onChanged: _handleCountryOfBirthChange,
-                    hasError: submitted && _errors['countryOfBirth']!.isNotEmpty,
-                    errorText: _errors['countryOfBirth'],
-                    isRequired: true,
-                  ),
-                  const SizedBox(height: 16),
-
-                  EnhancedDropdown<String>(
-                    label: 'City of Birth',
-                    value: _selectedCityOfBirth,
-                    items: _cityOptions,
-                    itemLabel: (item) => item,
-                    hint: 'Select your birth city',
-                    onChanged: _handleCityOfBirthChange,
-                    hasError: submitted && _errors['cityOfBirth']!.isNotEmpty,
-                    errorText: _errors['cityOfBirth'],
-                    isRequired: true,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Birth Date & Time Section
-                  const SectionHeader(
-                    title: 'Birth Date & Time',
-                    subtitle: 'When were you born?',
-                    icon: Icons.calendar_today_outlined,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Date Type Toggle (AD/BS)
-                  _buildFieldLabel('Date Type', isRequired: true),
-                  const SizedBox(height: 12),
-                  Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: EnhancedRadioOption<bool>(
-                          label: 'AD (Anno Domini)',
-                          value: true,
-                          groupValue: _isAD,
-                          onChanged: (value) {
-                            setState(() {
-                              _isAD = value!;
-                              if (!_isAD && _selectedMonth != null && _selectedDay != null && _selectedYear != null) {
-                                // Convert AD to BS
-                                final converted = _convertADtoBS(_selectedYear!, _selectedMonth!, _selectedDay!);
-                                _selectedYear = converted['year'];
-                                _selectedMonth = converted['month'];
-                                _selectedDay = converted['day'];
-                                _updateDays();
-                              }
-                            });
-                          },
-                          icon: Icons.calendar_month,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EnhancedRadioOption<bool>(
-                          label: 'BS (Bikram Sambat)',
-                          value: false,
-                          groupValue: _isAD,
-                          onChanged: (value) {
-                            setState(() {
-                              _isAD = value!;
-                              if (!_isAD) {
-                                // Initialize BS values if not set
-                                if (_selectedMonth == null || !_nepaliMonths.contains(_selectedMonth)) {
-                                  _selectedMonth = _nepaliMonths.first;
-                                }
-                                if (_selectedYear == null || !_nepaliYears.contains(_selectedYear)) {
-                                  _selectedYear = '2080';
-                                }
-                                _updateDays();
-                              } else if (_isAD && _selectedMonth != null && _selectedDay != null && _selectedYear != null) {
-                                // Convert BS to AD if possible
-                                if (_nepaliMonths.contains(_selectedMonth!) && _nepaliYears.contains(_selectedYear!)) {
-                                  final converted = _convertBStoAD(_selectedYear!, _selectedMonth!, _selectedDay!);
-                                  _selectedYear = converted['year'];
-                                  _selectedMonth = converted['month'];
-                                  _selectedDay = converted['day'];
-                                }
-                              }
-                            });
-                          },
-                          icon: Icons.event_note,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Date Fields
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: EnhancedDropdown<String>(
-                          label: 'Month',
-                          value: _selectedMonth,
-                          items: _isAD ? _monthNames : _nepaliMonths,
-                          itemLabel: (item) => item,
-                          hint: 'Month',
-                          onChanged: _handleMonthChange,
-                          hasError: submitted && _errors['month']!.isNotEmpty,
-                          errorText: _errors['month'],
-                          isRequired: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EnhancedDropdown<String>(
-                          label: 'Day',
-                          value: _selectedDay,
-                          items: _isAD ? _dayOptions : _nepaliDays,
-                          itemLabel: (item) => item,
-                          hint: 'Day',
-                          onChanged: _handleDayChange,
-                          hasError: submitted && _errors['day']!.isNotEmpty,
-                          errorText: _errors['day'],
-                          isRequired: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TypingDropdown<String>(
-                          title: 'Year',
-                          selectedItem: _selectedYear,
-                          items: _isAD ? _yearOptions : _nepaliYears,
-                          itemLabel: (item) => item,
-                          hint: 'Year',
-                          showError: submitted,
-                          onChanged: _handleYearChange,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Display selected date
-                  if (_selectedMonth != null && _selectedDay != null && _selectedYear != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _isAD
-                                  ? "Birth Date: $_selectedMonth $_selectedDay, $_selectedYear AD"
-                                  : "Birth Date: $_selectedMonth $_selectedDay, $_selectedYear BS",
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
+                      _buildThreeOptionButtons(
+                        selected: _horoscopeBelief,
+                        onChanged: _handleHoroscopeBeliefChange,
+                        options: const [
+                          _TriOption('Yes',            '✅', Color(0xFF2E7D32)),
+                          _TriOption('No',             '❌', Color(0xFFC62828)),
+                          _TriOption("Doesn't matter", '🤷', Color(0xFF5C35A8)),
                         ],
                       ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Time of Birth
-                  _buildFieldLabel('Time of Birth', isRequired: true),
-                  const SizedBox(height: 12),
-                  _buildTimePicker(),
-
-                  const SizedBox(height: 32),
-
-                  // Zodiac Details Section
-                  const SectionHeader(
-                    title: 'Zodiac Details',
-                    subtitle: 'Your astrological information',
-                    icon: Icons.stars_rounded,
-                  ),
-                  const SizedBox(height: 20),
-
-                  EnhancedDropdown<String>(
-                    label: 'Zodiac Sign',
-                    value: _selectedZodiacSign,
-                    items: _zodiacSignOptions,
-                    itemLabel: (item) => item,
-                    hint: 'Select your zodiac sign',
-                    onChanged: _handleZodiacSignChange,
-                    hasError: submitted && _errors['zodiacSign']!.isNotEmpty,
-                    errorText: _errors['zodiacSign'],
-                    isRequired: true,
-                    prefixIcon: Icons.auto_awesome,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Manglik Status
-                  _buildFieldLabel('Manglik Status', isRequired: true),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: EnhancedRadioOption<String>(
-                          label: 'Yes',
-                          value: 'Yes',
-                          groupValue: _manglikStatus,
-                          onChanged: _handleManglikStatusChange,
-                          icon: Icons.check_circle_outline,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EnhancedRadioOption<String>(
-                          label: 'No',
-                          value: 'No',
-                          groupValue: _manglikStatus,
-                          onChanged: _handleManglikStatusChange,
-                          icon: Icons.cancel_outlined,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EnhancedRadioOption<String>(
-                          label: 'Doesn\'t matter',
-                          value: 'Doesn\'t matter',
-                          groupValue: _manglikStatus,
-                          onChanged: _handleManglikStatusChange,
-                          icon: Icons.help_outline,
-                        ),
-                      ),
+                      if (submitted && _errors['horoscopeBelief']!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _buildErrorText(_errors['horoscopeBelief']!),
+                      ],
                     ],
                   ),
-                  if (submitted && _errors['manglikStatus']!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _buildErrorText(_errors['manglikStatus']!),
-                  ],
+                ),
+
+                // ── Show detail sections only when belief is "Yes" ───────
+                if (_horoscopeBelief == 'Yes') ...[
+                  const SizedBox(height: 20),
+
+                  // Birth Location card
+                  _buildAstroCard(
+                    icon: Icons.location_on_outlined,
+                    title: 'Birth Location',
+                    subtitle: 'Where were you born?',
+                    child: Column(
+                      children: [
+                        EnhancedDropdown<String>(
+                          label: 'Country of Birth',
+                          value: _selectedCountryOfBirth,
+                          items: _countryOptions,
+                          itemLabel: (item) => item,
+                          hint: 'Select your birth country',
+                          onChanged: _handleCountryOfBirthChange,
+                          hasError:
+                              submitted && _errors['countryOfBirth']!.isNotEmpty,
+                          errorText: _errors['countryOfBirth'],
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: 16),
+                        EnhancedDropdown<String>(
+                          label: 'City of Birth',
+                          value: _selectedCityOfBirth,
+                          items: _cityOptions,
+                          itemLabel: (item) => item,
+                          hint: 'Select your birth city',
+                          onChanged: _handleCityOfBirthChange,
+                          hasError:
+                              submitted && _errors['cityOfBirth']!.isNotEmpty,
+                          errorText: _errors['cityOfBirth'],
+                          isRequired: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Birth Date & Time card
+                  _buildAstroCard(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Birth Date & Time',
+                    subtitle:
+                        'Pre-filled from your registration. Change if needed.',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Calendar type toggle
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCalendarToggleBtn(
+                                label: 'AD',
+                                sublabel: 'Anno Domini',
+                                isSelected: _isAD,
+                                onTap: () => setState(() {
+                                  if (!_isAD &&
+                                      _selectedMonth != null &&
+                                      _selectedDay != null &&
+                                      _selectedYear != null) {
+                                    final c = _convertBStoAD(
+                                        _selectedYear!,
+                                        _selectedMonth!,
+                                        _selectedDay!);
+                                    _selectedYear  = c['year'];
+                                    _selectedMonth = c['month'];
+                                    _selectedDay   = c['day'];
+                                  }
+                                  _isAD = true;
+                                }),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildCalendarToggleBtn(
+                                label: 'BS',
+                                sublabel: 'Bikram Sambat',
+                                isSelected: !_isAD,
+                                onTap: () => setState(() {
+                                  if (_isAD &&
+                                      _selectedMonth != null &&
+                                      _selectedDay != null &&
+                                      _selectedYear != null) {
+                                    final c = _convertADtoBS(
+                                        _selectedYear!,
+                                        _selectedMonth!,
+                                        _selectedDay!);
+                                    _selectedYear  = c['year'];
+                                    _selectedMonth = c['month'];
+                                    _selectedDay   = c['day'];
+                                    _updateDays();
+                                  } else {
+                                    _selectedMonth ??= _nepaliMonths.first;
+                                    _selectedYear  ??= '2080';
+                                    _updateDays();
+                                  }
+                                  _isAD = false;
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Date row
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: EnhancedDropdown<String>(
+                                label: 'Month',
+                                value: _selectedMonth,
+                                items: _isAD ? _monthNames : _nepaliMonths,
+                                itemLabel: (item) => item,
+                                hint: 'Month',
+                                onChanged: _handleMonthChange,
+                                hasError:
+                                    submitted && _errors['month']!.isNotEmpty,
+                                errorText: _errors['month'],
+                                isRequired: true,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: EnhancedDropdown<String>(
+                                label: 'Day',
+                                value: _selectedDay,
+                                items: _isAD ? _dayOptions : _nepaliDays,
+                                itemLabel: (item) => item,
+                                hint: 'DD',
+                                onChanged: _handleDayChange,
+                                hasError:
+                                    submitted && _errors['day']!.isNotEmpty,
+                                errorText: _errors['day'],
+                                isRequired: true,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TypingDropdown<String>(
+                                title: 'Year',
+                                selectedItem: _selectedYear,
+                                items: _isAD ? _yearOptions : _nepaliYears,
+                                itemLabel: (item) => item,
+                                hint: 'YYYY',
+                                showError: submitted,
+                                onChanged: _handleYearChange,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Selected date preview banner
+                        if (_selectedMonth != null &&
+                            _selectedDay != null &&
+                            _selectedYear != null) ...[
+                          const SizedBox(height: 16),
+                          _buildDatePreviewBanner(),
+                        ],
+
+                        const SizedBox(height: 20),
+
+                        // Time of birth
+                        _buildFieldLabel('Time of Birth', isRequired: true),
+                        const SizedBox(height: 12),
+                        _buildTimePicker(),
+                        if (submitted && _errors['timeOfBirth']!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _buildErrorText(_errors['timeOfBirth']!),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Zodiac Sign card
+                  _buildAstroCard(
+                    icon: Icons.stars_rounded,
+                    title: 'Zodiac Sign',
+                    subtitle: 'Select your astrological sign',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildZodiacGrid(),
+                        if (submitted && _errors['zodiacSign']!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _buildErrorText(_errors['zodiacSign']!),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Manglik Status card
+                  _buildAstroCard(
+                    icon: Icons.flare_rounded,
+                    title: 'Manglik Status',
+                    subtitle: 'Are you Manglik?',
+                    child: Column(
+                      children: [
+                        _buildThreeOptionButtons(
+                          selected: _manglikStatus,
+                          onChanged: _handleManglikStatusChange,
+                          options: const [
+                            _TriOption('Yes',            '🔴', Color(0xFFC62828)),
+                            _TriOption('No',             '🟢', Color(0xFF2E7D32)),
+                            _TriOption("Doesn't matter", '🤷', Color(0xFF5C35A8)),
+                          ],
+                        ),
+                        if (submitted && _errors['manglikStatus']!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _buildErrorText(_errors['manglikStatus']!),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
 
                 const SizedBox(height: 32),
@@ -736,38 +706,471 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
     );
   }
 
-  Widget _buildTimePicker() {
-    return InkWell(
-      onTap: _selectTime,
-      borderRadius: BorderRadius.circular(12),
+  // ─── UI Helper Widgets ───────────────────────────────────────────────────────
+
+  /// Celestial banner at the top of the form area
+  Widget _buildCelestialBanner() {
+    return Container(
+      height: 130,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A0533), Color(0xFF3B1D8B), Color(0xFF5C35A8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B1D8B).withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Decorative star dots
+          _starDot(top: 12,  left: 18,  size: 4),
+          _starDot(top: 40,  left: 60,  size: 3),
+          _starDot(top: 20,  left: 120, size: 5),
+          _starDot(top: 60,  left: 90,  size: 3),
+          _starDot(top: 80,  left: 40,  size: 4),
+          _starDot(top: 30,  right: 100, size: 4),
+          _starDot(top: 70,  right: 50,  size: 5),
+          _starDot(top: 15,  right: 30,  size: 3),
+          _starDot(top: 100, right: 120, size: 4),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                // Zodiac wheel
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.25),
+                      width: 2,
+                    ),
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.15),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '☯',
+                      style: TextStyle(
+                        fontSize: 44,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Celestial Profile',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'The stars reveal your compatibility',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.75),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Zodiac symbols row
+                      Text(
+                        '♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.55),
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Positioned _starDot({
+    double? top,
+    double? left,
+    double? right,
+    double? bottom,
+    required double size,
+  }) {
+    return Positioned(
+      top: top,
+      left: left,
+      right: right,
+      bottom: bottom,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        width: size,
+        height: size,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.6),
+        ),
+      ),
+    );
+  }
+
+  /// Astro-themed section card
+  Widget _buildAstroCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8E0F7), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5C35A8).withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF3B1D8B), Color(0xFF5C35A8)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 18, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Card body
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Compact 3-option button row (fixes sizing/overflow for long labels)
+  Widget _buildThreeOptionButtons({
+    required String? selected,
+    required ValueChanged<String?> onChanged,
+    required List<_TriOption> options,
+  }) {
+    return Column(
+      children: options.map((opt) {
+        final isSelected = selected == opt.value;
+        return GestureDetector(
+          onTap: () => onChanged(opt.value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? opt.activeColor.withOpacity(0.08)
+                  : const Color(0xFFF8F6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? opt.activeColor : const Color(0xFFDDD6F0),
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(opt.emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    opt.value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? opt.activeColor
+                          : const Color(0xFF3D3D5C),
+                    ),
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected
+                          ? opt.activeColor
+                          : const Color(0xFFBBB3D8),
+                      width: 2,
+                    ),
+                    color: isSelected ? opt.activeColor : Colors.transparent,
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Calendar type toggle button
+  Widget _buildCalendarToggleBtn({
+    required String label,
+    required String sublabel,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF5C35A8)
+              : const Color(0xFFF4F0FF),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: submitted && _errors['timeOfBirth']!.isNotEmpty
-                ? AppColors.error
-                : AppColors.border,
+            color: isSelected
+                ? const Color(0xFF5C35A8)
+                : const Color(0xFFDDD6F0),
             width: 1.5,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: submitted && _errors['timeOfBirth']!.isNotEmpty
-                  ? AppColors.error.withOpacity(0.1)
-                  : AppColors.shadowLight,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : const Color(0xFF5C35A8),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sublabel,
+              style: TextStyle(
+                fontSize: 10,
+                color: isSelected
+                    ? Colors.white.withOpacity(0.8)
+                    : const Color(0xFF8878C3),
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Date preview banner
+  Widget _buildDatePreviewBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEDE7FF), Color(0xFFF3EEFF)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD0C0FF), width: 1),
+      ),
+      child: Row(
+        children: [
+          const Text('📅', style: TextStyle(fontSize: 20)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _isAD
+                  ? 'Birth Date: $_selectedMonth $_selectedDay, $_selectedYear AD'
+                  : 'Birth Date: $_selectedMonth $_selectedDay, $_selectedYear BS',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF3B1D8B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Zodiac sign grid (4 columns)
+  Widget _buildZodiacGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: _zodiacData.length,
+      itemBuilder: (_, i) {
+        final z = _zodiacData[i];
+        final isSelected = _selectedZodiacSign == z['name'];
+        return GestureDetector(
+          onTap: () => setState(() {
+            _selectedZodiacSign = z['name'];
+            _errors['zodiacSign'] = '';
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFF5C35A8)
+                  : const Color(0xFFF4F0FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF5C35A8)
+                    : const Color(0xFFDDD6F0),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF5C35A8).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ]
+                  : [],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  z['symbol']!,
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: isSelected ? Colors.white : const Color(0xFF5C35A8),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  z['name']!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : const Color(0xFF3D3D5C),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTimePicker() {
+    final hasErr = submitted && _errors['timeOfBirth']!.isNotEmpty;
+    return GestureDetector(
+      onTap: _selectTime,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F0FF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasErr
+                ? AppColors.error
+                : (_selectedTimeOfBirth != null
+                    ? const Color(0xFF5C35A8)
+                    : const Color(0xFFDDD6F0)),
+            width: 1.5,
+          ),
         ),
         child: Row(
           children: [
             Icon(
               Icons.access_time_rounded,
               color: _selectedTimeOfBirth != null
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
+                  ? const Color(0xFF5C35A8)
+                  : const Color(0xFF8878C3),
               size: 22,
             ),
             const SizedBox(width: 12),
@@ -775,21 +1178,21 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
               child: Text(
                 _selectedTimeOfBirth != null
                     ? _formatTimeForDisplay(_selectedTimeOfBirth!)
-                    : "Select time of birth",
+                    : 'Select time of birth',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: _selectedTimeOfBirth != null
-                      ? FontWeight.w500
+                      ? FontWeight.w600
                       : FontWeight.w400,
                   color: _selectedTimeOfBirth != null
-                      ? AppColors.textPrimary
-                      : AppColors.textHint,
+                      ? const Color(0xFF3B1D8B)
+                      : const Color(0xFF8878C3),
                 ),
               ),
             ),
             Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary,
+              color: const Color(0xFF8878C3),
               size: 24,
             ),
           ],
@@ -799,57 +1202,47 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
   }
 
   Widget _buildFieldLabel(String label, {bool isRequired = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF3D3D5C),
+          ),
+        ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: AppColors.error,
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
             ),
           ),
-          if (isRequired) ...[
-            const SizedBox(width: 4),
-            const Text(
-              '*',
-              style: TextStyle(
-                color: AppColors.error,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
   Widget _buildErrorText(String error) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline,
-            size: 14,
-            color: AppColors.error,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              error,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.error,
-                fontWeight: FontWeight.w500,
-              ),
+    return Row(
+      children: [
+        const Icon(Icons.error_outline, size: 14, color: AppColors.error),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            error,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.error,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1085,4 +1478,15 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage> with Sing
       ),
     );
   }
+}
+
+// ─── Helper data class ───────────────────────────────────────────────────────
+
+/// Immutable data object for a 3-option button row item.
+class _TriOption {
+  final String value;
+  final String emoji;
+  final Color activeColor;
+
+  const _TriOption(this.value, this.emoji, this.activeColor);
 }
