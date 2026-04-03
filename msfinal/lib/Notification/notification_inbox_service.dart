@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class NotificationInboxService {
   static const String _storageKey = 'notification_inbox_records_v2';
   static const Duration reminderCooldown = Duration(hours: 6);
+  static const int _maxRandomSuffix = 1048576;
   static final Random _random = Random();
 
   static Future<List<Map<String, dynamic>>> loadNotifications() async {
@@ -276,6 +277,16 @@ class NotificationInboxService {
     return value?.toString().startsWith('local_') ?? false;
   }
 
+  static String get reminderCooldownLabel {
+    final totalHours = reminderCooldown.inHours;
+    if (totalHours > 0) {
+      return '$totalHours hours';
+    }
+
+    final totalMinutes = reminderCooldown.inMinutes;
+    return '$totalMinutes minutes';
+  }
+
   static bool canSendReminder(Map<String, dynamic> notification) {
     if (notification['type']?.toString() != 'request_sent') {
       return false;
@@ -365,7 +376,7 @@ class NotificationInboxService {
               ? 'Request sent'
               : '$cleanRequestType request sent',
           'body':
-              'Your $requestPhrase was sent to $cleanActor. If there is no reply within 6 hours, you can send a reminder.',
+              'Your $requestPhrase was sent to $cleanActor. If there is no reply within $reminderCooldownLabel, you can send a reminder.',
         };
       case 'request_reminder':
         return {
@@ -519,7 +530,7 @@ class NotificationInboxService {
   }
 
   static String _localId(String type) {
-    return 'local_${type}_${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(1 << 20)}';
+    return 'local_${type}_${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(_maxRandomSuffix)}';
   }
 
   static String _toSentenceCase(String value) {
