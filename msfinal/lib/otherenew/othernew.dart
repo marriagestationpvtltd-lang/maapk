@@ -26,6 +26,7 @@ ProfileScreen({super.key, required this.userId,});
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const String _requestBaseUrl = 'https://digitallami.com/request';
 
   bool _isBlocked = false;
   bool _isLoadingBlock = false;
@@ -270,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final myId = userData["id"].toString();
 
       final response = await http.post(
-        Uri.parse("https://digitallami.com/request/add_profile_view.php"),
+        Uri.parse("$_requestBaseUrl/add_profile_view.php"),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -281,15 +282,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       final result = jsonDecode(response.body);
-
+      debugPrint("Profile view response: $result");
 
     } catch (e) {
+      debugPrint("Error adding profile view: $e");
     }
   }
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
+      "${ProfileService.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);
@@ -336,8 +338,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
 
-
     } catch (e) {
+      debugPrint('Error loading user data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -377,9 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         final userProfile = Provider.of<UserProfile>(context, listen: false);
-        userProfile.updateFromResponse(profileResponse);
-        userProfile.otherMatchedProfiles = matchedProfiles;
-        userProfile.notifyListeners();
+        userProfile.updateProfileData(profileResponse, matchedProfiles);
       }
     } catch (e) {
       debugPrint('Error loading profile data: $e');
@@ -630,8 +630,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handlePhotoRequest(BuildContext context) async {
-    final userProfile = Provider.of<UserProfile>(context, listen: false);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -672,28 +670,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pop(context); // Remove loading
 
                   if (result['status'] == 'success') {
+                    await _refreshProfile(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Photo request sent successfully!'),
                         backgroundColor: Colors.green,
                       ),
                     );
-
-                    // Refresh profile data
-                    _refreshProfile(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Photo request sent successfully!'),
-                        backgroundColor: Colors.green,
+                      SnackBar(
+                        content: Text(
+                          result['message']?.toString().isNotEmpty == true
+                              ? result['message'].toString()
+                              : 'Unable to send photo request right now.',
+                        ),
+                        backgroundColor: Colors.red,
                       ),
                     );
-                   // throw Exception(result['message']);
                   }
                 } catch (e) {
                   Navigator.pop(context); // Remove loading
-
-
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to send photo request: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
               child: Text(
@@ -708,8 +711,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleChatRequest(BuildContext context) async {
-    final userProfile = Provider.of<UserProfile>(context, listen: false);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -750,29 +751,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pop(context); // Remove loading
 
                   if (result['status'] == 'success') {
+                    await _refreshProfile(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Chat request sent successfully!'),
                         backgroundColor: Colors.green,
                       ),
                     );
-
-                    // Refresh profile data
-                    _refreshProfile(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chat request sent successfully!'),
-                        backgroundColor: Colors.green,
+                      SnackBar(
+                        content: Text(
+                          result['message']?.toString().isNotEmpty == true
+                              ? result['message'].toString()
+                              : 'Unable to send chat request right now.',
+                        ),
+                        backgroundColor: Colors.red,
                       ),
                     );
                   }
                 } catch (e) {
                   Navigator.pop(context); // Remove loading
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chat request sent successfully!'),
-                      backgroundColor: Colors.green,
+                    SnackBar(
+                      content: Text('Failed to send chat request: $e'),
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -795,25 +798,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final myid = int.tryParse(userData["id"].toString());
     try {
       final service = ProfileService();
-
-      // Fetch main profile
-      final response = await service.fetchProfile(
-        myId: myid,
-        userId: widget.userId,
-      );
-
-      // Fetch matched profiles
-      final matchedProfiles = await service.fetchMatchedProfiles(
-        userId: myid.toString(), // Current user ID
-      );
-      // Sort: new members (higher userId) first
-      matchedProfiles.sort((a, b) => b.userid.compareTo(a.userid));
+      final results = await Future.wait([
+        service.fetchProfile(
+          myId: myid,
+          userId: widget.userId,
+        ),
+        service.fetchMatchedProfiles(
+          userId: myid.toString(),
+        ),
+      ]);
+      final response = results[0] as ProfileResponse;
+      final matchedProfiles = results[1] as List<MatchedProfile>;
 
       // Update the profile with both sets of data
       final userProfile = Provider.of<UserProfile>(context, listen: false);
-      userProfile.updateFromResponse(response);
-      userProfile.otherMatchedProfiles = matchedProfiles;
-      userProfile.notifyListeners();
+      userProfile.updateProfileData(response, matchedProfiles);
 
       debugPrint('✅ Loaded ${matchedProfiles.length} matched profiles');
 
@@ -2375,11 +2374,9 @@ class _ContactInfoSection extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-
               // ✅ VERIFIED DOCUMENT AND PAID MEMBER → Can chat
               if (docStatus == "approved" && userType == "paid") {
                 try {
-
                   // 🔥 Generate chatRoomId (sorted)
                   List<String> ids = [currentUserId, userId];
                   ids.sort();
@@ -2432,18 +2429,19 @@ class _ContactInfoSection extends StatelessWidget {
                             : "User $userId",
                         receiverImage: userProfile.avatarUrl.isNotEmpty
                             ? userProfile.avatarUrl
-                            : 'https://via.placeholder.com/150',
+                            : '',
                         currentUserId: currentUserId,
                         currentUserName: currentUserName.isNotEmpty
                             ? currentUserName
                             : "User $currentUserId",
                         currentUserImage: currentUserImage.isNotEmpty
                             ? currentUserImage
-                            : 'https://via.placeholder.com/150',
+                            : '',
                       ),
                     ),
                   );
                 } catch (e) {
+                  debugPrint("Error navigating to chat: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Failed to open chat"),
@@ -2980,19 +2978,9 @@ class _MatchOverviewSection extends StatelessWidget {
     required this.red,
   });
 
-  Color _matchColor(double percent) {
-    if (percent >= 0.80) return const Color(0xFF2E7D32);
-    if (percent >= 0.60) return const Color(0xFF1565C0);
-    if (percent >= 0.40) return const Color(0xFFE65100);
-    return const Color(0xFFC62828);
-  }
-
-  String _matchLabel(double percent) {
-    if (percent >= 0.80) return '🌟 Excellent Match';
-    if (percent >= 0.60) return '👍 Good Match';
-    if (percent >= 0.40) return '🤝 Fair Match';
-    return '💡 Low Match';
-  }
+  int get matchPercentage => totalPreferencesCount > 0
+      ? ((matchedPreferencesCount / totalPreferencesCount) * 100).round()
+      : 0;
 
   @override
   Widget build(BuildContext context) {
@@ -3021,32 +3009,23 @@ class _MatchOverviewSection extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              // Circular progress indicator with percentage
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: CircularProgressIndicator(
-                        value: ratio,
-                        strokeWidth: 8,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-                    Text(
-                      '$percent%',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: color,
-                      ),
-                    ),
-                  ],
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: NetworkImage(imageUrl),
+                onBackgroundImageError: (_, __) {},
+                child: imageUrl.isEmpty
+                    ? const Icon(Icons.person, size: 28)
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Flexible(
+                child: Text(
+                  "$matchPercentage% Match - $matchedPreferencesCount of $totalPreferencesCount preferences",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -3149,6 +3128,7 @@ class _PartnerPreferenceSection extends StatelessWidget {
 }
 
 class _OtherMatchedProfilesSection extends StatelessWidget {
+  static const int _newMemberBadgeCount = 3;
   final List<MatchedProfile> otherMatchedProfiles;
   final Color red;
   final LinearGradient gradient;
@@ -3200,6 +3180,7 @@ class _OtherMatchedProfilesSection extends StatelessWidget {
                   profile: profile,
                   red: red,
                   gradient: gradient,
+                  isNewMember: index < _newMemberBadgeCount,
                 );
               },
             ),
@@ -3447,11 +3428,13 @@ class _MatchedProfileCard extends StatelessWidget {
   final MatchedProfile profile;
   final Color red;
   final LinearGradient gradient;
+  final bool isNewMember;
 
   const _MatchedProfileCard({
     required this.profile,
     required this.red,
     required this.gradient,
+    this.isNewMember = false,
   });
 
   @override
@@ -3546,6 +3529,27 @@ class _MatchedProfileCard extends StatelessWidget {
                   ),
                 ),
 
+              if (isNewMember)
+                Positioned(
+                  top: 38,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'New',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+
               // Verified Badge
               if (profile.isVerifiedBool)
                 Positioned(
@@ -3604,7 +3608,7 @@ class _MatchedProfileCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Text(
-                    "MS: ${profile.userid} ${profile.lastName}",
+                    "MS: ${profile.memberid?.isNotEmpty == true ? profile.memberid : profile.userid} ${profile.name}",
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
