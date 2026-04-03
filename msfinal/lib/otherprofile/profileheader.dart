@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'full_screen_image.dart';
 
 class ProfileHeader extends StatelessWidget {
   final Map<String, dynamic> personalDetail;
@@ -87,21 +88,56 @@ class ProfileHeader extends StatelessWidget {
         width: screenWidth,
         child: Stack(
           children: [
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: screenWidth,
-              height: imageHeight,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                  strokeWidth: 3,
+            GestureDetector(
+              onTap: () {
+                if (imageUrl.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenImageViewer(imageUrl: imageUrl),
+                    ),
+                  );
+                }
+              },
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: screenWidth,
+                height: imageHeight,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                    strokeWidth: 3,
+                  ),
+                ),
+                errorWidget: (_, __, ___) => Icon(
+                  Icons.person,
+                  size: 80,
+                  color: Colors.grey.shade400,
                 ),
               ),
-              errorWidget: (_, __, ___) => Icon(
-                Icons.person,
-                size: 80,
-                color: Colors.grey.shade400,
+            ),
+            // Tap hint overlay
+            Positioned(
+              bottom: 88,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tap to expand',
+                      style: TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
             ),
             Positioned(

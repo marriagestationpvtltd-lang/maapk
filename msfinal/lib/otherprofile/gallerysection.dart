@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:ui' as ui;
 
 import '../Home/Screen/profilecard.dart';
+import 'full_screen_image.dart';
 import 'modelprofile.dart';
 
 class GallerySection extends StatelessWidget {
@@ -70,7 +71,7 @@ class GallerySection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: galleryImages.length,
               itemBuilder: (context, index) {
-                return _buildGalleryImage(galleryImages[index]);
+                return _buildGalleryImage(context, galleryImages[index]);
               },
             ),
           ),
@@ -79,8 +80,20 @@ class GallerySection extends StatelessWidget {
     );
   }
 
-  Widget _buildGalleryImage(GalleryImage image) {
-    return Container(
+  Widget _buildGalleryImage(BuildContext context, GalleryImage image) {
+    return GestureDetector(
+      onTap: showBlurredImage
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      FullScreenImageViewer(imageUrl: image.imageUrl),
+                ),
+              );
+            },
+      child: Container(
       width: 100,
       height: 100,
       margin: const EdgeInsets.only(right: 12),
@@ -135,6 +148,7 @@ class GallerySection extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
