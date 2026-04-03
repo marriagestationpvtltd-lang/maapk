@@ -268,12 +268,12 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.25),
+            color: const Color(0xFFF90E18).withOpacity(0.25),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
