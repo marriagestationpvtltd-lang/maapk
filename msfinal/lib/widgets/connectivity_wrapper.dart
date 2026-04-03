@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
 import '../screens/no_internet_screen.dart';
 
@@ -91,7 +92,7 @@ extension ConnectivityCheck on BuildContext {
     if (!hasInternet && mounted) {
       Navigator.of(this).push(
         MaterialPageRoute(
-          settings: const RouteSettings(name: NoInternetScreen.routeName),
+          settings: const RouteSettings(name: noInternetRouteName),
           builder: (_) => const NoInternetScreen(),
         ),
       );

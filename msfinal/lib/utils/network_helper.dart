@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
 import '../screens/no_internet_screen.dart';
 import '../constant/app_colors.dart';
@@ -22,7 +23,7 @@ class NetworkHelper {
       if (navigateToNoInternet) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            settings: const RouteSettings(name: NoInternetScreen.routeName),
+            settings: const RouteSettings(name: noInternetRouteName),
             builder: (_) => const NoInternetScreen(),
           ),
         );

@@ -3,12 +3,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
-import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
 
 class NoInternetScreen extends StatefulWidget {
-  static const String routeName = noInternetRouteName;
-
   final Future<void> Function()? onRetry;
 
   const NoInternetScreen({super.key, this.onRetry});
@@ -53,7 +50,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
   }
 
   Future<void> _handleRetry() async {
-    if (_isChecking) {
+    if (_isChecking || _isRecovering) {
       return;
     }
 
@@ -107,7 +104,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Unable to restore the connection right now.'),
+          content: Text('Failed to restore the connection. Please try again manually.'),
           backgroundColor: AppColors.error,
         ),
       );
