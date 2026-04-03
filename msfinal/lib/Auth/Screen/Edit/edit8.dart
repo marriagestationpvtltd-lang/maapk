@@ -2158,12 +2158,18 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
 
         if (result['status'] == 'success' && result['data'] != null) {
           final data = result['data'];
+          final savedMinAge = data['minage']?.toString();
+          final savedMaxAge = data['maxage']?.toString();
 
           setState(() {
             // Age Range
             _applyNormalizedAgeRange(
-              minAge: double.tryParse(data['minage']?.toString() ?? '') ?? _minPreferredAgeLimit,
-              maxAge: double.tryParse(data['maxage']?.toString() ?? '') ?? _maxPreferredAgeLimit,
+              minAge: savedMinAge == null
+                  ? _minPreferredAgeLimit
+                  : (double.tryParse(savedMinAge) ?? _minPreferredAgeLimit),
+              maxAge: savedMaxAge == null
+                  ? _maxPreferredAgeLimit
+                  : (double.tryParse(savedMaxAge) ?? _maxPreferredAgeLimit),
             );
 
             // Height Range
