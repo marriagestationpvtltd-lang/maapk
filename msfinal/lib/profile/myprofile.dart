@@ -1698,13 +1698,26 @@ Navigator.push(context, MaterialPageRoute(builder: (context) => LifestylePagee()
       content: Column(
         children: [
           _buildPreferenceRow('Age', '${partner['minage']}-${partner['maxage']} Years'),
+          if (partner['minheight'] != null && partner['maxheight'] != null)
+            _buildPreferenceRow('Height', '${partner['minheight']}-${partner['maxheight']}'),
           _buildPreferenceRow('Marital Status', partner['maritalstatus'] ?? 'N/A'),
           _buildPreferenceRow('Religion', partner['religion'] ?? 'N/A'),
           _buildPreferenceRow('Caste', partner['caste'] ?? 'N/A'),
+          if (partner['community'] != null && partner['community'].toString().isNotEmpty)
+            _buildPreferenceRow('Community', partner['community'] ?? 'N/A'),
+          if (partner['mothertongue'] != null && partner['mothertongue'].toString().isNotEmpty)
+            _buildPreferenceRow('Mother Tongue', partner['mothertongue'] ?? 'N/A'),
           _buildPreferenceRow('Education', partner['qualification'] ?? 'N/A'),
           _buildPreferenceRow('Occupation', partner['proffession'] ?? 'N/A'),
           _buildPreferenceRow('Income', partner['annualincome'] ?? 'N/A'),
-          _buildPreferenceRow('Location', '${partner['city']}, ${partner['country']}'),
+          if (partner['country'] != null && partner['country'].toString().isNotEmpty)
+            _buildPreferenceRow('Country', partner['country'] ?? 'N/A'),
+          if (partner['state'] != null && partner['state'].toString().isNotEmpty)
+            _buildPreferenceRow('State', partner['state'] ?? 'N/A'),
+          if (partner['district'] != null && partner['district'].toString().isNotEmpty)
+            _buildPreferenceRow('District', partner['district'] ?? 'N/A'),
+          if (partner['city'] != null && partner['city'].toString().isNotEmpty)
+            _buildPreferenceRow('City', partner['city'] ?? 'N/A'),
           _buildPreferenceRow('Diet', partner['diet'] ?? 'N/A'),
           _buildPreferenceRow('Family Values', partner['familytype'] ?? 'N/A'),
           _buildPreferenceRow('Other Expectations', partner['otherexpectation'] ?? 'N/A'),
