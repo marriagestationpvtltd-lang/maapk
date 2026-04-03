@@ -15,6 +15,7 @@ import '../purposal/purposalservice.dart';
 import '../service/Service_chat.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
+import 'call_overlay_manager.dart';
 
 class ChatListScreen extends StatefulWidget {
   ChatListScreen({super.key});
@@ -439,32 +440,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Chat', style: TextStyle(color: Colors.black87)),
+    return CallOverlayWrapper(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Chat', style: TextStyle(color: Colors.black87)),
 
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Column(
-        children: [
-          _buildTopIcons(),
-          const Divider(height: 1),
-          _buildChatRequestsSection(),
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: const Text('Your Chat', style: TextStyle(color: Colors.black54)),
-          ),
-          Expanded(
-            child: _buildChatListWithDebug(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _debugFirebaseData,
-        child: const Icon(Icons.bug_report),
+          iconTheme: const IconThemeData(color: Colors.black87),
+        ),
+        body: Column(
+          children: [
+            _buildChatRequestsSection(),
+            Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: const Text('Your Chats', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
+            ),
+            Expanded(
+              child: _buildChatListWithDebug(),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _debugFirebaseData,
+          child: const Icon(Icons.bug_report),
+        ),
       ),
     );
   }
@@ -494,25 +495,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
         final chatRooms = snapshot.data!.docs;
 
-        if (chatRooms.isEmpty) {
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text(
-                'No chats yet',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            ],
-          );
-        }
-
+        // Build the list with pinned chats at top
         return ListView.separated(
-          itemCount: chatRooms.length,
+          itemCount: chatRooms.length + 2, // +2 for Admin and AstroTalk pinned chats
           separatorBuilder: (_, __) => const Divider(indent: 72, height: 0),
           itemBuilder: (context, index) {
-            final chatRoom = chatRooms[index];
+            // First item: Admin Support (pinned)
+            if (index == 0) {
+              return _buildPinnedAdminChat();
+            }
+
+            // Second item: AstroTalk (pinned)
+            if (index == 1) {
+              return _buildPinnedAstroTalkChat();
+            }
+
+            // Regular chats start from index 2
+            final chatIndex = index - 2;
+            if (chatIndex >= chatRooms.length) {
+              return const SizedBox.shrink();
+            }
+            final chatRoom = chatRooms[chatIndex];
             final data = chatRoom.data() as Map<String, dynamic>;
 
             final participants = List<String>.from(data['participants'] ?? []);
@@ -743,53 +746,179 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  Widget _buildTopIcons() {
-    Widget single(String label, IconData icon) {
-      return Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE84C3D), Color(0xFFEE6A7B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+  // Build pinned Admin Support chat item
+  Widget _buildPinnedAdminChat() {
+    return Container(
+      color: Colors.amber.shade50,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminChatScreen(
+                senderID: userId,
+                userName: "Admin Support",
               ),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black12)],
             ),
-            child: Icon(icon, color: Colors.white),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Pin icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE84C3D), Color(0xFFEE6A7B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [
+                    BoxShadow(blurRadius: 6, color: Colors.black12)
+                  ],
+                ),
+                child: const Icon(Icons.support_agent, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              // Chat Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.push_pin,
+                          size: 16,
+                          color: Color(0xFFE84C3D),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Admin Support',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFE84C3D),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Get help with your account and app',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.normal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.grey,
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 12))
-        ],
-      );
-    }
+        ),
+      ),
+    );
+  }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-              children: [
-            GestureDetector(
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminChatScreen(senderID: userId, userName: "Admin",),));
-              },
-                child: single('Admin\nSupport', Icons.support_agent)),
-            const SizedBox(width: 12),
-                GestureDetector(
-                    onTap: (){
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceChatPage(senderId: userId, receiverId: '2', name: 'MS:', exp: '5 years', cat: 'jyotish',),));
-                    },
-                    child: single('Astro Talk', Icons.workspaces_rounded)),
-
-          ]),
-
-        ],
+  // Build pinned AstroTalk chat item
+  Widget _buildPinnedAstroTalkChat() {
+    return Container(
+      color: Colors.purple.shade50,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ServiceChatPage(
+                senderId: userId,
+                receiverId: '2',
+                name: 'MS Astrologer',
+                exp: '5 years',
+                cat: 'Jyotish',
+              ),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Astro icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6B46C1), Color(0xFF9F7AEA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [
+                    BoxShadow(blurRadius: 6, color: Colors.black12)
+                  ],
+                ),
+                child: const Icon(Icons.stars, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              // Chat Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.push_pin,
+                          size: 16,
+                          color: Color(0xFF6B46C1),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Astro Talk',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B46C1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chat with our astrology experts',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.normal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.grey,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
