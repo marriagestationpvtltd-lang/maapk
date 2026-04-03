@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
 import '../screens/no_internet_screen.dart';
 import '../constant/app_colors.dart';
@@ -22,6 +23,7 @@ class NetworkHelper {
       if (navigateToNoInternet) {
         Navigator.of(context).push(
           MaterialPageRoute(
+            settings: const RouteSettings(name: noInternetRouteName),
             builder: (_) => const NoInternetScreen(),
           ),
         );
@@ -35,10 +37,10 @@ class NetworkHelper {
                 Expanded(
                   child: Text(
                     connectivityService.isWifiConnected
-                        ? 'WiFi जडान भएको छ तर इन्टरनेट छैन'
+                        ? 'Wi-Fi is connected, but internet access is unavailable.'
                         : connectivityService.isMobileConnected
-                            ? 'मोबाइल डाटा जडान भएको छ तर इन्टरनेट छैन'
-                            : 'इन्टरनेट जडान छैन। कृपया तपाईंको कनेक्सन जाँच गर्नुहोस्।',
+                            ? 'Mobile data is connected, but internet access is unavailable.'
+                            : 'No internet connection. Please check your network and try again.',
                   ),
                 ),
               ],
@@ -82,7 +84,7 @@ class NetworkHelper {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('त्रुटि: ${e.toString()}'),
+            content: Text('Error: ${e.toString()}'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -112,7 +114,7 @@ class NetworkHelper {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  message ?? 'कृपया पर्खनुहोस्...',
+                  message ?? 'Please wait...',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,

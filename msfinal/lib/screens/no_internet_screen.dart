@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
 import '../service/connectivity_service.dart';
-import 'dart:io' show Platform;
 
 class NoInternetScreen extends StatefulWidget {
-  final VoidCallback? onRetry;
+  final FutureOr<void> Function()? onRetry;
 
   const NoInternetScreen({super.key, this.onRetry});
 
@@ -20,6 +22,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isChecking = false;
+  bool _isRecovering = false;
 
   @override
   void initState() {
@@ -32,19 +35,12 @@ class _NoInternetScreenState extends State<NoInternetScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
-
-    // Listen to connectivity changes
     _connectivityService.addListener(_onConnectivityChange);
   }
 
   void _onConnectivityChange() {
     if (_connectivityService.isConnected && mounted) {
-      // Auto-close when internet is back
-      if (widget.onRetry != null) {
-        widget.onRetry!();
-      } else {
-        Navigator.of(context).pop();
-      }
+      _triggerRecovery();
     }
   }
 
@@ -56,26 +52,65 @@ class _NoInternetScreenState extends State<NoInternetScreen>
   }
 
   Future<void> _handleRetry() async {
+    if (_isChecking || _isRecovering) {
+      return;
+    }
+
     setState(() {
       _isChecking = true;
     });
 
     final hasInternet = await _connectivityService.checkConnectivity();
 
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isChecking = false;
     });
 
-    if (hasInternet && mounted) {
+    if (hasInternet) {
+      await _completeRetry();
+      return;
+    }
+
+    _showNoConnectionSnackBar();
+  }
+
+  Future<void> _completeRetry() async {
+    if (_isRecovering || !mounted) {
+      return;
+    }
+
+    _isRecovering = true;
+
+    try {
       if (widget.onRetry != null) {
-        widget.onRetry!();
-      } else {
+        await widget.onRetry!();
+      } else if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
-    } else {
-      if (mounted) {
-        _showNoConnectionSnackBar();
+    } finally {
+      _isRecovering = false;
+    }
+  }
+
+  Future<void> _triggerRecovery() async {
+    try {
+      await _completeRetry();
+    } catch (error) {
+      debugPrint('NoInternetScreen recovery failed: $error');
+      if (!mounted) {
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to reload after reconnecting. Please try the retry button.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -84,10 +119,10 @@ class _NoInternetScreenState extends State<NoInternetScreen>
       SnackBar(
         content: Text(
           _connectivityService.isWifiConnected
-              ? 'WiFi जडान भएको छ तर इन्टरनेट छैन'
+              ? 'Wi-Fi is connected, but internet access is unavailable.'
               : _connectivityService.isMobileConnected
-                  ? 'मोबाइल डाटा जडान भएको छ तर इन्टरनेट छैन'
-                  : 'अझै पनि इन्टरनेट जडान छैन',
+                  ? 'Mobile data is connected, but internet access is unavailable.'
+                  : 'Still no internet connection.',
         ),
         backgroundColor: AppColors.error,
         duration: const Duration(seconds: 3),
@@ -98,42 +133,44 @@ class _NoInternetScreenState extends State<NoInternetScreen>
   Future<void> _openWifiSettings() async {
     try {
       await openAppSettings();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('सेटिङ्ग खोल्न सकिएन'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+    } catch (_) {
+      if (!mounted) {
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to open settings.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
   Future<void> _openMobileDataSettings() async {
     try {
       await openAppSettings();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('सेटिङ्ग खोल्न सकिएन'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+    } catch (_) {
+      if (!mounted) {
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to open settings.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isWifiOff = !_connectivityService.isWifiConnected &&
+    final bool isDisconnected = !_connectivityService.isWifiConnected &&
         !_connectivityService.isMobileConnected;
-    final bool isMobileDataOff = !_connectivityService.isMobileConnected &&
-        !_connectivityService.isWifiConnected;
 
     return WillPopScope(
-      onWillPop: () async => false, // Prevent back button
+      onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: AppColors.white,
         body: SafeArea(
@@ -144,7 +181,6 @@ class _NoInternetScreenState extends State<NoInternetScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Animated No Internet Icon
                   TweenAnimationBuilder(
                     tween: Tween<double>(begin: 0, end: 1),
                     duration: const Duration(milliseconds: 800),
@@ -167,10 +203,8 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     },
                   ),
                   AppSpacing.verticalXL,
-
-                  // Title
                   const Text(
-                    'इन्टरनेट जडान छैन',
+                    'No internet connection',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -179,16 +213,14 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     textAlign: TextAlign.center,
                   ),
                   AppSpacing.verticalMD,
-
-                  // Description
                   Text(
-                    isWifiOff && isMobileDataOff
-                        ? 'तपाईंको इन्टरनेट जडान छैन। कृपया WiFi वा मोबाइल डाटा सक्रिय गर्नुहोस्।'
+                    isDisconnected
+                        ? 'No network connection was detected. Please turn on Wi-Fi or mobile data.'
                         : _connectivityService.isWifiConnected
-                            ? 'WiFi जडान भएको छ तर इन्टरनेट छैन। कृपया तपाईंको WiFi जडान जाँच गर्नुहोस्।'
+                            ? 'Wi-Fi is connected, but internet access is unavailable. Please check your Wi-Fi network.'
                             : _connectivityService.isMobileConnected
-                                ? 'मोबाइल डाटा जडान भएको छ तर इन्टरनेट छैन। कृपया तपाईंको मोबाइल डाटा जाँच गर्नुहोस्।'
-                                : 'कृपया तपाईंको इन्टरनेट जडान जाँच गर्नुहोस् र पुन: प्रयास गर्नुहोस्।',
+                                ? 'Mobile data is connected, but internet access is unavailable. Please check your data connection.'
+                                : 'Please check your internet connection and try again.',
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.textSecondary,
@@ -197,8 +229,6 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     textAlign: TextAlign.center,
                   ),
                   AppSpacing.verticalXL,
-
-                  // Connection Status Card
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -212,14 +242,14 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     child: Column(
                       children: [
                         _buildConnectionRow(
-                          'WiFi',
+                          'Wi-Fi',
                           _connectivityService.isWifiConnected,
                           Icons.wifi_rounded,
                           _openWifiSettings,
                         ),
                         AppSpacing.verticalMD,
                         _buildConnectionRow(
-                          'मोबाइल डाटा',
+                          'Mobile Data',
                           _connectivityService.isMobileConnected,
                           Icons.signal_cellular_alt_rounded,
                           _openMobileDataSettings,
@@ -228,8 +258,6 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     ),
                   ),
                   AppSpacing.verticalXL,
-
-                  // Retry Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -255,7 +283,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                             )
                           : const Icon(Icons.refresh_rounded),
                       label: Text(
-                        _isChecking ? 'जाँच गर्दै...' : 'पुन: प्रयास गर्नुहोस्',
+                        _isChecking ? 'Checking...' : 'Retry',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -264,9 +292,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     ),
                   ),
                   AppSpacing.verticalMD,
-
-                  // Settings Button
-                  if (isWifiOff || isMobileDataOff)
+                  if (isDisconnected)
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -284,7 +310,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                         ),
                         icon: const Icon(Icons.settings_rounded),
                         label: const Text(
-                          'सेटिङ्ग खोल्नुहोस्',
+                          'Open Settings',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -348,7 +374,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                isConnected ? 'जडान भएको' : 'जडान छैन',
+                isConnected ? 'Connected' : 'Disconnected',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
