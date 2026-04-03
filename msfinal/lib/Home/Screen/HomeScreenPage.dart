@@ -70,6 +70,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   bool _loading = true;
   bool _photoRequestsLoading = true;
   bool _chatRequestsLoading = true;
+  int _proposalRequestCount = 0;
+  int _messageRequestCount = 0;
 
   List<dynamic> _shortlistedProfiles = [];
   bool _isLoadingShortlist = false;
@@ -182,6 +184,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     try {
       await Future.wait([
         fetchMatchedProfiles(),
+        _fetchQuickActionCounts(forceRefresh: true),
         _checkDocumentStatus(),
         _fetchPremiumMembers(),
         _fetchOtherServices(),
@@ -320,6 +323,59 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     } catch (e) {
       setState(() => _isLoadingShortlist = false);
       debugPrint('Error fetching shortlisted profiles: $e');
+    }
+  }
+
+  Future<void> _fetchQuickActionCounts({bool forceRefresh = false}) async {
+    const cacheKey = 'quick_action_counts';
+
+    if (!forceRefresh &&
+        _cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      final cachedData = _cache[cacheKey]!.data as Map<String, int>;
+      setState(() {
+        _proposalRequestCount = cachedData['proposal'] ?? 0;
+        _messageRequestCount = cachedData['message'] ?? 0;
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+
+      final userData = jsonDecode(userDataString);
+      final currentUserId = userData['id']?.toString() ?? '';
+      if (currentUserId.isEmpty) return;
+
+      final receivedRequests =
+          await ProposalService.fetchProposals(currentUserId, 'received');
+      final proposalRequestCount = receivedRequests
+          .where((proposal) =>
+              proposal.requestType?.toLowerCase() != 'chat' &&
+              proposal.status?.toLowerCase() == 'pending')
+          .length;
+      final messageRequestCount = receivedRequests
+          .where((proposal) =>
+              proposal.requestType?.toLowerCase() == 'chat' &&
+              proposal.status?.toLowerCase() == 'pending')
+          .length;
+
+      final counts = {
+        'proposal': proposalRequestCount,
+        'message': messageRequestCount,
+      };
+
+      _cache[cacheKey] = CachedData(counts, DateTime.now());
+
+      if (!mounted) return;
+      setState(() {
+        _proposalRequestCount = counts['proposal'] ?? 0;
+        _messageRequestCount = counts['message'] ?? 0;
+      });
+    } catch (e) {
+      debugPrint('Error fetching quick action counts: $e');
     }
   }
 
@@ -589,6 +645,7 @@ String usertye = '';
     // Load only essential data on init
     loadMasterData();
     fetchMatchedProfiles();
+    _fetchQuickActionCounts();
     _checkDocumentStatus();
     _fetchShortlistedProfiles();
     _loadUnreadNotificationCount();
@@ -1171,6 +1228,7 @@ String usertye = '';
       {
         'icon': Icons.search_rounded,
         'label': 'Search',
+        'count': null,
         'gradient': [const Color(0xFF6C63FF), const Color(0xFF4834D4)],
         'onTap': () {
           if (docstatus == 'approved') {
@@ -1183,6 +1241,7 @@ String usertye = '';
       {
         'icon': Icons.send_rounded,
         'label': 'Proposals',
+        'count': _proposalRequestCount,
         'gradient': [const Color(0xFFF90E18), const Color(0xFFD00D15)],
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => ProposalsPage())),
@@ -1190,6 +1249,7 @@ String usertye = '';
       {
         'icon': Icons.favorite_rounded,
         'label': 'Favorites',
+        'count': _shortlistedProfiles.length,
         'gradient': [const Color(0xFFE91E63), const Color(0xFFC2185B)],
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => FavoritePeoplePage())),
@@ -1197,6 +1257,7 @@ String usertye = '';
       {
         'icon': Icons.chat_bubble_rounded,
         'label': 'Messages',
+        'count': _messageRequestCount,
         'gradient': [const Color(0xFF2196F3), const Color(0xFF1565C0)],
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => ChatListScreen())),
@@ -1209,6 +1270,7 @@ String usertye = '';
         children: actions.map((action) {
           final gradient = action['gradient'] as List<Color>;
           final onTap = action['onTap'] as VoidCallback;
+          final int? count = action['count'] as int?;
 
           return Expanded(
             child: GestureDetector(
@@ -1231,25 +1293,62 @@ String usertye = '';
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Icon(
-                      action['icon'] as IconData,
-                      color: Colors.white,
-                      size: 26,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          action['icon'] as IconData,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          action['label'] as String,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      action['label'] as String,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
+                    if (count != null)
+                      Positioned(
+                        top: -6,
+                        right: -2,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 24),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '$count',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: gradient.last,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
                   ],
                 ),
               ),
