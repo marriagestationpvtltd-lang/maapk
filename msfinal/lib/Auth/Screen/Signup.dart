@@ -153,6 +153,9 @@ class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> with Sing
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      // Keyboard should not resize the scaffold — the action buttons stay at
+      // the bottom and the scroll area handles the keyboard inset independently.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,

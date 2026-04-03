@@ -380,6 +380,7 @@ class _EducationCareerPageState extends State<EducationCareerPage> with SingleTi
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
