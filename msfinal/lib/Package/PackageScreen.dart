@@ -36,12 +36,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         Uri.parse('https://digitallami.com/Api2/packagelist.php'),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Parsed data: $data');
 
         if (data['success'] == true) {
           setState(() {
@@ -50,7 +47,6 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 .toList();
             isLoading = false;
           });
-          print('Loaded ${packages.length} packages');
         } else {
           setState(() {
             errorMessage = data['message'] ?? 'Failed to load packages';
@@ -64,7 +60,6 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         });
       }
     } catch (e) {
-      print('Error: $e');
       setState(() {
         errorMessage = 'Network error: $e';
         isLoading = false;

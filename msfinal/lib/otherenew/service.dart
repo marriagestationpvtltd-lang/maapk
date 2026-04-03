@@ -1,7 +1,6 @@
 // lib/services/profile_service.dart
 
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../otherenew/modelfile.dart';
 
@@ -20,12 +19,10 @@ class ProfileService {
     final url = Uri.parse('$baseUrl/other_profile_new.php?myid=$myIdStr&userid=$userIdStr');
 
     try {
-      debugPrint('📡 Fetching profile from: $url');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        debugPrint('📡 Response: ${response.body}');
 
         if (jsonResponse['status'] == 'success') {
           return ProfileResponse.fromJson(jsonResponse);
@@ -36,7 +33,6 @@ class ProfileService {
         throw Exception('Failed to load profile. Status code: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ Error fetching profile: $e');
       throw Exception('Error fetching profile: $e');
     }
   }
@@ -135,12 +131,10 @@ class ProfileService {
     final url = Uri.parse('$baseUrl/match.php?userid=$userIdStr');
 
     try {
-      debugPrint('📡 Fetching matched profiles from: $url');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        debugPrint('📡 Matched profiles response: ${response.body}');
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> matchedUsersJson = jsonResponse['matched_users'] ?? [];
@@ -157,11 +151,9 @@ class ProfileService {
           return [];
         }
       } else {
-        debugPrint('❌ Failed to load matched profiles: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      debugPrint('❌ Error fetching matched profiles: $e');
       return [];
     }
   }
@@ -258,7 +250,6 @@ class ProfileService {
         return {'status': 'error', 'message': 'Failed to send like'};
       }
     } catch (e) {
-      debugPrint('❌ Error sending like: $e');
       return {'status': 'error', 'message': e.toString()};
     }
   }
