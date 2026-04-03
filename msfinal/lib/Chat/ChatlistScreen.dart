@@ -13,6 +13,7 @@ import '../online/onlineservice.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
 import '../service/Service_chat.dart';
+import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
 
@@ -468,6 +469,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
           iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.call),
+              tooltip: 'कल हिस्ट्री',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CallHistoryScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         body: Container(
           color: const Color(0xFFECE5DD),

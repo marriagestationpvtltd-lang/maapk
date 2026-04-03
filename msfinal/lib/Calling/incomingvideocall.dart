@@ -8,6 +8,8 @@ import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
+import 'call_history_model.dart';
+import 'call_history_service.dart';
 
 class IncomingVideoCallScreen extends StatefulWidget {
   final Map<String, dynamic> callData;
@@ -41,12 +43,46 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Timer? _callTimer;
   Duration _duration = Duration.zero;
 
+  // Call history tracking
+  String? _callHistoryId;
+  String _currentUserId = '';
+  String _currentUserName = '';
+  String _currentUserImage = '';
+
   @override
   void initState() {
     super.initState();
     _parseData();
     _localUid = Random().nextInt(999999);
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
+    _loadUserDataAndLogCall();
+  }
+
+  Future<void> _loadUserDataAndLogCall() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString != null) {
+        final userData = jsonDecode(userDataString);
+        _currentUserId = userData['id']?.toString() ?? '';
+        _currentUserName = userData['name']?.toString() ?? '';
+        _currentUserImage = userData['image']?.toString() ?? '';
+
+        // Log incoming video call
+        _callHistoryId = await CallHistoryService.logCall(
+          callerId: _callerId,
+          callerName: _callerName,
+          callerImage: widget.callData['callerImage'] ?? '',
+          recipientId: _currentUserId,
+          recipientName: _currentUserName,
+          recipientImage: _currentUserImage,
+          callType: CallType.video,
+          initiatedBy: _callerId,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error loading user data for call history: $e');
+    }
   }
 
   void _parseData() {
@@ -254,6 +290,32 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       callerId: _callerId,
       callerName: _callerName,
     );
+
+    // Update call history as missed
+    if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
+      await CallHistoryService.updateCallEnd(
+        callId: _callHistoryId!,
+        status: CallStatus.missed,
+        duration: 0,
+      );
+    }
+
+    _end();
+  }
+
+  // ================= DECLINE CALL =================
+  Future<void> _declineCall() async {
+    _ringTimer?.cancel();
+
+    // Update call history as declined
+    if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
+      await CallHistoryService.updateCallEnd(
+        callId: _callHistoryId!,
+        status: CallStatus.declined,
+        duration: 0,
+      );
+    }
+
     _end();
   }
 
@@ -268,6 +330,15 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         reason: 'ended',
         duration: _duration.inSeconds,
         channelName: _channel,
+      );
+    }
+
+    // Update call history
+    if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
+      await CallHistoryService.updateCallEnd(
+        callId: _callHistoryId!,
+        status: CallStatus.completed,
+        duration: _duration.inSeconds,
       );
     }
 

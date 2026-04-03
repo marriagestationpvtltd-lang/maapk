@@ -1696,8 +1696,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   builder: (context) => CallScreen(
                     currentUserId: widget.currentUserId,
                     currentUserName: widget.currentUserName,
+                    currentUserImage: widget.currentUserImage,
                     otherUserId: widget.receiverId,
                     otherUserName: widget.receiverName,
+                    otherUserImage: widget.receiverImage,
                   ),
                 ),
               );
@@ -1715,8 +1717,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   builder: (context) => VideoCallScreen(
                     currentUserId: widget.currentUserId,
                     currentUserName: widget.currentUserName,
+                    currentUserImage: widget.currentUserImage,
                     otherUserId: widget.receiverId,
                     otherUserName: widget.receiverName,
+                    otherUserImage: widget.receiverImage,
                   ),
                 ),
               );

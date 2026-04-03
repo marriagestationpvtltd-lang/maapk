@@ -9,20 +9,26 @@ import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
 import 'tokengenerator.dart';
+import 'call_history_model.dart';
+import 'call_history_service.dart';
 
 class CallScreen extends StatefulWidget {
   final String currentUserId;
   final String currentUserName;
+  final String currentUserImage;
   final String otherUserId;
   final String otherUserName;
+  final String otherUserImage;
   final bool isOutgoingCall; // Add this to identify outgoing call
 
   const CallScreen({
     super.key,
     required this.currentUserId,
     required this.currentUserName,
+    required this.currentUserImage,
     required this.otherUserId,
     required this.otherUserName,
+    required this.otherUserImage,
     this.isOutgoingCall = true, // Default to outgoing call
   });
 
@@ -55,6 +61,10 @@ class _CallScreenState extends State<CallScreen> {
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
+
+  // Call history tracking
+  String? _callHistoryId;
+  DateTime? _callStartTime;
 
   @override
   void initState() {
@@ -242,6 +252,19 @@ class _CallScreenState extends State<CallScreen> {
           agoraAppId: AgoraTokenService.appId,
           agoraCertificate: 'SERVER_ONLY',
         );
+
+        // Log call to history
+        _callHistoryId = await CallHistoryService.logCall(
+          callerId: widget.currentUserId,
+          callerName: widget.currentUserName,
+          callerImage: widget.currentUserImage,
+          recipientId: widget.otherUserId,
+          recipientName: widget.otherUserName,
+          recipientImage: widget.otherUserImage,
+          callType: CallType.audio,
+          initiatedBy: widget.currentUserId,
+        );
+        _callStartTime = DateTime.now();
       }
 
       // Init Agora
