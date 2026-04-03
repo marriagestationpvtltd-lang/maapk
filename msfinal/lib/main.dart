@@ -9,9 +9,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
+import 'Chat/ChatdetailsScreen.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
 import 'Startup/onboarding.dart';
@@ -310,10 +312,79 @@ void _handleNotificationTap(String? payload) {
 
     // Navigate based on notification type
     if (type == 'call' || type == 'video_call') {
-      _navigateToCallPage(data);
+      // For call notifications (especially missed calls), navigate to chat instead
+      _navigateToChatFromCallNotification(data);
     }
   } catch (e) {
     debugPrint('❌ Error handling notification tap: $e');
+  }
+}
+
+void _navigateToChatFromCallNotification(Map<String, dynamic> data) async {
+  debugPrint('🚀 Navigating to chat from call notification');
+
+  try {
+    // Get current user data
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+
+    if (userDataString == null) {
+      debugPrint('❌ No user data found');
+      return;
+    }
+
+    final userData = json.decode(userDataString);
+    final currentUserId = userData['id']?.toString() ?? '';
+    final currentUserName = userData['name']?.toString() ?? '';
+    final currentUserImage = userData['image']?.toString() ?? '';
+
+    if (currentUserId.isEmpty) {
+      debugPrint('❌ Current user ID is empty');
+      return;
+    }
+
+    // Extract caller/recipient info from notification
+    final callerId = data['callerId'] ?? data['senderId'] ?? '';
+    final callerName = data['callerName'] ?? data['senderName'] ?? 'Unknown';
+    final callerImage = data['callerImage'] ?? '';
+
+    if (callerId.isEmpty) {
+      debugPrint('❌ Caller ID is empty');
+      return;
+    }
+
+    // Generate chat room ID
+    final chatRoomId = currentUserId.compareTo(callerId) < 0
+        ? '${currentUserId}_$callerId'
+        : '${callerId}_$currentUserId';
+
+    debugPrint('💬 Opening chat with: $callerName (ID: $callerId)');
+    debugPrint('💬 Chat room ID: $chatRoomId');
+
+    // Navigate to chat screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentState = navigatorKey.currentState;
+
+      if (currentState != null) {
+        currentState.push(
+          MaterialPageRoute(
+            builder: (context) => ChatDetailScreen(
+              chatRoomId: chatRoomId,
+              receiverId: callerId,
+              receiverName: callerName,
+              receiverImage: callerImage,
+              currentUserId: currentUserId,
+              currentUserName: currentUserName,
+              currentUserImage: currentUserImage,
+            ),
+          ),
+        );
+      } else {
+        debugPrint('❌ Navigator state is null, cannot navigate');
+      }
+    });
+  } catch (e) {
+    debugPrint('❌ Error navigating to chat from call notification: $e');
   }
 }
 
@@ -480,8 +551,9 @@ Future<void> setupFirebaseMessaging() async {
       fallbackBody: message.notification?.body,
     );
 
+    // Navigate to chat for call notifications
     if (data['type'] == 'call' || data['type'] == 'video_call') {
-      _navigateToCallPage(data);
+      _navigateToChatFromCallNotification(data);
     }
   });
 
@@ -498,8 +570,9 @@ Future<void> setupFirebaseMessaging() async {
       );
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Navigate to chat for call notifications
         if (data['type'] == 'call' || data['type'] == 'video_call') {
-          _navigateToCallPage(data);
+          _navigateToChatFromCallNotification(data);
         }
       });
     }
