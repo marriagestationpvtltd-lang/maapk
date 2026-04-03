@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui; // Add this import for ImageFilter
+import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
-import 'package:ms2026/otherprofile/otherprofileview.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
-import '../pushnotification/pushservice.dart';
 import 'SearchResult.dart';
-import 'filterPage.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -17,20 +15,59 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  final List<String> recentSearches = [];
+// ─────────────────────────────────────────────────────────────────────────────
+// Search-type enum used by Quick Search
+// ─────────────────────────────────────────────────────────────────────────────
+enum QuickSearchType { phone, id, email, name }
 
-  // Variables for API integration
+class _SearchPageState extends State<SearchPage>
+    with SingleTickerProviderStateMixin {
+  // ── tabs ──
+  late TabController _tabController;
+
+  // ── Quick Search ──
+  QuickSearchType _selectedSearchType = QuickSearchType.id;
+  final TextEditingController _quickSearchController = TextEditingController();
+  final FocusNode _quickSearchFocus = FocusNode();
+
+  // ── Recommended profiles (Quick Search tab background) ──
+  final List<String> recentSearches = [];
   List<dynamic> _recommendedProfiles = [];
   bool _isLoading = true;
   String _errorMessage = '';
   int _currentUserId = 0;
-  String docstatus = 'not_uploaded'; // Add document status variable
+  String docstatus = 'not_uploaded';
+
+  // ── Advanced Search (filter) state ──
+  RangeValues _ageRange = const RangeValues(22, 60);
+  RangeValues _heightRange = const RangeValues(121, 215);
+  String _lookingFor = "Single";
+  String _religion = "Hindu";
+  String _education = "Bachelor";
+  String _income = "5 To 10 Lakh";
+  String _smoking = "No";
+  String _drinking = "No";
+  int _matchesCount = 0;
+  int _initialTotalCount = 0;
+  bool _isLoadingCount = true;
+  bool _isInitialLoad = true;
+  Map<String, dynamic> _filterParams = {};
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadUserDataAndFetchProfiles();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _quickSearchController.dispose();
+    _quickSearchFocus.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   // Method to load user data and fetch recommended profiles
@@ -56,8 +93,11 @@ class _SearchPageState extends State<SearchPage> {
       });
 
       if (userId > 0) {
-        await _checkDocumentStatus(userId); // Check document status
-        await _fetchRecommendedProfiles(userId);
+        await _checkDocumentStatus(userId);
+        await Future.wait([
+          _fetchRecommendedProfiles(userId),
+          _fetchInitialTotalCount(),
+        ]);
       } else {
         setState(() {
           _errorMessage = 'Invalid user ID';
@@ -177,251 +217,1060 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  // Show request type dialog with document status check
+  // ── Advanced Search helpers (from FilterPage, inlined here) ──────────────
 
+  Future<void> _loadFilterCount() async {
+    if (_currentUserId == 0) return;
+    await _fetchInitialTotalCount();
+  }
 
+  Future<void> _fetchInitialTotalCount() async {
+    if (_currentUserId == 0) {
+      setState(() {
+        _isLoadingCount = false;
+        _matchesCount = 0;
+        _initialTotalCount = 0;
+      });
+      return;
+    }
+    try {
+      final url = Uri.parse(
+          'https://digitallami.com/Api2/search_opposite_gender.php?user_id=$_currentUserId');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          setState(() {
+            _initialTotalCount = result['total_count'] ?? 0;
+            _matchesCount = _initialTotalCount;
+            _isLoadingCount = false;
+            _isInitialLoad = false;
+          });
+        } else {
+          setState(() {
+            _isLoadingCount = false;
+            _isInitialLoad = false;
+          });
+        }
+      } else {
+        setState(() {
+          _isLoadingCount = false;
+          _isInitialLoad = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingCount = false;
+        _isInitialLoad = false;
+      });
+    }
+  }
 
+  int? _getReligionId(String religion) {
+    switch (religion) {
+      case "Hindu":
+        return 1;
+      case "Buddhist":
+        return 4;
+      case "Muslim":
+        return 3;
+      default:
+        return null;
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      _buildRecentSearch(),
-                      const SizedBox(height: 20),
-                      _buildSectionTitle("Recommended For You"),
-                      const SizedBox(height: 10),
-                      _buildGrid(),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          ],
+  bool _areFiltersApplied() {
+    return _ageRange.start != 22 ||
+        _ageRange.end != 60 ||
+        _heightRange.start != 121 ||
+        _heightRange.end != 215 ||
+        _religion != "Hindu" ||
+        _education != "Bachelor" ||
+        _income != "5 To 10 Lakh" ||
+        _smoking != "No" ||
+        _drinking != "No";
+  }
+
+  Map<String, dynamic> _buildFilterParams() {
+    Map<String, dynamic> params = {};
+    if (_ageRange.start != 22 || _ageRange.end != 60) {
+      params['minage'] = _ageRange.start.round();
+      params['maxage'] = _ageRange.end.round();
+    }
+    if (_heightRange.start != 121 || _heightRange.end != 215) {
+      params['minheight'] = _heightRange.start.round();
+      params['maxheight'] = _heightRange.end.round();
+    }
+    if (_religion != "Hindu") {
+      final id = _getReligionId(_religion);
+      if (id != null) params['religion'] = id;
+    }
+    return params;
+  }
+
+  void _fetchMatchesCount() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (!mounted) return;
+      setState(() => _isLoadingCount = true);
+      try {
+        _filterParams = _buildFilterParams();
+        if (_filterParams.isEmpty) {
+          setState(() {
+            _matchesCount = _initialTotalCount;
+            _isLoadingCount = false;
+          });
+          return;
+        }
+        final filteredParams = Map<String, dynamic>.from(_filterParams)
+          ..removeWhere((key, value) => value == null);
+        final params = {
+          'user_id': _currentUserId.toString(),
+          ...filteredParams
+              .map((key, value) => MapEntry(key, value.toString())),
+        };
+        final queryString = Uri(queryParameters: params).query;
+        final url = Uri.parse(
+            'https://digitallami.com/Api2/search_opposite_gender.php?$queryString');
+        final response = await http.get(url);
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+          if (result['success'] == true) {
+            if (mounted) {
+              setState(() {
+                _matchesCount = result['total_count'] ?? 0;
+                _isLoadingCount = false;
+              });
+            }
+          }
+        } else {
+          if (mounted) setState(() => _isLoadingCount = false);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _matchesCount = 0;
+            _isLoadingCount = false;
+          });
+        }
+      }
+    });
+  }
+
+  void _handleFilterChange() => _fetchMatchesCount();
+
+  void _clearAllFilters() {
+    setState(() {
+      _ageRange = const RangeValues(22, 60);
+      _heightRange = const RangeValues(121, 215);
+      _lookingFor = "Single";
+      _religion = "Hindu";
+      _education = "Bachelor";
+      _income = "5 To 10 Lakh";
+      _smoking = "No";
+      _drinking = "No";
+      _matchesCount = _initialTotalCount;
+      _filterParams = {};
+    });
+  }
+
+  // ── Quick search ──────────────────────────────────────────────────────────
+
+  void _performQuickSearch() {
+    final query = _quickSearchController.text.trim();
+    if (query.isEmpty) return;
+    FocusScope.of(context).unfocus();
+
+    // Add to recent searches
+    if (!recentSearches.contains(query)) {
+      setState(() {
+        recentSearches.insert(0, query);
+        if (recentSearches.length > 5) recentSearches.removeLast();
+      });
+    }
+
+    final typeKey = _searchTypeApiKey(_selectedSearchType);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SearchResultPage(
+          quickSearchType: typeKey,
+          quickSearchValue: query,
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 70, bottom: 16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xffFF1500), Color(0xfff88fb1)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                children:  [
-                  SizedBox(width: 15),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SearchResultPage()),
-                      );
-                    },
-                    child: Icon(Icons.search, color: Colors.grey),
-                  ),
+  String _searchTypeApiKey(QuickSearchType type) {
+    switch (type) {
+      case QuickSearchType.phone:
+        return 'phone';
+      case QuickSearchType.id:
+        return 'id';
+      case QuickSearchType.email:
+        return 'email';
+      case QuickSearchType.name:
+        return 'name';
+    }
+  }
 
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                          hintText: "Search by profile id",
-                          border: InputBorder.none),
-                    ),
-                  )
-                ],
-              ),
+  String _searchTypeLabel(QuickSearchType type) {
+    switch (type) {
+      case QuickSearchType.phone:
+        return 'Phone Number';
+      case QuickSearchType.id:
+        return 'Profile ID';
+      case QuickSearchType.email:
+        return 'Email';
+      case QuickSearchType.name:
+        return 'Name';
+    }
+  }
+
+  String _searchTypeHint(QuickSearchType type) {
+    switch (type) {
+      case QuickSearchType.phone:
+        return 'Enter phone number…';
+      case QuickSearchType.id:
+        return 'Enter profile ID (e.g. 1234)…';
+      case QuickSearchType.email:
+        return 'Enter email address…';
+      case QuickSearchType.name:
+        return 'Enter first or last name…';
+    }
+  }
+
+  IconData _searchTypeIcon(QuickSearchType type) {
+    switch (type) {
+      case QuickSearchType.phone:
+        return Icons.phone_outlined;
+      case QuickSearchType.id:
+        return Icons.badge_outlined;
+      case QuickSearchType.email:
+        return Icons.email_outlined;
+      case QuickSearchType.name:
+        return Icons.person_outline;
+    }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F7),
+      body: Column(
+        children: [
+          _buildGradientHeader(),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildQuickSearchTab(),
+                _buildAdvancedSearchTab(),
+              ],
             ),
-          ),
-          const SizedBox(width: 10),
-          _circleIcon(Icons.person),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FilterPage()),
-              );
-            },
-            child: _circleIcon(Icons.tune),
           ),
         ],
       ),
     );
   }
 
-  Widget _circleIcon(IconData icon) {
+  // ── Gradient header ───────────────────────────────────────────────────────
+
+  Widget _buildGradientHeader() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 56, bottom: 20),
       decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      child: Icon(icon, color: Colors.black, size: 20),
-    );
-  }
-
-  Widget _buildRecentSearch() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Text("Recent search",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text("Clear all",
-                style: TextStyle(fontSize: 14, color: Colors.red)),
-          ],
+        gradient: LinearGradient(
+          colors: [Color(0xffFF1500), Color(0xffFF5A60)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Find Your Match',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Search by phone, ID, email or name',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.favorite, color: Colors.white, size: 22),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: recentSearches
-              .map((e) => Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xfff2f2f2),
-              borderRadius: BorderRadius.circular(10),
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTabBar() {
+    return Container(
+      color: Colors.white,
+      child: TabBar(
+        controller: _tabController,
+        onTap: (index) {
+          if (index == 1 && _currentUserId > 0 && _isInitialLoad) {
+            _loadFilterCount();
+          }
+        },
+        labelColor: const Color(0xffFF1500),
+        unselectedLabelColor: Colors.grey,
+        indicatorColor: const Color(0xffFF1500),
+        indicatorWeight: 3,
+        labelStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        tabs: const [
+          Tab(
+            icon: Icon(Icons.search, size: 20),
+            text: 'Quick Search',
+          ),
+          Tab(
+            icon: Icon(Icons.tune, size: 20),
+            text: 'Advanced Search',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── QUICK SEARCH TAB ──────────────────────────────────────────────────────
+
+  Widget _buildQuickSearchTab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSearchTypeSelector(),
+          _buildSearchInputCard(),
+          if (recentSearches.isNotEmpty) _buildRecentSearches(),
+          _buildRecommendedSection(),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchTypeSelector() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Search By',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
             ),
-            child: Text(e,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: QuickSearchType.values.map((type) {
+              final selected = _selectedSearchType == type;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedSearchType = type;
+                      _quickSearchController.clear();
+                    });
+                    _quickSearchFocus.requestFocus();
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: EdgeInsets.only(
+                      right: type != QuickSearchType.name ? 8 : 0,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xffFF1500)
+                          : const Color(0xFFF3F3F3),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xffFF1500).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          _searchTypeIcon(type),
+                          size: 20,
+                          color: selected ? Colors.white : Colors.grey,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _searchTypeLabel(type).split(' ').first,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: selected ? Colors.white : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchInputCard() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label
+          Row(
+            children: [
+              Icon(
+                _searchTypeIcon(_selectedSearchType),
+                size: 16,
+                color: const Color(0xffFF1500),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Search by ${_searchTypeLabel(_selectedSearchType)}',
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500)),
-          ))
-              .toList(),
-        )
-      ],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xffFF1500),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Input + button row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F7F7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _quickSearchFocus.hasFocus
+                          ? const Color(0xffFF1500)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _quickSearchController,
+                    focusNode: _quickSearchFocus,
+                    keyboardType:
+                        _selectedSearchType == QuickSearchType.phone ||
+                                _selectedSearchType == QuickSearchType.id
+                            ? TextInputType.number
+                            : _selectedSearchType == QuickSearchType.email
+                                ? TextInputType.emailAddress
+                                : TextInputType.name,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _performQuickSearch(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: _searchTypeHint(_selectedSearchType),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 15),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _quickSearchController.text.trim().isNotEmpty
+                    ? _performQuickSearch
+                    : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 50,
+                  width: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _quickSearchController.text.trim().isNotEmpty
+                          ? [
+                              const Color(0xffFF1500),
+                              const Color(0xffFF5A60),
+                            ]
+                          : [Colors.grey.shade300, Colors.grey.shade300],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.search, color: Colors.white, size: 22),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-          fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold),
+  Widget _buildRecentSearches() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent Searches',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => recentSearches.clear()),
+                child: const Text(
+                  'Clear all',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xffFF1500),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: recentSearches
+                .map(
+                  (term) => GestureDetector(
+                    onTap: () {
+                      _quickSearchController.text = term;
+                      _performQuickSearch();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F3F3),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.history,
+                              size: 14, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            term,
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.black87),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildRecommendedSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recommended For You',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SearchResultPage()),
+                ),
+                child: const Text(
+                  'See all',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xffFF1500),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildRecommendedGrid(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedGrid() {
     if (_isLoading) {
-      return SizedBox(
-        height: 400,
+      return const SizedBox(
+        height: 300,
         child: Center(
-          child: CircularProgressIndicator(color: Colors.red),
+          child: CircularProgressIndicator(color: Color(0xffFF1500)),
         ),
       );
     }
-
     if (_errorMessage.isNotEmpty) {
       return SizedBox(
-        height: 400,
-        child: Center(
-          child: Text(
-            _errorMessage,
-            style: TextStyle(color: Colors.red),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    if (_recommendedProfiles.isEmpty) {
-      return SizedBox(
-        height: 400,
+        height: 200,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.search_off, size: 50, color: Colors.grey),
-              SizedBox(height: 10),
-              Text(
-                'No recommendations found',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton(
+              const Icon(Icons.error_outline, color: Colors.red, size: 40),
+              const SizedBox(height: 8),
+              Text(_errorMessage,
+                  style: const TextStyle(color: Colors.grey),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              TextButton.icon(
                 onPressed: _loadUserDataAndFetchProfiles,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text('Retry', style: TextStyle(color: Colors.white)),
-              ),
+                icon: const Icon(Icons.refresh, color: Color(0xffFF1500)),
+                label: const Text('Retry',
+                    style: TextStyle(color: Color(0xffFF1500))),
+              )
             ],
           ),
         ),
       );
     }
-
-    // Calculate how many items to show (max 4 or all if less than 4)
-    final itemCount = _recommendedProfiles.length > 4 ? 4 : _recommendedProfiles.length;
-
+    if (_recommendedProfiles.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: Text('No recommendations found',
+              style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+    final count = _recommendedProfiles.length > 4
+        ? 4
+        : _recommendedProfiles.length;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: itemCount,
+      itemCount: count,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.63,
+        childAspectRatio: 0.65,
       ),
-      itemBuilder: (context, index) => _buildProfileCard(_recommendedProfiles[index]),
+      itemBuilder: (_, i) => _buildProfileCard(_recommendedProfiles[i]),
     );
   }
 
-  Widget _buildProfileCard(Map<String, dynamic> profile) {
-    // Extract data from API response
-    final firstName = profile['firstName'] ?? '';
-    final lastName = profile['lastName'] ?? '';
-    final name = '${profile['userid']} $lastName'.trim();
-    final age = profile['age']?.toString() ?? '25';
-    final height = profile['height_name']?.toString() ?? '165 cm';
-    final profession = profile['designation']?.toString() ?? 'Fashion Designer';
-    final city = profile['city']?.toString() ?? '';
-    final country = profile['country']?.toString() ?? '';
-    final location = city.isNotEmpty ? city : 'Kathmandu';
-    final userId = profile['userid'] ?? 0;
+  // ── ADVANCED SEARCH TAB ───────────────────────────────────────────────────
 
-    // Construct image URL
+  Widget _buildAdvancedSearchTab() {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 14),
+                _buildAdvFilterHeader(),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Looking For'),
+                const SizedBox(height: 8),
+                _buildDropdown(
+                    _lookingFor, ['Single', 'Married', 'Widow'], (v) {
+                  setState(() => _lookingFor = v!);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Age Range'),
+                _buildRangeSlider(_ageRange, 18, 70, (v) {
+                  setState(() => _ageRange = v);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Height Range (cm)'),
+                _buildRangeSlider(_heightRange, 100, 250, (v) {
+                  setState(() => _heightRange = v);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Religion'),
+                const SizedBox(height: 8),
+                _buildDropdown(
+                    _religion, ['Hindu', 'Buddhist', 'Muslim'], (v) {
+                  setState(() => _religion = v!);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Education'),
+                const SizedBox(height: 8),
+                _buildDropdown(
+                    _education, ['Bachelor', 'Master', 'PhD'], (v) {
+                  setState(() => _education = v!);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                _buildFilterLabel('Annual Income'),
+                const SizedBox(height: 8),
+                _buildDropdown(
+                    _income, ['5 To 10 Lakh', '10 To 20 Lakh'], (v) {
+                  setState(() => _income = v!);
+                  _handleFilterChange();
+                }),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFilterLabel('Smoking'),
+                          const SizedBox(height: 8),
+                          _buildDropdown(_smoking, ['No', 'Yes'], (v) {
+                            setState(() => _smoking = v!);
+                            _handleFilterChange();
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFilterLabel('Drinking'),
+                          const SizedBox(height: 8),
+                          _buildDropdown(_drinking, ['No', 'Yes'], (v) {
+                            setState(() => _drinking = v!);
+                            _handleFilterChange();
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+        _buildAdvancedSearchBottom(),
+      ],
+    );
+  }
+
+  Widget _buildAdvFilterHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Filter Options',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _clearAllFilters,
+              child: const Text(
+                'Clear all',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xffFF1500),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: _isLoadingCount
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      '$_matchesCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedSearchBottom() {
+    final filtersApplied = _areFiltersApplied();
+    return Column(
+      children: [
+        Container(
+          height: 44,
+          color: const Color(0xFFF3F3F3),
+          alignment: Alignment.center,
+          child: _isLoadingCount
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xffFF1500)),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Text('Calculating matches…',
+                        style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  ],
+                )
+              : Text(
+                  _matchesCount == 1
+                      ? '1 match${filtersApplied ? ' based on your filter' : ''}'
+                      : '$_matchesCount matches${filtersApplied ? ' based on your filter' : ''}',
+                  style:
+                      const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+        ),
+        GestureDetector(
+          onTap: _matchesCount > 0
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SearchResultPage(
+                          filterParams:
+                              filtersApplied ? _buildFilterParams() : null),
+                    ),
+                  );
+                }
+              : null,
+          child: Container(
+            width: double.infinity,
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _matchesCount > 0
+                    ? [const Color(0xffFF1500), const Color(0xffFF5A60)]
+                    : [Colors.grey.shade400, Colors.grey.shade400],
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'Search Matches',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Filter sub-widgets ────────────────────────────────────────────────────
+
+  Widget _buildFilterLabel(String title) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          height: 2,
+          width: 30,
+          color: const Color(0xffFF1500),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown(
+      String value, List<String> list, Function(String?) onChange) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade100,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButton<String>(
+        value: value,
+        underline: const SizedBox(),
+        isExpanded: true,
+        items: list
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+        onChanged: onChange,
+      ),
+    );
+  }
+
+  Widget _buildRangeSlider(
+      RangeValues range, double min, double max, Function(RangeValues) onChange) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _rangeBubble(range.start.round().toString()),
+            _rangeBubble(range.end.round().toString()),
+          ],
+        ),
+        RangeSlider(
+          values: range,
+          min: min,
+          max: max,
+          activeColor: const Color(0xffFF1500),
+          inactiveColor: const Color(0xfffbc0c7),
+          onChanged: onChange,
+        ),
+      ],
+    );
+  }
+
+  Widget _rangeBubble(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xffFF1500),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text,
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13)),
+    );
+  }
+
+  // ── Profile card (shared between tabs) ───────────────────────────────────
+
+  Widget _buildProfileCard(Map<String, dynamic> profile) {
+    final lastName = profile['lastName'] ?? '';
+    final userId = profile['userid'] ?? 0;
+    final name = 'MS:$userId ${lastName}'.trim();
+    final age = profile['age']?.toString() ?? '–';
+    final height = profile['height_name']?.toString() ?? '–';
+    final profession = profile['designation']?.toString() ?? '–';
+    final city = profile['city']?.toString() ?? '';
+    final location = city.isNotEmpty ? city : 'Nepal';
     final baseImageUrl = 'https://digitallami.com/Api2/';
     final profilePicture = profile['profile_picture']?.toString() ?? '';
     final imageUrl = profilePicture.isNotEmpty
         ? baseImageUrl + profilePicture
         : 'https://placehold.co/600x800/png';
-
-    // Calculate match percentage if available
     final matchPercent = profile['matchPercent'] ?? 0;
     Color matchColor = Colors.grey;
     if (matchPercent >= 80) {
@@ -431,19 +1280,18 @@ class _SearchPageState extends State<SearchPage> {
     } else if (matchPercent > 0) {
       matchColor = Colors.red;
     }
-
-    // Check if photo should be blurred
     final shouldShowClearImage = _shouldShowClearImage(profile);
     final photoRequestStatus = _getPhotoRequestStatus(profile);
 
     return GestureDetector(
       onTap: () {
-        // Check document status before navigating to profile
         if (docstatus == 'approved') {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProfileLoader(userId: userId.toString(), myId: userId.toString(),),
+              builder: (_) => ProfileLoader(
+                  userId: userId.toString(),
+                  myId: _currentUserId.toString()),
             ),
           );
         } else {
@@ -456,215 +1304,117 @@ class _SearchPageState extends State<SearchPage> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.shade300,
-              blurRadius: 5,
-              offset: Offset(0, 3),
+              color: Colors.grey.shade200,
+              blurRadius: 6,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section - Conditional blur based on privacy/photo request
-            Container(
-              height: 140,
-              width: double.infinity,
-              child: Stack(
-                children: [
-                  // Image Container with ClipRRect to ensure blur stays within bounds
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    child: _buildImageWithBlur(
+            // Image
+            Expanded(
+              flex: 6,
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildImageWithBlur(
                       imageUrl: imageUrl,
                       shouldShowClearImage: shouldShowClearImage,
-                      photoRequestStatus: photoRequestStatus,
-                      profile: profile,
                     ),
-                  ),
-
-                  // Photo Request Status Indicator
-                  if (!shouldShowClearImage)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.lock,
-                              size: 12,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              _getBlurIndicatorText(photoRequestStatus),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                    // Lock indicator
+                    if (!shouldShowClearImage)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.lock,
+                                  size: 10, color: Colors.white),
+                              const SizedBox(width: 3),
+                              Text(
+                                _getBlurIndicatorText(photoRequestStatus),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // Verification Badge
-                  if (profile['isVerified'] == 1)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(Icons.verified, size: 16, color: Colors.white),
-                      ),
-                    ),
-
-                  // Match Percentage
-                  if (matchPercent > 0)
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: matchColor.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '$matchPercent% Match',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                ],
+                    // Verified badge
+                    if (profile['isVerified'] == 1)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                              color: Colors.green, shape: BoxShape.circle),
+                          child: const Icon(Icons.verified,
+                              size: 12, color: Colors.white),
+                        ),
+                      ),
+                    // Match %
+                    if (matchPercent > 0)
+                      Positioned(
+                        bottom: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: matchColor.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$matchPercent%',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-
-            // Profile Information
+            // Info
             Expanded(
+              flex: 4,
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(9),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Name with elegant style
-                        Container(
-                          margin: EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            "MS:$name",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-
-                        // Age and Height
-                        Row(
-                          children: [
-                            Icon(Icons.person_outline, size: 12, color: Colors.grey),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                "Age $age yrs, $height",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 4),
-
-                        // Profession
-                        Row(
-                          children: [
-                            Icon(Icons.work_outline, size: 12, color: Colors.grey),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                profession,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 4),
-
-                        // Location
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 12,
-                              color: Color(0xfffb5f6a),
-                            ),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                location,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    Text(
+                      name,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-
-                    // Send Request Button
-
+                    _infoRow(Icons.person_outline, 'Age $age, $height'),
+                    _infoRow(Icons.work_outline, profession),
+                    _infoRow(Icons.location_on_outlined, location,
+                        iconColor: const Color(0xfffb5f6a)),
                   ],
                 ),
               ),
@@ -675,100 +1425,67 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  Widget _infoRow(IconData icon, String text,
+      {Color iconColor = Colors.grey}) {
+    return Row(
+      children: [
+        Icon(icon, size: 11, color: iconColor),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildImageWithBlur({
     required String imageUrl,
     required bool shouldShowClearImage,
-    required String photoRequestStatus,
-    required Map<String, dynamic> profile,
   }) {
     if (shouldShowClearImage) {
-      // Show clear image
       return Image.network(
         imageUrl,
-        width: double.infinity,
-        height: 140,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: double.infinity,
-            height: 140,
-            color: Colors.grey[200],
-            child: Center(
-              child: Icon(
-                Icons.person,
-                size: 50,
-                color: Colors.grey,
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      // Show blurred image
-      return Stack(
-        children: [
-          // Original Image
-          Image.network(
-            imageUrl,
-            width: double.infinity,
-            height: 140,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: double.infinity,
-                height: 140,
-                color: Colors.grey[200],
-                child: Center(
-                  child: Icon(
-                    Icons.person,
-                    size: 50,
-                    color: Colors.grey,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Blur Overlay
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.3),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
-          ),
-
-          // Lock icon overlay (centered)
-          Positioned.fill(
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.red.withOpacity(0.8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.lock,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-        ],
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.grey[200],
+          child: const Center(
+              child: Icon(Icons.person, size: 40, color: Colors.grey)),
+        ),
       );
     }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: Colors.grey[200],
+            child: const Center(
+                child: Icon(Icons.person, size: 40, color: Colors.grey)),
+          ),
+        ),
+        BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(color: Colors.black.withOpacity(0.15)),
+        ),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.red.withOpacity(0.8),
+            ),
+            child: const Icon(Icons.lock, color: Colors.white, size: 20),
+          ),
+        ),
+      ],
+    );
   }
 
   String _getBlurIndicatorText(String status) {
