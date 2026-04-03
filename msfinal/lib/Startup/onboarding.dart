@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../Auth/Login/Email.dart';
 import '../Auth/Login/LoginMain.dart';
 import '../Auth/Screen/Signup.dart';
+import '../constant/app_colors.dart';
 
 
 class OnboardingScreen extends StatefulWidget {
@@ -59,8 +60,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             SizedBox(width: 10),
             CircleAvatar(
               radius: 18,
-              backgroundColor: Color(0xFFff5a4f),
-              child: Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+              backgroundColor: AppColors.primary,
+              child: Icon(Icons.arrow_forward, color: AppColors.white, size: 20),
             ),
           ],
         ),
@@ -160,9 +161,9 @@ class OnboardPageOne extends StatelessWidget {
   Widget build(BuildContext context) {
     // main gradient
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFf04b3b), Color(0xFFe83a7f)],
+          colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -284,9 +285,9 @@ class OnboardPageTwo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFf04b3b), Color(0xFFe83a7f)],
+          colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
