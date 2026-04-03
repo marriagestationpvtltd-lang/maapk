@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../Startup/SplashScreen.dart';
 import '../constant/app_colors.dart';
 import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
@@ -21,6 +22,8 @@ class GlobalConnectivityHandler extends StatefulWidget {
 }
 
 class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
+  static const double _hiddenBannerOffsetY = -1.2;
+
   ConnectivityService? _connectivityService;
   Timer? _hideBannerTimer;
   bool _isBannerVisible = false;
@@ -188,16 +191,12 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
         return;
       }
 
-      if (route is MaterialPageRoute<dynamic>) {
-        navigator.pushReplacement(
-          MaterialPageRoute<dynamic>(
-            builder: route.builder,
-            settings: route.settings,
-            fullscreenDialog: route.fullscreenDialog,
-            maintainState: route.maintainState,
-          ),
-        );
-      }
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => const SplashScreen(),
+        ),
+        (route) => false,
+      );
     });
   }
 
@@ -214,9 +213,11 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
             bottom: false,
             child: IgnorePointer(
               ignoring: !_isBannerVisible,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 220),
-                offset: _isBannerVisible ? Offset.zero : const Offset(0, -1.2),
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 220),
+                  offset: _isBannerVisible
+                      ? Offset.zero
+                      : const Offset(0, _hiddenBannerOffsetY),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                   child: Material(

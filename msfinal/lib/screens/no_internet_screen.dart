@@ -104,7 +104,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Failed to restore the connection. Please try again manually.'),
+          content: Text('Failed to reload after reconnecting. Please try the retry button.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -163,7 +163,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
 
   @override
   Widget build(BuildContext context) {
-    final bool hasNoActiveNetwork = !_connectivityService.isWifiConnected &&
+    final bool isDisconnected = !_connectivityService.isWifiConnected &&
         !_connectivityService.isMobileConnected;
 
     return WillPopScope(
@@ -211,7 +211,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                   ),
                   AppSpacing.verticalMD,
                   Text(
-                    hasNoActiveNetwork
+                    isDisconnected
                         ? 'No network connection was detected. Please turn on Wi-Fi or mobile data.'
                         : _connectivityService.isWifiConnected
                             ? 'Wi-Fi is connected, but internet access is unavailable. Please check your Wi-Fi network.'
@@ -289,7 +289,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     ),
                   ),
                   AppSpacing.verticalMD,
-                  if (hasNoActiveNetwork)
+                  if (isDisconnected)
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
