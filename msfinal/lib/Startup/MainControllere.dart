@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../ReUsable/Navbar.dart'; // AppNavbar with onItemSelected callback
 import '../Home/Screen/HomeScreenPage.dart';
 import '../liked/liked.dart';
-import '../purposal/purposalScreen.dart';
 import '../Chat/ChatlistScreen.dart';
 import '../profile/myprofile.dart';
 
@@ -53,15 +52,11 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
   List<Widget> _buildScreens() {
     return [
       MatrimonyHomeScreen(), // index 0
-      ProposalsPage(),       // index 1
-      // Liked page - replace with your actual liked widget when ready
-      FavoritePeoplePage(),     // Chat - pass user data when available; otherwise show placeholder
+      FavoritePeoplePage(),  // index 1 - Shortlist
       _senderId != null
-          ? ChatListScreen(
-
-      )
-          : Center(child: Text('Loading chat...')), // index 3
-      MatrimonyProfilePage(), // index 4
+          ? ChatListScreen()
+          : Center(child: Text('Loading chat...')), // index 2
+      MatrimonyProfilePage(), // index 3
     ];
   }
 

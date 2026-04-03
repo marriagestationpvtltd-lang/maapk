@@ -44,6 +44,9 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   List<Map<String, dynamic>> _otherServices = [];
   bool _loading = true;
 
+  List<dynamic> _shortlistedProfiles = [];
+  bool _isLoadingShortlist = false;
+
   int userid = 0;
   String _userId = '';
 
@@ -122,6 +125,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       _checkDocumentStatus(),
       _fetchPremiumMembers(),
       _fetchOtherServices(),
+      _fetchShortlistedProfiles(),
     ]);
   }
 
@@ -168,6 +172,39 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         _isLoading = false;
       });
       print('Error fetching matched profiles: $e');
+    }
+  }
+
+  Future<void> _fetchShortlistedProfiles() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+      final userData = jsonDecode(userDataString);
+      final userId = userData['id']?.toString() ?? '';
+      if (userId.isEmpty) return;
+
+      setState(() => _isLoadingShortlist = true);
+
+      final url = Uri.parse('http://digitallami.com/Api2/likelist.php?user_id=$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          setState(() {
+            _shortlistedProfiles = data['data'] ?? [];
+            _isLoadingShortlist = false;
+          });
+        } else {
+          setState(() => _isLoadingShortlist = false);
+        }
+      } else {
+        setState(() => _isLoadingShortlist = false);
+      }
+    } catch (e) {
+      setState(() => _isLoadingShortlist = false);
+      debugPrint('Error fetching shortlisted profiles: $e');
     }
   }
 
@@ -344,6 +381,7 @@ String usertye = '';
     _checkDocumentStatus();
     _fetchPremiumMembers();
     _fetchOtherServices();
+    _fetchShortlistedProfiles();
     OnlineStatusService().start();
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _refreshAllData();
@@ -446,6 +484,17 @@ String usertye = '';
                   ),
                   const SizedBox(height: 14),
                   _buildMatchedProfilesFromApi(),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => FavoritePeoplePage())),
+                      child: _buildSectionHeader('Shortlisted Profiles', showSeeAll: true),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildShortlistedProfiles(),
                   const SizedBox(height: 24),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1296,6 +1345,174 @@ String usertye = '';
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildShortlistedProfiles() {
+    if (_isLoadingShortlist) {
+      return const SizedBox(
+        height: 220,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFF90E18),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (_shortlistedProfiles.isEmpty) {
+      return SizedBox(
+        height: 220,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bookmark_border_rounded,
+                  size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 8),
+              Text('No shortlisted profiles yet',
+                  style: TextStyle(
+                      color: Colors.grey.shade500, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _shortlistedProfiles.length,
+        padding: const EdgeInsets.only(left: 16, right: 8),
+        itemBuilder: (context, index) {
+          final person = _shortlistedProfiles[index];
+          final firstName = person['firstName']?.toString() ?? '';
+          final lastName = person['lastName']?.toString() ?? '';
+          final fullName = '$firstName $lastName'.trim();
+          final displayName = fullName.isNotEmpty ? fullName : 'User';
+          final city = person['city']?.toString() ?? '';
+          final profilePicture = person['profile_picture']?.toString() ?? '';
+          final imageUrl = profilePicture.isNotEmpty
+              ? (profilePicture.startsWith('http')
+                  ? profilePicture
+                  : 'https://digitallami.com/Api2/$profilePicture')
+              : '';
+          final isVerified =
+              person['isVerified'] == 1 || person['isVerified'] == '1';
+          final receiverId = person['userid'];
+
+          return GestureDetector(
+            onTap: () {
+              if (receiverId != null) {
+                if (docstatus == 'approved') {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ProfileLoader(
+                              userId: receiverId.toString(),
+                              myId: userid.toString())));
+                } else {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => IDVerificationScreen()));
+                }
+              }
+            },
+            child: Container(
+              width: 160,
+              margin: const EdgeInsets.only(right: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.07),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 130,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  height: 130,
+                                  color: Colors.grey.shade100,
+                                  child: const Center(
+                                      child: Icon(Icons.person_rounded,
+                                          size: 50, color: Colors.grey)),
+                                ),
+                              )
+                            : Container(
+                                height: 130,
+                                color: Colors.grey.shade100,
+                                child: const Center(
+                                    child: Icon(Icons.person_rounded,
+                                        size: 50, color: Colors.grey)),
+                              ),
+                      ),
+                      if (isVerified)
+                        const Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(Icons.verified,
+                              color: Colors.red, size: 18),
+                        ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (city.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on,
+                                  size: 12, color: Colors.grey),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  city,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
