@@ -257,7 +257,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
-        collapseMode: CollapseMode.fade,
+        collapseMode: CollapseMode.parallax,
       ),
     );
   }
