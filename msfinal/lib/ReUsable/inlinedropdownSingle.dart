@@ -70,8 +70,9 @@ class _InlineSearchDropdownState<T> extends State<InlineSearchDropdown<T>> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.green),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
               borderRadius: BorderRadius.circular(25),
+              color: Colors.white,
             ),
             child: Row(
               children: [
