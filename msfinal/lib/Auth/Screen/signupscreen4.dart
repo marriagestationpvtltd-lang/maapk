@@ -876,6 +876,11 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == 'success') {
+          // Persist country + state so later screens (e.g. Astro Details)
+          // can pre-populate their location fields without re-hardcoding.
+          await prefs.setString('reg_country', _selectedTemporaryCountry ?? '');
+          await prefs.setString('reg_state',   _selectedTemporaryState   ?? '');
+
           bool updated = await UpdateService.updatePageNumber(
             userId: userId.toString(),
             pageNo: 3,
