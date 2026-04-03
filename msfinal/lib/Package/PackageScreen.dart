@@ -69,7 +69,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           if (mounted) {
             setState(() {
               _activePackageName = latest['package_name'];
-              _activePackageExpiry = latest['expiredate']?.toString().substring(0, 10);
+              final expiry = latest['expiredate']?.toString() ?? '';
+              _activePackageExpiry = expiry.length >= 10 ? expiry.substring(0, 10) : expiry;
             });
           }
         }
@@ -558,7 +559,8 @@ class Package {
   String get priceString {
     if (price is int) return 'Rs. $price';
     if (price is double) return 'Rs. ${(price as double).toStringAsFixed(0)}';
-    return 'Rs. ${price.toString()}';
+    final parsed = double.tryParse(price.toString());
+    return parsed != null ? 'Rs. ${parsed.toStringAsFixed(0)}' : 'Rs. ${price}';
   }
 
   double get priceDouble {

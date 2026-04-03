@@ -639,17 +639,39 @@ class _PaymentPageState extends State<PaymentPage> {
 
   void _handleUrlChange(String url) {
     final lowerUrl = url.toLowerCase();
+    // Check for explicit success patterns
     if (lowerUrl.contains('success.php') || lowerUrl.contains('success=true')) {
       _handlePaymentSuccess(url);
-    } else if (lowerUrl.contains('cancel.php') ||
-        lowerUrl.contains('cancelled') ||
-        lowerUrl.contains('failed.php') ||
-        lowerUrl.contains('failure.php') ||
-        lowerUrl.contains('payment_failed') ||
-        lowerUrl.contains('paymentfailed') ||
-        lowerUrl.contains('declined')) {
+    // Check for explicit cancel/failure path segments or query values
+    } else if (_isCancelUrl(lowerUrl)) {
       _handlePaymentCancel();
     }
+  }
+
+  bool _isCancelUrl(String lowerUrl) {
+    // Match path-level cancel/failure segments (e.g. /cancel.php, /failed.php)
+    final cancelPaths = [
+      'cancel.php',
+      'failed.php',
+      'failure.php',
+      'payment_failed',
+      'paymentfailed',
+      'payment-failed',
+      'payment-cancel',
+    ];
+    for (final pattern in cancelPaths) {
+      if (lowerUrl.contains(pattern)) return true;
+    }
+    // Match query parameter values like ?status=cancelled or ?result=declined
+    final uri = Uri.tryParse(lowerUrl);
+    if (uri != null) {
+      final params = uri.queryParameters;
+      const cancelValues = {'cancelled', 'failed', 'failure', 'declined', 'cancel'};
+      for (final value in params.values) {
+        if (cancelValues.contains(value.toLowerCase())) return true;
+      }
+    }
+    return false;
   }
 
   void _handlePaymentCancel() {
