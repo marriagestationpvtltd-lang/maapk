@@ -310,7 +310,7 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
           children: [
             Flexible(
               child: Text(
-                "MS:${widget.data.memberid ?? ''} ${widget.data.lastName ?? ''}".trim(),
+                "MS: ${widget.data.memberid ?? ''} ${widget.data.lastName ?? ''}".trim(),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
