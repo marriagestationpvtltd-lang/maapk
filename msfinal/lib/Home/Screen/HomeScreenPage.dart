@@ -2489,7 +2489,7 @@ String usertye = '';
       final userData = jsonDecode(userDataString);
       final currentUserIdStr = userData['id'].toString();
       final currentUserName =
-          '${userData['id'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+          '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
       final currentUserImage =
           _resolveApiImageUrl(userData['profilePicture']?.toString() ?? '');
 
