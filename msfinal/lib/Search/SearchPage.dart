@@ -37,6 +37,7 @@ class _SearchPageState extends State<SearchPage>
   String _errorMessage = '';
   int _currentUserId = 0;
   String docstatus = 'not_uploaded';
+  Set<int> _blockedUserIds = {};
 
   // ── Advanced Search (filter) state ──
   RangeValues _ageRange = const RangeValues(22, 60);
@@ -94,6 +95,7 @@ class _SearchPageState extends State<SearchPage>
 
       if (userId > 0) {
         await _checkDocumentStatus(userId);
+        await _fetchBlockedUsers();
         await Future.wait([
           _fetchRecommendedProfiles(userId),
           _fetchInitialTotalCount(),
@@ -134,6 +136,39 @@ class _SearchPageState extends State<SearchPage>
     }
   }
 
+  // Fetch blocked users
+  Future<void> _fetchBlockedUsers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+
+      final userData = jsonDecode(userDataString);
+      final myId = userData["id"].toString();
+
+      final response = await http.post(
+        Uri.parse('https://digitallami.com/Api2/get_blocked_users.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'my_id': myId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          final blockedUsers = List<Map<String, dynamic>>.from(data['users'] ?? []);
+          setState(() {
+            _blockedUserIds = blockedUsers
+                .map((user) => int.tryParse(user['id'].toString()) ?? 0)
+                .where((id) => id != 0)
+                .toSet();
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching blocked users: $e");
+    }
+  }
+
   // Method to fetch recommended profiles from API
   Future<void> _fetchRecommendedProfiles(int userId) async {
     try {
@@ -149,8 +184,15 @@ class _SearchPageState extends State<SearchPage>
         final result = jsonDecode(response.body);
 
         if (result['success'] == true) {
+          final allProfiles = result['matched_users'] ?? [];
+          // Filter out blocked users
+          final filteredProfiles = allProfiles.where((profile) {
+            final profileId = int.tryParse(profile['userid']?.toString() ?? '0') ?? 0;
+            return !_blockedUserIds.contains(profileId);
+          }).toList();
+
           setState(() {
-            _recommendedProfiles = result['matched_users'] ?? [];
+            _recommendedProfiles = filteredProfiles;
             _isLoading = false;
           });
         } else {

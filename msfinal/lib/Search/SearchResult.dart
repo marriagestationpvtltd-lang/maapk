@@ -32,6 +32,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
   int _totalCount = 0;
   int _currentUserId = 0;
   String docstatus = 'not_uploaded'; // Add document status
+  Set<int> _blockedUserIds = {};
 
   // Track sent requests
   Map<int, String> _sentRequests = {};
@@ -64,6 +65,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
 
       if (userId > 0) {
         await _checkDocumentStatus(userId); // Check document status
+        await _fetchBlockedUsers();
         await _fetchProfiles(userId);
       } else {
         setState(() {
@@ -98,6 +100,39 @@ class _SearchResultPageState extends State<SearchResultPage> {
       }
     } catch (e) {
       print("Error checking document status: $e");
+    }
+  }
+
+  // Fetch blocked users
+  Future<void> _fetchBlockedUsers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+
+      final userData = jsonDecode(userDataString);
+      final myId = userData["id"].toString();
+
+      final response = await http.post(
+        Uri.parse('https://digitallami.com/Api2/get_blocked_users.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'my_id': myId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          final blockedUsers = List<Map<String, dynamic>>.from(data['users'] ?? []);
+          setState(() {
+            _blockedUserIds = blockedUsers
+                .map((user) => int.tryParse(user['id'].toString()) ?? 0)
+                .where((id) => id != 0)
+                .toSet();
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching blocked users: $e");
     }
   }
 
@@ -141,9 +176,16 @@ class _SearchResultPageState extends State<SearchResultPage> {
         final result = jsonDecode(response.body);
 
         if (result['success'] == true) {
+          final allProfiles = result['data'] ?? [];
+          // Filter out blocked users
+          final filteredProfiles = allProfiles.where((profile) {
+            final profileId = int.tryParse(profile['id']?.toString() ?? '0') ?? 0;
+            return !_blockedUserIds.contains(profileId);
+          }).toList();
+
           setState(() {
-            profiles = result['data'] ?? [];
-            _totalCount = result['total_count'] ?? 0;
+            profiles = filteredProfiles;
+            _totalCount = filteredProfiles.length;
             _isLoading = false;
           });
         } else {
