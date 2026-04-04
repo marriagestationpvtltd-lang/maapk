@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../../Startup/MainControllere.dart';
 import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
+import '../../service/ocr_service.dart';
 
 class IDVerificationScreen extends StatefulWidget {
   const IDVerificationScreen({super.key});
@@ -23,6 +25,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   static const double _kPulseScaleMax = 1.06;
 
   final ImagePicker _picker = ImagePicker();
+  final OCRService _ocrService = OCRService();
   String? _selectedDocumentType;
   final TextEditingController _documentNumberController =
       TextEditingController();
@@ -34,6 +37,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   bool _isCheckingStatus = false;
   bool _isUploading = false;
   bool _hasConsented = false;
+  bool _isScanning = false;
 
   Timer? _refreshTimer;
 
@@ -76,6 +80,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     _pulseController.dispose();
     _refreshTimer?.cancel();
     _documentNumberController.dispose();
+    _ocrService.dispose();
     super.dispose();
   }
 
@@ -560,6 +565,26 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             child: const Icon(Icons.numbers_rounded,
                 color: AppColors.primary, size: 18),
           ),
+          suffixIcon: _selectedImage != null
+              ? _isScanning
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.document_scanner_rounded,
+                          color: AppColors.primary),
+                      tooltip: 'Scan document ID',
+                      onPressed: _scanDocumentId,
+                    )
+              : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
@@ -1655,7 +1680,11 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         maxHeight: 1200,
         imageQuality: 90,
       );
-      if (image != null) setState(() => _selectedImage = image);
+      if (image != null) {
+        setState(() => _selectedImage = image);
+        // Auto-scan after image selection
+        await _scanDocumentId();
+      }
     } catch (e) {
       _showError('Failed to take photo: $e');
     }
@@ -1669,13 +1698,166 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         maxHeight: 1200,
         imageQuality: 90,
       );
-      if (image != null) setState(() => _selectedImage = image);
+      if (image != null) {
+        setState(() => _selectedImage = image);
+        // Auto-scan after image selection
+        await _scanDocumentId();
+      }
     } catch (e) {
       _showError('Failed to select image: $e');
     }
   }
 
   void _removeImage() => setState(() => _selectedImage = null);
+
+  Future<void> _scanDocumentId() async {
+    if (_selectedImage == null) {
+      _showError('Please upload a document image first');
+      return;
+    }
+
+    setState(() => _isScanning = true);
+
+    try {
+      final File imageFile = File(_selectedImage!.path);
+      final String? extractedText = await _ocrService.extractDocumentId(imageFile);
+
+      setState(() => _isScanning = false);
+
+      if (extractedText != null && extractedText.isNotEmpty) {
+        // Show confirmation dialog with the scanned text
+        _showScanResultDialog(extractedText);
+      } else {
+        _showError('Could not extract text from the document. Please enter manually.');
+      }
+    } catch (e) {
+      setState(() => _isScanning = false);
+      _showError('Failed to scan document: $e');
+    }
+  }
+
+  void _showScanResultDialog(String scannedText) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.document_scanner_rounded,
+                  color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Document Scanned',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFECAA)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      color: Color(0xFFE6A800), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'स्क्यान भएको जानकारी गलत हुन सक्छ। कृपया जाँच गरेर पुष्टि गर्नुहोस्।',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[800],
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Scanned Document Number:',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: SelectableText(
+                scannedText,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Please verify this is correct before continuing.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _documentNumberController.text = scannedText;
+              });
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text('Use This Number'),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   bool _canContinue() =>
       _selectedDocumentType != null &&
