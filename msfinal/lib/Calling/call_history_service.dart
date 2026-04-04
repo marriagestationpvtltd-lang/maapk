@@ -186,6 +186,58 @@ class CallHistoryService {
     }
   }
 
+  // Write an inline call event message into the chat message stream (WhatsApp-style).
+  // Pass [chatRoomId] for regular user-to-user chat.
+  // Pass [isAdminChat]=true + [adminChatSenderId] + [adminChatReceiverId] for admin chat.
+  static Future<void> logCallMessageInChat({
+    required String callerId,
+    required String callType, // 'audio' or 'video'
+    required String callStatus, // 'completed', 'missed', 'declined', 'cancelled'
+    required int duration,
+    String? chatRoomId,
+    bool isAdminChat = false,
+    String? adminChatSenderId,
+    String? adminChatReceiverId,
+  }) async {
+    try {
+      if (isAdminChat) {
+        await _firestore.collection('adminchat').add({
+          'message': '',
+          'senderid': adminChatSenderId ?? callerId,
+          'receiverid': adminChatReceiverId ?? '',
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'call',
+          'callType': callType,
+          'callStatus': callStatus,
+          'duration': duration,
+          'callerId': callerId,
+          'liked': false,
+          'replyto': '',
+        });
+      } else if (chatRoomId != null && chatRoomId.isNotEmpty) {
+        final msgRef = _firestore
+            .collection('chatRooms')
+            .doc(chatRoomId)
+            .collection('messages')
+            .doc();
+        await msgRef.set({
+          'messageId': msgRef.id,
+          'senderId': callerId,
+          'message': '',
+          'messageType': 'call',
+          'callType': callType,
+          'callStatus': callStatus,
+          'duration': duration,
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'isDelivered': false,
+        });
+      }
+    } catch (e) {
+      print('Error logging call message in chat (chatRoomId: $chatRoomId, isAdminChat: $isAdminChat): $e');
+    }
+  }
+
   // Get current user ID from SharedPreferences
   static Future<String> getCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();

@@ -495,6 +495,11 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     String formattedTime =
         ts != null ? DateFormat('HH:mm').format(ts.toDate()) : '';
 
+    // Render call events inline (WhatsApp-style)
+    if (data['type'] == 'call') {
+      return _buildInlineCallBubble(data, ts);
+    }
+
 // Determine if message is from admin
     bool isFromAdmin = data['senderid'] == _adminUserId;
     String senderName =
@@ -738,9 +743,6 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   List<Widget> _buildMessagesFromCache() {
     final items = <Widget>[];
 
-    // Always show call history section at the top (loads lazily on tap)
-    items.add(_buildCallHistorySection());
-
     String? lastDateLabel;
     for (final doc in _cachedMessages) {
       final data = doc.data() as Map<String, dynamic>;
@@ -756,6 +758,110 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       items.add(_buildMessageItem(doc));
     }
     return items;
+  }
+
+  Widget _buildInlineCallBubble(Map<String, dynamic> data, Timestamp? ts) {
+    final isVideo = (data['callType'] ?? 'audio') == 'video';
+    final callStatus = data['callStatus'] ?? 'missed';
+    final isMissed = callStatus == 'missed' || callStatus == 'declined' || callStatus == 'cancelled';
+    final isOutgoing = (data['callerId'] ?? '') == widget.senderID;
+    final duration = (data['duration'] as num?)?.toInt() ?? 0;
+    final timeStr = ts != null ? DateFormat('HH:mm').format(ts.toDate()) : '';
+
+    Color iconColor;
+    IconData directionIcon;
+    if (isMissed) {
+      iconColor = Colors.red;
+      directionIcon = isVideo ? Icons.videocam_off : Icons.phone_missed;
+    } else if (isOutgoing) {
+      iconColor = const Color(0xFF25D366);
+      directionIcon = isVideo ? Icons.videocam : Icons.call_made;
+    } else {
+      iconColor = const Color(0xFF25D366);
+      directionIcon = isVideo ? Icons.videocam : Icons.call_received;
+    }
+
+    String label;
+    if (isMissed) {
+      label = isVideo ? 'Missed video call' : 'Missed voice call';
+    } else if (isOutgoing) {
+      label = isVideo ? 'Outgoing video call' : 'Outgoing voice call';
+    } else {
+      label = isVideo ? 'Incoming video call' : 'Incoming voice call';
+    }
+
+    String durationStr = '';
+    if (!isMissed && duration > 0) {
+      final m = duration ~/ 60;
+      final s = duration % 60;
+      durationStr = m > 0 ? '${m}m ${s}s' : '${s}s';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 260),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isMissed ? Colors.red.withOpacity(0.08) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isMissed ? Colors.red.withOpacity(0.3) : Colors.grey.withOpacity(0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(directionIcon, color: iconColor, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isMissed ? Colors.red[700] : Colors.grey[800],
+                      ),
+                    ),
+                    if (durationStr.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        durationStr,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                timeStr,
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildCallHistorySection() {
@@ -1581,6 +1687,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     otherUserName: _adminUserName,
                     otherUserImage: '',
                     isOutgoingCall: true,
+                    isAdminChat: true,
+                    adminChatReceiverId: _adminUserId,
                   ),
                 ),
               );
@@ -1600,6 +1708,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                     otherUserName: _adminUserName,
                     otherUserImage: '',
                     isOutgoingCall: true,
+                    isAdminChat: true,
+                    adminChatReceiverId: _adminUserId,
                   ),
                 ),
               );

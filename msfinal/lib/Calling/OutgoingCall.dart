@@ -22,6 +22,9 @@ class CallScreen extends StatefulWidget {
   final String otherUserName;
   final String otherUserImage;
   final bool isOutgoingCall; // Add this to identify outgoing call
+  final String? chatRoomId; // For writing inline call message to chat
+  final bool isAdminChat; // True when called from AdminChatScreen
+  final String? adminChatReceiverId; // Receiver ID for admin chat call messages
 
   const CallScreen({
     super.key,
@@ -32,6 +35,9 @@ class CallScreen extends StatefulWidget {
     required this.otherUserName,
     required this.otherUserImage,
     this.isOutgoingCall = true, // Default to outgoing call
+    this.chatRoomId,
+    this.isAdminChat = false,
+    this.adminChatReceiverId,
   });
 
   @override
@@ -389,6 +395,30 @@ class _CallScreenState extends State<CallScreen> {
         callerName: widget.currentUserName,
         channelName: _channel,
         callerId: widget.currentUserId,
+      ));
+    }
+
+    // Update call history record and write inline call message to chat (outgoing only)
+    if (widget.isOutgoingCall && _callHistoryId != null && _callHistoryId!.isNotEmpty) {
+      final callStatus = _callActive
+          ? CallStatus.completed
+          : wasDeclined
+              ? CallStatus.declined
+              : CallStatus.missed;
+      await CallHistoryService.updateCallEnd(
+        callId: _callHistoryId!,
+        status: callStatus,
+        duration: _duration.inSeconds,
+      );
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: widget.currentUserId,
+        callType: 'audio',
+        callStatus: callStatus.toString().split('.').last,
+        duration: _duration.inSeconds,
+        chatRoomId: widget.chatRoomId,
+        isAdminChat: widget.isAdminChat,
+        adminChatSenderId: widget.isAdminChat ? widget.currentUserId : null,
+        adminChatReceiverId: widget.isAdminChat ? widget.adminChatReceiverId : null,
       ));
     }
 

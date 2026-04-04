@@ -1885,11 +1885,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       );
     }
 
-    // Add call history section at the top if there are calls
-    if (_callHistory.isNotEmpty) {
-      messageWidgets.add(_buildCallHistorySection());
-    }
-
     // Group messages by date
     final Map<String, List<Map<String, dynamic>>> groupedMessages = {};
 
@@ -1952,18 +1947,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 ? rawTs
                 : DateTime.now();
 
-        messageWidgets.add(_messageBubble(
-          isMine: data['senderId'] == widget.currentUserId,
-          text: data['message'],
-          timestamp: timestamp,
-          messageType: data['messageType'] ?? 'text',
-          isRead: data['isRead'] ?? false,
-          isDelivered: data['isDelivered'] ?? false,
-          duration: data['duration']?.toInt(),
-          messageData: data,
-          repliedTo: data['repliedTo'],
-          isEdited: data['isEdited'] ?? false,
-        ));
+        if ((data['messageType'] ?? 'text') == 'call') {
+          messageWidgets.add(_buildInlineCallBubble(
+            callType: data['callType'] ?? 'audio',
+            callStatus: data['callStatus'] ?? 'missed',
+            duration: data['duration']?.toInt() ?? 0,
+            callerId: data['senderId'] ?? '',
+            timestamp: timestamp,
+          ));
+        } else {
+          messageWidgets.add(_messageBubble(
+            isMine: data['senderId'] == widget.currentUserId,
+            text: data['message'],
+            timestamp: timestamp,
+            messageType: data['messageType'] ?? 'text',
+            isRead: data['isRead'] ?? false,
+            isDelivered: data['isDelivered'] ?? false,
+            duration: data['duration']?.toInt(),
+            messageData: data,
+            repliedTo: data['repliedTo'],
+            isEdited: data['isEdited'] ?? false,
+          ));
+        }
       }
     }
 
@@ -1975,6 +1980,115 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       itemBuilder: (context, index) {
         return messageWidgets[index];
       },
+    );
+  }
+
+  Widget _buildInlineCallBubble({
+    required String callType,
+    required String callStatus,
+    required int duration,
+    required String callerId,
+    required DateTime timestamp,
+  }) {
+    final isVideo = callType == 'video';
+    final isMissed = callStatus == 'missed' || callStatus == 'declined' || callStatus == 'cancelled';
+    final isOutgoing = callerId == widget.currentUserId;
+
+    Color iconColor;
+    IconData directionIcon;
+    if (isMissed) {
+      iconColor = Colors.red;
+      directionIcon = isVideo ? Icons.videocam_off : Icons.phone_missed;
+    } else if (isOutgoing) {
+      iconColor = const Color(0xFF25D366);
+      directionIcon = isVideo ? Icons.videocam : Icons.call_made;
+    } else {
+      iconColor = const Color(0xFF25D366);
+      directionIcon = isVideo ? Icons.videocam : Icons.call_received;
+    }
+
+    String label;
+    if (isMissed) {
+      label = isVideo ? 'Missed video call' : 'Missed voice call';
+    } else if (isOutgoing) {
+      label = isVideo ? 'Outgoing video call' : 'Outgoing voice call';
+    } else {
+      label = isVideo ? 'Incoming video call' : 'Incoming voice call';
+    }
+
+    String durationStr = '';
+    if (!isMissed && duration > 0) {
+      final m = duration ~/ 60;
+      final s = duration % 60;
+      durationStr = m > 0 ? '${m}m ${s}s' : '${s}s';
+    }
+
+    final timeStr = _formatTime(timestamp);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 260),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isMissed ? Colors.red.withOpacity(0.08) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isMissed ? Colors.red.withOpacity(0.3) : Colors.grey.withOpacity(0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(directionIcon, color: iconColor, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isMissed ? Colors.red[700] : Colors.grey[800],
+                      ),
+                    ),
+                    if (durationStr.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        durationStr,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                timeStr,
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -2436,6 +2550,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     otherUserId: widget.receiverId,
                     otherUserName: widget.receiverName,
                     otherUserImage: widget.receiverImage,
+                    chatRoomId: widget.chatRoomId,
                   ),
                 ),
               );
@@ -2467,6 +2582,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     otherUserId: widget.receiverId,
                     otherUserName: widget.receiverName,
                     otherUserImage: widget.receiverImage,
+                    chatRoomId: widget.chatRoomId,
                   ),
                 ),
               );
