@@ -13,6 +13,8 @@ class ProposalModel {
   final String? maritalstatus;
   final String? memberid;
   final String? type;
+  final String? privacy;
+  final String? photoRequest;
 
   ProposalModel({
     this.proposalId,
@@ -29,6 +31,8 @@ class ProposalModel {
     this.maritalstatus,
     this.memberid,
     this.type,
+    this.privacy,
+    this.photoRequest,
   });
 
   factory ProposalModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,8 @@ class ProposalModel {
       maritalstatus: json['maritalstatus'],
       memberid: json['memberid'] ?? '',
       type: json['type'],
+      privacy: json['privacy'],
+      photoRequest: json['photo_request'],
     );
   }
 }

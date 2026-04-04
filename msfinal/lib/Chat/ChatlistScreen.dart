@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,6 +14,7 @@ import '../Package/PackageScreen.dart';
 import '../online/onlineservice.dart';
 import '../utils/time_utils.dart';
 import '../utils/image_utils.dart';
+import '../utils/privacy_utils.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
 import '../pushnotification/pushservice.dart';
@@ -812,10 +814,11 @@ class _ChatListScreenState extends State<ChatListScreen>
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  PrivacyUtils.buildPrivacyAwareAvatar(
+                    imageUrl: imageUrl,
+                    privacy: req.privacy,
+                    photoRequest: req.photoRequest,
                     radius: 22,
-                    backgroundImage: NetworkImage(imageUrl),
-                    onBackgroundImageError: (_, __) {},
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1143,6 +1146,10 @@ class _ChatListScreenState extends State<ChatListScreen>
               Map<String, String>.from(data['participantNames'] ?? {});
           final participantImages =
               Map<String, String>.from(data['participantImages'] ?? {});
+          final participantPrivacy =
+              Map<String, String>.from(data['participantPrivacy'] ?? {});
+          final participantPhotoRequests =
+              Map<String, String>.from(data['participantPhotoRequests'] ?? {});
           final unreadCount =
               Map<String, int>.from(data['unreadCount'] ?? {});
           final lastMessage = data['lastMessage'] ?? '';
@@ -1205,6 +1212,12 @@ class _ChatListScreenState extends State<ChatListScreen>
           final String resolvedOtherImage = resolveApiImageUrl(
               participantImages[otherParticipantId] ?? '');
 
+          // Extract privacy data for the other participant
+          final String? otherParticipantPrivacy =
+              participantPrivacy[otherParticipantId];
+          final String? otherParticipantPhotoRequest =
+              participantPhotoRequests[otherParticipantId];
+
           return InkWell(
             onTap: () {
               if (docstatus == "approved" && usertye == "paid") {
@@ -1263,18 +1276,12 @@ class _ChatListScreenState extends State<ChatListScreen>
                   // Profile Image with online status indicator
                   Stack(
                     children: [
-                      CircleAvatar(
+                      PrivacyUtils.buildPrivacyAwareAvatar(
+                        imageUrl: resolvedOtherImage,
+                        privacy: otherParticipantPrivacy,
+                        photoRequest: otherParticipantPhotoRequest,
                         radius: 28,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: resolvedOtherImage.isNotEmpty
-                            ? NetworkImage(resolvedOtherImage)
-                            : null,
-                        onBackgroundImageError:
-                            resolvedOtherImage.isNotEmpty ? (_, __) {} : null,
-                        child: resolvedOtherImage.isEmpty
-                            ? Icon(Icons.person,
-                                size: 28, color: Colors.grey[400])
-                            : null,
                       ),
                       // Green online dot (top-right)
                       if (isOnline)
