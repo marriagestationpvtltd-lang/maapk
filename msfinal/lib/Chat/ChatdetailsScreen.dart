@@ -153,6 +153,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   // Delivered status (hover for web)
   String? _hoveredMessageId;
 
+  // Block / photo-privacy state
+  bool _isBlocked = false;
+  bool _isLoadingBlock = true;
+  String _photoRequestStatus = 'not_sent';
+  String _privacyStatus = 'private';
+
   // Timing constants
   static const int _kTypingTimeoutSeconds = 5;
   static const Duration _kTypingDebounceDelay = Duration(seconds: 3);
@@ -1512,13 +1518,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             showDialog(
               context: context,
               builder: (context) => Dialog(
-                backgroundColor: Colors.transparent,
+                backgroundColor: Colors.black,
+                insetPadding: const EdgeInsets.all(8),
                 child: Stack(
                   children: [
                     InteractiveViewer(
                       child: Image.network(
                         text,
                         fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -1836,6 +1846,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           focusNode: _messageFocusNode,
                           minLines: 1,
                           maxLines: 5,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
                           style: const TextStyle(
                             fontSize: 15,
                             color: _textColor,
@@ -1897,7 +1909,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     color: Colors.white,
                     size: 22,
                   ),
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(13),
                 ),
               ),
             ],
@@ -2748,8 +2760,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () {
+          IconButton(
+            onPressed: () {
               // Prevent starting a new call if one is already active
               if (CallOverlayManager().isCallActive) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -2776,9 +2788,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 ),
               );
             },
-            child: Container(
-              child: const Icon(Icons.call, color: Colors.white),
-            ),
+            icon: const Icon(Icons.call, color: Colors.white),
           ),
           IconButton(
             onPressed: () {
@@ -3057,10 +3067,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
-bool  _isBlocked = false;
- bool  _isLoadingBlock = true;
-  String _photoRequestStatus = 'not_sent';
-  String _privacyStatus = 'private';
   Future<void> _blockUser(BuildContext dialogContext) async {
     setState(() {
       _isLoadingBlock = true;
