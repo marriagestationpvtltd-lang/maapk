@@ -19,6 +19,7 @@ import '../Package/PackageScreen.dart';
 import '../Startup/onboarding.dart';
 import '../constant/app_colors.dart';
 import '../otherenew/blocked_users_screen.dart';
+import '../settings/settings_screen.dart';
 
 class MatrimonyProfilePage extends StatefulWidget {
   @override
@@ -688,8 +689,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.more_vert, color: Colors.white),
-                  onPressed: () => _showMoreOptions(context),
+                  icon: Icon(Icons.settings, color: Colors.white),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SettingsScreen()),
+                  ),
                 ),
               ],
             ),
