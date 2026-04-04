@@ -7,8 +7,12 @@ import 'dart:ui' as ui;
 
 import 'package:ms2026/Auth/Screen/signupscreen10.dart';
 import 'package:ms2026/Notification/notification_inbox_service.dart';
+import 'package:ms2026/constant/app_colors.dart';
+import 'package:ms2026/constant/app_dimensions.dart';
+import 'package:ms2026/constant/app_text_styles.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
 import 'package:ms2026/ReUsable/loading_widgets.dart';
+import 'package:ms2026/utils/image_utils.dart';
 import '../Models/masterdata.dart';
 import '../main.dart';
 import '../pushnotification/pushservice.dart';
@@ -559,100 +563,342 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     return photoRequest;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Favorite People',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
+  int _verifiedFavoritesCount() {
+    return favoritePeople.where((person) {
+      final candidate = person as Map<String, dynamic>;
+      return candidate['isVerified'] == 1 || candidate['isVerified'] == '1';
+    }).length;
+  }
+
+  ({String label, Color color, IconData icon}) _documentStatusStyle() {
+    switch (docstatus.toLowerCase()) {
+      case 'approved':
+        return (
+          label: 'ID Approved',
+          color: AppColors.success,
+          icon: Icons.verified_user_rounded,
+        );
+      case 'pending':
+        return (
+          label: 'ID Pending',
+          color: AppColors.warning,
+          icon: Icons.hourglass_top_rounded,
+        );
+      case 'rejected':
+        return (
+          label: 'ID Rejected',
+          color: AppColors.error,
+          icon: Icons.gpp_bad_rounded,
+        );
+      default:
+        return (
+          label: 'ID Required',
+          color: AppColors.textHint,
+          icon: Icons.shield_outlined,
+        );
+    }
+  }
+
+  Widget _buildHeaderSection() {
+    final documentStatus = _documentStatusStyle();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF8576B), Color(0xFFFF8A5B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: _fetchFavoritePeople,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.22),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your favorite people',
+                      style: AppTextStyles.whiteHeading.copyWith(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Profiles you loved most — redesigned to feel premium, polished and easy to explore.',
+                      style: AppTextStyles.whiteBody.copyWith(
+                        color: Colors.white.withOpacity(0.88),
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHeaderMetric(
+                  value: favoritePeople.length.toString(),
+                  label: 'Saved',
+                  icon: Icons.bookmark_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHeaderMetric(
+                  value: _verifiedFavoritesCount().toString(),
+                  label: 'Verified',
+                  icon: Icons.verified_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.18)),
+            ),
+            child: Row(
+              children: [
+                Icon(documentStatus.icon, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    documentStatus.label,
+                    style: AppTextStyles.whiteBody.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Text(
+                  docstatus.toLowerCase() == 'approved'
+                      ? 'Unlocked'
+                      : 'Restricted',
+                  style: AppTextStyles.whiteBody.copyWith(
+                    color: Colors.white.withOpacity(0.78),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderMetric({
+    required String value,
+    required String label,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: AppTextStyles.whiteHeading.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: AppTextStyles.whiteBody.copyWith(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFDF6F7),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: false,
+        backgroundColor: const Color(0xFFFDF6F7),
+        titleSpacing: 16,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Favorite People',
+              style: AppTextStyles.heading3.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              'A premium look for your saved matches',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+                onPressed: _fetchFavoritePeople,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
+          Positioned(
+            top: -80,
+            right: -50,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 110,
+            left: -70,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFC7D1).withOpacity(0.38),
+              ),
+            ),
+          ),
           RefreshIndicator(
+            color: AppColors.primary,
             onRefresh: () async {
               setState(() => _isRefreshing = true);
               await _fetchFavoritePeople(isRefresh: true);
               if (mounted) setState(() => _isRefreshing = false);
             },
-            child: isLoading
-                ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
-            )
-                : errorMessage.isNotEmpty
-                ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    errorMessage,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 16,
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeaderSection()),
+                if (isLoading)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: LoadingWidget(message: 'Loading your favorite people...'),
+                  )
+                else if (errorMessage.isNotEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: ErrorStateWidget(
+                      title: 'Unable to load favorites',
+                      subtitle: 'Pull down to refresh or try again.',
+                      errorMessage: errorMessage,
+                      onRetry: _fetchFavoritePeople,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _fetchFavoritePeople,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                  )
+                else if (favoritePeople.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyStateWidget(
+                      icon: Icons.favorite_border_rounded,
+                      title: 'No favorite people yet',
+                      subtitle: 'The profiles you like most will show up here in a much better style.',
                     ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
-                : ShimmerLoading(
-                  isLoading: _isRefreshing,
-                  child: favoritePeople.isEmpty
-                ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.favorite_border,
-                    size: 80,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No favorite people yet',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _favoriteCard(
+                          context,
+                          favoritePeople[index] as Map<String, dynamic>,
+                          index,
+                        ),
+                        childCount: favoritePeople.length,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
-              itemCount: favoritePeople.length,
-              itemBuilder: (context, index) {
-                return _favoriteCard(
-                    context, favoritePeople[index], index);
-              },
+              ],
             ),
-                ),
           ),
           if (_showPopup)
             Positioned(
@@ -713,215 +959,122 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     final isVerified = person['isVerified'] == 1 || person['isVerified'] == '1';
     final city = person['city']?.toString() ?? 'Location not available';
     final designation = person['designation']?.toString() ?? 'Profession not available';
-    final profileImage = person['profile_picture']?.toString() ??
-        'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e';
+    final profileImage = resolveApiImageUrl(
+      person['profile_picture']?.toString() ?? '',
+    );
+    final age = person['age']?.toString() ?? '';
+    final photoRequestStatus = _getPhotoRequestStatus(person);
 
     // FIXED: Use 'userid' instead of 'id'
     final receiverIdStr = person['userid']?.toString() ?? '0';
     final receiverId = int.tryParse(receiverIdStr) ?? 0;
 
-    print('Favorite Card Debug:');
-    print('  Person userid: ${person['userid']}');
-    print('  Person ID: ${person['id']}'); // Check if 'id' exists
-    print('  Parsed receiverId: $receiverId');
-    print('  Full name: $fullName');
-
     // Determine if image should be blurred
     final shouldShowClearImage = _shouldShowClearImage(person);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          /// LEFT DETAILS
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// NAME + VERIFIED
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        fullName.isNotEmpty ? fullName : 'Unknown User',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isVerified) ...[
-                      const SizedBox(width: 6),
-                      const Icon(Icons.verified, color: Colors.red, size: 18),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 6),
-
-                /// LOCATION
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        city,
-                        style: const TextStyle(color: Colors.grey),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                /// PROFESSION
-                Row(
-                  children: [
-                    const Icon(Icons.work, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        designation,
-                        style: const TextStyle(color: Colors.grey),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-
-                /// RATING
-                Row(
-                  children: [
-                    ...List.generate(
-                      4,
-                          (index) => const Icon(Icons.star, size: 18, color: Colors.amber),
-                    ),
-                    const Icon(Icons.star_half, size: 18, color: Colors.amber),
-                    const SizedBox(width: 6),
-                    const Text('4.5', style: TextStyle(fontWeight: FontWeight.w500)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                /// BUTTONS with Document Status Check
-                Row(
-                  children: [
-                    _actionButton(
-                      text: 'Send Request',
-                      icon: Icons.send,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xffFF3D57), Color(0xffFF6A00)],
-                      ),
-                      onPressed: () {
-                        print('Send Request pressed for: $fullName (userid: $receiverId)');
-                        _handleSendRequest(context, receiverId, fullName);
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    _actionButton(
-                      text: 'View Profile',
-                      icon: Icons.remove_red_eye,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xffFF3D57), Color(0xffFF6A00)],
-                      ),
-                      onPressed: () {
-                        print('View Profile pressed for: $fullName (userid: $receiverId)');
-                        _handleViewProfile(context, receiverId);
-                      },
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-
-          /// RIGHT IMAGE + HEART
           Stack(
             children: [
-              // Profile image
               ClipRRect(
-                borderRadius: BorderRadius.circular(50),
-                child: Stack(
-                  children: [
-                    // Main image
-                    CachedNetworkImage(
-                      imageUrl: profileImage,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(50),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+                child: SizedBox(
+                  height: 250,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: profileImage,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: const Color(0xFFF7E9EB),
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        child: const Icon(
-                          Icons.error,
-                          size: 40,
-                          color: Colors.grey,
+                        errorWidget: (context, url, error) => Container(
+                          color: const Color(0xFFF7E9EB),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.person_rounded,
+                            size: 72,
+                            color: AppColors.textHint,
+                          ),
                         ),
                       ),
-                    ),
-
-                    // Apply blur overlay if needed
-                    if (!shouldShowClearImage)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTap: () {
-                            // Show photo request overlay if image is blurred
-                            _showPhotoRequestOverlay(context, person, fullName);
-                          },
-                          child: Container(
-                            color: Colors.black.withOpacity(0.3),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.08),
+                              Colors.black.withOpacity(0.68),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (!shouldShowClearImage)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              _showPhotoRequestOverlay(context, person, fullName);
+                            },
                             child: BackdropFilter(
-                              filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                               child: Container(
-                                color: Colors.black.withOpacity(0.1),
-                                child: Center(
+                                color: Colors.black.withOpacity(0.20),
+                                alignment: Alignment.center,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.18),
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.24),
+                                    ),
+                                  ),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        Icons.lock,
-                                        color: Colors.red.shade600,
-                                        size: 24,
+                                        Icons.lock_rounded,
+                                        color: Colors.red.shade100,
+                                        size: 26,
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
                                         'Photo Protected',
-                                        style: TextStyle(
-                                          color: Colors.red.shade800,
+                                        style: AppTextStyles.whiteLabel.copyWith(
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Tap to request access',
+                                        style: AppTextStyles.whiteBody.copyWith(
+                                          color: Colors.white.withOpacity(0.84),
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
@@ -931,41 +1084,261 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                             ),
                           ),
                         ),
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: _buildImageBadge(
+                          icon: isVerified
+                              ? Icons.verified_rounded
+                              : Icons.favorite_rounded,
+                          label: isVerified ? 'Verified' : 'Saved Match',
+                          badgeColor:
+                              isVerified ? AppColors.verified : AppColors.primary,
+                        ),
                       ),
-                  ],
-                ),
-              ),
-
-              // Heart icon overlay
-              Positioned(
-                right: -6,
-                top: -6,
-                child: GestureDetector(
-                  onTap: () {
-                    _showDeleteConfirmationDialog(receiverId, fullName);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                        )
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.favorite,
-                      color: Colors.red,
-                      size: 20,
-                    ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: GestureDetector(
+                          onTap: () {
+                            _showDeleteConfirmationDialog(receiverId, fullName);
+                          },
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.92),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 18,
+                        right: 18,
+                        bottom: 18,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    age.isNotEmpty
+                                        ? '${fullName.isNotEmpty ? fullName : 'Unknown User'}, $age'
+                                        : fullName.isNotEmpty
+                                            ? fullName
+                                            : 'Unknown User',
+                                    style: AppTextStyles.whiteHeading.copyWith(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isVerified) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.verified_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (designation != 'Profession not available')
+                                  _buildImageBadge(
+                                    icon: Icons.work_outline_rounded,
+                                    label: designation,
+                                    badgeColor: Colors.white,
+                                    darkText: true,
+                                  ),
+                                if (city != 'Location not available')
+                                  _buildImageBadge(
+                                    icon: Icons.location_on_outlined,
+                                    label: city,
+                                    badgeColor: Colors.white,
+                                    darkText: true,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              )
+              ),
             ],
-          )
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Quick highlights',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _buildInfoChip(
+                      icon: Icons.favorite_rounded,
+                      label: 'Favorite #${index + 1}',
+                      color: const Color(0xFFFFF1F3),
+                      textColor: AppColors.primary,
+                    ),
+                    _buildInfoChip(
+                      icon: shouldShowClearImage
+                          ? Icons.photo_camera_front_rounded
+                          : Icons.lock_outline_rounded,
+                      label: shouldShowClearImage
+                          ? 'Photo visible'
+                          : 'Photo protected',
+                      color: shouldShowClearImage
+                          ? const Color(0xFFEFF8F0)
+                          : const Color(0xFFFFF5E8),
+                      textColor: shouldShowClearImage
+                          ? AppColors.success
+                          : AppColors.warning,
+                    ),
+                    _buildInfoChip(
+                      icon: Icons.send_rounded,
+                      label: photoRequestStatus == 'accepted'
+                          ? 'Photo request accepted'
+                          : photoRequestStatus == 'pending'
+                              ? 'Photo request pending'
+                              : 'Ready to connect',
+                      color: const Color(0xFFF4F2FF),
+                      textColor: const Color(0xFF6C4CF1),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _actionButton(
+                      text: 'Send Request',
+                      icon: Icons.send_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xffFF3D57), Color(0xffFF7A45)],
+                      ),
+                      onPressed: () {
+                        _handleSendRequest(context, receiverId, fullName);
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    _actionButton(
+                      text: 'View Profile',
+                      icon: Icons.visibility_rounded,
+                      foregroundColor: AppColors.primary,
+                      borderColor: const Color(0xFFFFCCD2),
+                      backgroundColor: const Color(0xFFFFF7F8),
+                      onPressed: () {
+                        _handleViewProfile(context, receiverId);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageBadge({
+    required IconData icon,
+    required String label,
+    required Color badgeColor,
+    bool darkText = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: darkText ? badgeColor.withOpacity(0.92) : badgeColor.withOpacity(0.20),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
+        border: Border.all(
+          color: darkText
+              ? Colors.white.withOpacity(0.32)
+              : Colors.white.withOpacity(0.22),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 15,
+            color: darkText ? AppColors.textPrimary : Colors.white,
+          ),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (darkText ? AppTextStyles.bodySmall : AppTextStyles.whiteBody)
+                  .copyWith(
+                color: darkText ? AppColors.textPrimary : Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: textColor),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -1022,29 +1395,50 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
   Widget _actionButton({
     required String text,
     required IconData icon,
-    required Gradient gradient,
+    Gradient? gradient,
+    Color? backgroundColor,
+    Color? foregroundColor,
+    Color? borderColor,
     required VoidCallback onPressed,
   }) {
     return Expanded(
       child: Container(
-        height: 40,
+        height: 50,
         decoration: BoxDecoration(
           gradient: gradient,
-          borderRadius: BorderRadius.circular(24),
+          color: gradient == null ? backgroundColor ?? Colors.white : null,
+          borderRadius: BorderRadius.circular(18),
+          border: borderColor == null
+              ? null
+              : Border.all(
+                  color: borderColor,
+                ),
+          boxShadow: gradient == null
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.22),
+                    blurRadius: 14,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
         ),
-        child: ElevatedButton.icon(
+        child: TextButton.icon(
           onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
+          style: TextButton.styleFrom(
             backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
+            foregroundColor: foregroundColor ?? Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
-          icon: Icon(icon, size: 16, color: Colors.white),
+          icon: Icon(icon, size: 18, color: foregroundColor ?? Colors.white),
           label: Text(
             text,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
+            style: AppTextStyles.labelMedium.copyWith(
+              color: foregroundColor ?? Colors.white,
+              fontSize: 13,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
