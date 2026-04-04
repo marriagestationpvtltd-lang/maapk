@@ -1084,7 +1084,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                               _showPhotoRequestOverlay(context, person, fullName);
                             },
                             child: BackdropFilter(
-                              filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                              filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                               child: Container(
                                 color: Colors.black.withOpacity(0.20),
                                 alignment: Alignment.center,

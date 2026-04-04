@@ -81,6 +81,10 @@ class FirebaseService {
     required String user2Name,
     required String user1Image,
     required String user2Image,
+    String? user1Privacy,
+    String? user2Privacy,
+    String? user1PhotoRequest,
+    String? user2PhotoRequest,
   }) async {
     try {
       // Create sorted IDs for consistent chat room ID
@@ -106,6 +110,14 @@ class FirebaseService {
             user1Id: user1Image,
             user2Id: user2Image,
           },
+          'participantPrivacy': {
+            user1Id: user1Privacy ?? 'free',
+            user2Id: user2Privacy ?? 'free',
+          },
+          'participantPhotoRequests': {
+            user1Id: user1PhotoRequest ?? '',
+            user2Id: user2PhotoRequest ?? '',
+          },
           'createdAt': DateTime.now(),
           'lastMessage': '',
           'lastMessageType': '',
@@ -117,7 +129,7 @@ class FirebaseService {
           },
         });
       } else {
-        // Update existing chat room if names/images changed
+        // Update existing chat room if names/images/privacy changed
         await _firestore.collection('chatRooms').doc(chatRoomId).update({
           'participantNames': {
             user1Id: user1Name,
@@ -126,6 +138,14 @@ class FirebaseService {
           'participantImages': {
             user1Id: user1Image,
             user2Id: user2Image,
+          },
+          'participantPrivacy': {
+            user1Id: user1Privacy ?? 'free',
+            user2Id: user2Privacy ?? 'free',
+          },
+          'participantPhotoRequests': {
+            user1Id: user1PhotoRequest ?? '',
+            user2Id: user2PhotoRequest ?? '',
           },
         });
       }

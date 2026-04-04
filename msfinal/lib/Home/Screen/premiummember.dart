@@ -315,7 +315,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
                           if (shouldBlurPhoto)
                             ClipRect(
                               child: ImageFiltered(
-                                imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                                imageFilter: ui.ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                                 child: Image.network(
                                   imageUrl,
                                   fit: BoxFit.cover,

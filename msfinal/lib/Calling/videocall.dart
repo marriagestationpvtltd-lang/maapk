@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart'; // Add this import
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
@@ -45,7 +46,7 @@ class VideoCallScreen extends StatefulWidget {
   State<VideoCallScreen> createState() => _VideoCallScreenState();
 }
 
-class _VideoCallScreenState extends State<VideoCallScreen> {
+class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingObserver {
   late RtcEngine _engine;
   bool _engineInitialized = false;
 
@@ -104,7 +105,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void initState() {
     super.initState();
-    WakelockPlus.enable();
+    WidgetsBinding.instance.addObserver(this);
     _ringtonePlayer = AudioPlayer();
     _setupAudioPlayer();
     _startCall();
@@ -208,6 +209,69 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         _endCall();
       }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_ending) {
+      _checkPendingCallEvent();
+    }
+  }
+
+  /// Reads any call-termination event that was saved by the background isolate
+  /// and processes it to close the video call screen.
+  static const int _kCallEventExpiryMs = 300000; // 5 minutes
+
+  /// Reads any call-termination event that was saved by the background isolate
+  /// and processes it to close the video call screen.
+  Future<void> _checkPendingCallEvent() async {
+    if (_ending) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final eventStr = prefs.getString('pending_call_event');
+      if (eventStr == null) return;
+
+      final event = json.decode(eventStr) as Map<String, dynamic>;
+      final receivedAt = event['_receivedAt'] as int?;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Always remove stale / expired events to prevent re-processing
+      if (receivedAt == null || now - receivedAt > _kCallEventExpiryMs) {
+        await prefs.remove('pending_call_event');
+        return;
+      }
+
+      final eventType = event['type']?.toString() ?? '';
+      final eventChannel = event['channelName']?.toString() ?? '';
+
+      if (_channel.isNotEmpty && eventChannel.isNotEmpty && eventChannel != _channel) {
+        return;
+      }
+
+      // Remove the event before acting on it
+      await prefs.remove('pending_call_event');
+
+      // Don't process rejection if call is already connected
+      if (_callActive) return;
+
+      if ((eventType == 'call_response' || eventType == 'video_call_response') &&
+          event['accepted'] == 'false') {
+        if (mounted) {
+          setState(() {
+            _remoteAccepted = false;
+          });
+        }
+        unawaited(_stopRingtone());
+        _endCall();
+      } else if (eventType == 'call_ended' ||
+          eventType == 'video_call_ended' ||
+          eventType == 'call_cancelled' ||
+          eventType == 'video_call_cancelled') {
+        _endCall();
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking pending call event: $e');
+    }
   }
 
   void _initializeOverlay() {
@@ -920,7 +984,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   void dispose() {
-    WakelockPlus.disable();
+    WidgetsBinding.instance.removeObserver(this);
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
     _responseSubscription?.cancel();
