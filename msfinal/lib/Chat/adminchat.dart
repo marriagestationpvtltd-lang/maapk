@@ -649,6 +649,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     final Map<String, dynamic> messageData = {
       'message': content,
       'liked': false,
+      'read': false, // New field to track read status
       'replyto': _replyToID ?? '',
       'senderid': senderId,
       'receiverid': receiverId,
@@ -772,6 +773,26 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     }
   }
 
+  // Mark messages as read when they are received (not sent by current user)
+  Future<void> _markMessageAsRead(String messageID, Map<String, dynamic> data) async {
+    final isMe = data['senderid'] == widget.senderID;
+    final isRead = data['read'] ?? false;
+
+    // Only mark as read if:
+    // 1. Message is not sent by me
+    // 2. Message is not already read
+    if (!isMe && !isRead) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('adminchat')
+            .doc(messageID)
+            .update({'read': true});
+      } catch (e) {
+        debugPrint('Error marking message as read: $e');
+      }
+    }
+  }
+
   Future<void> _sendNotification(String message) async {
     String? adminToken = await _getAdminToken();
     if (adminToken != null && adminToken.isNotEmpty) {
@@ -825,6 +846,16 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     Timestamp? ts = data['timestamp'];
     String formattedTime =
         ts != null ? DateFormat('HH:mm').format(ts.toDate()) : '';
+
+    // Mark incoming messages as read
+    if (!isMe) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markMessageAsRead(msgID, data);
+      });
+    }
+
+    // Check if message is read (for styling)
+    final bool isRead = data['read'] ?? false;
 
     // Render call events inline (WhatsApp-style)
     if (data['type'] == 'call') {
@@ -921,8 +952,8 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                         senderName,
                         style: TextStyle(
                           fontSize: 14,
-                          color: _lightTextColor,
-                          fontWeight: FontWeight.w600,
+                          color: isRead ? _lightTextColor.withOpacity(0.8) : _lightTextColor,
+                          fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                          ),
                       ),
                     ),
@@ -958,7 +989,21 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                         maxWidth: MediaQuery.of(context).size.width * 0.75),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: isMe ? _primaryGradient : _secondaryGradient,
+                      gradient: isMe
+                          ? _primaryGradient
+                          : (isRead
+                              // Read messages: lighter, faded gradient
+                              ? const LinearGradient(
+                                  colors: [Color(0xFFF3E8FF), Color(0xFFEDE0FA)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                )
+                              // Unread messages: darker, bolder gradient
+                              : const LinearGradient(
+                                  colors: [Color(0xFFD6BCFA), Color(0xFFC4B0E8)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                )),
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(20),
                         topRight: const Radius.circular(20),
@@ -971,7 +1016,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withOpacity(isMe || !isRead ? 0.15 : 0.08),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         )
@@ -989,9 +1034,15 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                           Text(
                             data['message'],
                             style: TextStyle(
-                              color: isMe ? Colors.white : _textColor,
+                              color: isMe
+                                  ? Colors.white
+                                  : (isRead
+                                      ? _textColor.withOpacity(0.7) // Faded for read
+                                      : _textColor), // Bold/dark for unread
                               fontSize: 17,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: isMe || !isRead
+                                  ? FontWeight.w500 // Bold for unread
+                                  : FontWeight.w400, // Normal for read
                             ),
                           ),
                         if (data['type'] == 'voice')
@@ -1009,7 +1060,12 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                               formattedTime,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isMe ? Colors.white70 : _lightTextColor,
+                                color: isMe
+                                    ? Colors.white70
+                                    : (isRead
+                                        ? _lightTextColor.withOpacity(0.7)
+                                        : _lightTextColor),
+                                fontWeight: !isMe && !isRead ? FontWeight.w500 : FontWeight.normal,
                               ),
                             ),
                             if (data['liked'] ?? false)
