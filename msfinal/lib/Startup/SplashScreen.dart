@@ -155,8 +155,8 @@ class _SplashScreenState extends State<SplashScreen> {
       context: context,
       barrierDismissible: !forceUpdate,
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => !forceUpdate,
+        return PopScope(
+          canPop: !forceUpdate,
           child: AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),

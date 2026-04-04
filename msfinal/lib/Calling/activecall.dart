@@ -170,22 +170,22 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   }
 
   Future<void> _endCall() async {
+    _callTimer?.cancel();
     final wasMinimized = CallOverlayManager().isMinimized;
 
-    _callTimer?.cancel();
-    if (_joined) await _engine.leaveChannel();
-    if (_engineInitialized) await _engine.release();
-    await _stopForegroundService();
-
+    // Navigate away FIRST so the user never sees the black AgoraRTC screen
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
         (route) => route.settings.name == activeCallRouteName || route.isFirst,
       );
     }
-
     CallOverlayManager().reset();
-
     if (mounted) Navigator.pop(context);
+
+    // Release engine resources after navigation (fire-and-forget)
+    if (_joined) unawaited(_engine.leaveChannel());
+    if (_engineInitialized) unawaited(_engine.release());
+    unawaited(_stopForegroundService());
   }
 
   @override

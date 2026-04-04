@@ -169,8 +169,8 @@ class _NoInternetScreenState extends State<NoInternetScreen>
     final bool isDisconnected = !_connectivityService.isWifiConnected &&
         !_connectivityService.isMobileConnected;
 
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         backgroundColor: AppColors.white,
         body: SafeArea(

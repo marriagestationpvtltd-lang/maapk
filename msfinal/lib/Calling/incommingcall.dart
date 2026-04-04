@@ -338,7 +338,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 
   Future<void> _end() async {
-    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -349,6 +348,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
+    unawaited(_stopForegroundService());
   }
 
   // ================= UI =================
@@ -483,6 +483,16 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _ringTimer?.cancel();
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
+    // Release Agora engine if not already released
+    if (_engineInitialized) {
+      unawaited(() async {
+        try {
+          if (_joined) await _engine.leaveChannel();
+          await _engine.release();
+        } catch (_) {}
+      }());
+    }
+    unawaited(_stopForegroundService());
     super.dispose();
   }
 
