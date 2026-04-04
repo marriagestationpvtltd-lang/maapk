@@ -272,6 +272,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     await NotificationService.sendMissedCallNotification(
       callerId: _callerId,
       callerName: _callerName,
+      senderId: _currentUserId,
     );
 
     // Update call history as missed

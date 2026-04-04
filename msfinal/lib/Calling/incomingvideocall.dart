@@ -330,6 +330,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     await NotificationService.sendMissedVideoCallNotification(
       callerId: _callerId,
       callerName: _callerName,
+      senderId: _currentUserId,
     );
 
     // Update call history as missed

@@ -427,6 +427,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         recipientUserId: widget.otherUserId,
         callerName: widget.currentUserName,
         channelName: _channel,
+        callerId: widget.currentUserId,
       );
     }
 

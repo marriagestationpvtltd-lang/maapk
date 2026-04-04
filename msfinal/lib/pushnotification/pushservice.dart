@@ -421,6 +421,7 @@ class NotificationService {
   static Future<bool> sendMissedCallNotification({
     required String callerId,
     required String callerName,
+    String? senderId,
   }) async {
     return await sendNotification(
       userId: callerId,
@@ -429,6 +430,7 @@ class NotificationService {
       data: {
         'type': 'missed_call',
         'callerName': callerName,
+        if (senderId != null) 'senderId': senderId,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
@@ -529,6 +531,7 @@ class NotificationService {
   static Future<bool> sendMissedVideoCallNotification({
     required String callerId,
     required String callerName,
+    String? senderId,
   }) async {
     return await sendNotification(
       userId: callerId,
@@ -537,6 +540,7 @@ class NotificationService {
       data: {
         'type': 'missed_video_call',
         'callerName': callerName,
+        if (senderId != null) 'senderId': senderId,
         'isVideoCall': 'true',
         'timestamp': DateTime.now().toIso8601String(),
       },
@@ -574,6 +578,7 @@ class NotificationService {
     required String recipientUserId,
     required String callerName,
     required String channelName,
+    String? callerId,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -583,6 +588,7 @@ class NotificationService {
         'type': 'call_cancelled',
         'callerName': callerName,
         'channelName': channelName,
+        if (callerId != null) 'senderId': callerId,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
@@ -593,6 +599,7 @@ class NotificationService {
     required String recipientUserId,
     required String callerName,
     required String channelName,
+    String? callerId,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -602,6 +609,7 @@ class NotificationService {
         'type': 'video_call_cancelled',
         'callerName': callerName,
         'channelName': channelName,
+        if (callerId != null) 'senderId': callerId,
         'isVideoCall': 'true',
         'timestamp': DateTime.now().toIso8601String(),
       },
