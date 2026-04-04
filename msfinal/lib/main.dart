@@ -287,8 +287,9 @@ Future<void> _displayStandardNotification(RemoteMessage message) async {
 // Returns true when the notification was sent by the admin (senderId == '1').
 // Admin messages should be handled silently – navigate to AdminChatScreen
 // instead of showing a persistent system notification.
+// NOTE: '1' matches AdminChatScreen._adminUserId which is a fixed constant in this app.
 bool _isAdminMessage(Map<String, dynamic> data) {
-  const adminUserId = '1';
+  const adminUserId = '1'; // Same constant as AdminChatScreen._adminUserId
   final senderId = data['senderId']?.toString() ??
       data['sender_id']?.toString() ??
       '';
@@ -296,16 +297,22 @@ bool _isAdminMessage(Map<String, dynamic> data) {
 }
 
 // Navigate to AdminChatScreen when an admin-sent message notification arrives.
-void _navigateToAdminChatFromNotification(Map<String, dynamic> data) async {
+Future<void> _navigateToAdminChatFromNotification(Map<String, dynamic> data) async {
   debugPrint('🔔 Admin message notification – opening AdminChatScreen');
   try {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
-    if (userDataString == null) return;
+    if (userDataString == null) {
+      debugPrint('⚠️ Admin chat navigation: no user_data in prefs');
+      return;
+    }
 
     final userData = json.decode(userDataString);
     final currentUserId = userData['id']?.toString() ?? '';
-    if (currentUserId.isEmpty) return;
+    if (currentUserId.isEmpty) {
+      debugPrint('⚠️ Admin chat navigation: currentUserId is empty');
+      return;
+    }
 
     final firstName = userData['firstName']?.toString().trim() ?? '';
     final lastName = userData['lastName']?.toString().trim() ?? '';
