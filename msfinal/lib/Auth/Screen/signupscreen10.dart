@@ -602,21 +602,6 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        // Quick scan button
-        OutlinedButton.icon(
-          onPressed: _quickScanFromCamera,
-          icon: const Icon(Icons.camera_alt_rounded, size: 18),
-          label: const Text('स्क्यान गर्नुहोस् (Scan from Camera)'),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
-            foregroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
       ],
     );
   }
@@ -1771,57 +1756,6 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         _selectedImage = null;
         _scannedImagePath = null;
       });
-
-  /// Quick scan from camera - opens camera and scans document ID immediately
-  Future<void> _quickScanFromCamera() async {
-    try {
-      // Take a photo from camera
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 90,
-      );
-
-      if (image == null) return;
-
-      setState(() => _isScanning = true);
-
-      try {
-        final File imageFile = File(image.path);
-        final String? extractedText = await _ocrService.extractDocumentId(imageFile);
-
-        setState(() => _isScanning = false);
-
-        if (extractedText != null && extractedText.isNotEmpty) {
-          // Auto-fill and save the image
-          setState(() {
-            _selectedImage = image;
-            _scannedImagePath = null;
-            _documentNumberController.text = extractedText;
-          });
-          _showSuccess('दस्तावेज नम्बर स्क्यान भयो! (Document scanned successfully!)');
-        } else {
-          // Still save the image even if OCR failed
-          setState(() {
-            _selectedImage = image;
-            _scannedImagePath = null;
-          });
-          _showError('Could not extract text. Please enter the number manually.');
-        }
-      } catch (e) {
-        setState(() => _isScanning = false);
-        // Still save the image
-        setState(() {
-          _selectedImage = image;
-          _scannedImagePath = null;
-        });
-        _showError('Scan failed. Please enter the number manually.');
-      }
-    } catch (e) {
-      _showError('Failed to open camera: $e');
-    }
-  }
 
   Future<void> _scanDocumentId() async {
     if (_selectedImage == null && _scannedImagePath == null) {
