@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:ms2026/constant/app_colors.dart';
+import 'package:ms2026/constant/status_bar_utils.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Models/masterdata.dart';
@@ -759,6 +761,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
           pinned: true,
           snap: true,
           expandedHeight: 180,
+          systemOverlayStyle: setStatusBar(const Color(0xFFEA4935), Brightness.light),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               decoration: BoxDecoration(

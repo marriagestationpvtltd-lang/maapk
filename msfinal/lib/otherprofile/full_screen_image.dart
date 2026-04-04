@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ms2026/constant/status_bar_utils.dart';
 
 class FullScreenImageViewer extends StatelessWidget {
   final String imageUrl;
@@ -9,9 +11,11 @@ class FullScreenImageViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: setStatusBar(Colors.transparent, Brightness.light),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
         children: [
           // Pinch-to-zoom image viewer
           Center(
@@ -52,6 +56,7 @@ class FullScreenImageViewer extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
