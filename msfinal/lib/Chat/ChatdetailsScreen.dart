@@ -1,5 +1,6 @@
 // lib/screens/ChatDetailScreen.dart
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -187,6 +188,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       _markMessagesAsRead();
       _checkBlockStatus();
       _loadCallHistory();
+      _fetchPhotoRequestStatus();
     });
 
     // Set chat as active when screen opens
@@ -373,6 +375,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       setState(() {
         _isBlocked = isBlocked;
       });
+    }
+  }
+
+  Future<void> _fetchPhotoRequestStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+
+      final userData = jsonDecode(userDataString);
+      final myId = userData["id"].toString();
+
+      final service = ProfileService();
+      final profileResponse = await service.fetchProfile(
+        myId: myId,
+        userId: widget.receiverId,
+      );
+
+      if (mounted) {
+        setState(() {
+          _photoRequestStatus = profileResponse.data.personalDetail.photoRequest;
+          _privacyStatus = profileResponse.data.personalDetail.privacy;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching photo request status: $e');
     }
   }
 
@@ -1392,6 +1420,68 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }) {
     switch (messageType) {
       case 'image':
+        final bool shouldBlur = !isMine &&
+            _privacyStatus.toLowerCase() != 'free' &&
+            _photoRequestStatus.toLowerCase() != 'accepted';
+
+        if (shouldBlur) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 200,
+              height: 150,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                    child: Image.network(
+                      text,
+                      width: 200,
+                      height: 150,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[300],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    color: Colors.black.withOpacity(0.4),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red.shade600.withOpacity(0.9),
+                            ),
+                            child: const Icon(
+                              Icons.lock,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Photo Protected',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return GestureDetector(
           onTap: () {
             showDialog(
@@ -2923,6 +3013,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
 bool  _isBlocked = false;
  bool  _isLoadingBlock = true;
+  String _photoRequestStatus = 'not_sent';
+  String _privacyStatus = 'private';
   Future<void> _blockUser(BuildContext dialogContext) async {
     setState(() {
       _isLoadingBlock = true;
