@@ -268,9 +268,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           _cachedMessages = newMessages;
         });
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
-        });
+        // Jump instantly to the last message on first load (no animation).
+        _scrollToBottom(jump: true);
       } else {
         // Build a set of message IDs currently in the stream window.
         final streamMsgIds = <String>{};
@@ -879,14 +878,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final remainingSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
-  void _scrollToBottom() {
+  void _scrollToBottom({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (jump) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        } else {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       }
     });
   }
