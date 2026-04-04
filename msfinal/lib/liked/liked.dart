@@ -693,7 +693,15 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
             ),
             child: Row(
               children: [
-                Icon(documentStatus.icon, color: Colors.white, size: 18),
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: documentStatus.color.withOpacity(0.22),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(documentStatus.icon, color: Colors.white, size: 16),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -959,9 +967,11 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     final isVerified = person['isVerified'] == 1 || person['isVerified'] == '1';
     final city = person['city']?.toString() ?? 'Location not available';
     final designation = person['designation']?.toString() ?? 'Profession not available';
-    final profileImage = resolveApiImageUrl(
-      person['profile_picture']?.toString() ?? '',
-    );
+    final rawProfileImage = person['profile_picture']?.toString() ?? '';
+    final resolvedProfileImage = resolveApiImageUrl(rawProfileImage);
+    final profileImage = resolvedProfileImage.isNotEmpty
+        ? resolvedProfileImage
+        : 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e';
     final age = person['age']?.toString() ?? '';
     final photoRequestStatus = _getPhotoRequestStatus(person);
 
