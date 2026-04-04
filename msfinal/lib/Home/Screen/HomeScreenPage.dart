@@ -1228,15 +1228,6 @@ String usertye = '';
                         style: AppTextStyles.primaryLabel.copyWith(fontSize: 11),
                       ),
                       AppSpacing.horizontalXS,
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: AppColors.textHint,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      AppSpacing.horizontalXS,
                     ],
                     Container(
                       width: 6,
@@ -1244,16 +1235,6 @@ String usertye = '';
                       decoration: const BoxDecoration(
                         color: AppColors.success,
                         shape: BoxShape.circle,
-                      ),
-                    ),
-                    AppSpacing.horizontalXS,
-                    Text(
-                      usertye.isEmpty ? 'Member' : (usertye == 'free' ? 'Free Member' : 'Premium Member'),
-                      style: AppTextStyles.labelSmall.copyWith(
-                        fontSize: 11,
-                        color: usertye == 'free'
-                            ? AppColors.textSecondary
-                            : AppColors.premium,
                       ),
                     ),
                   ],
