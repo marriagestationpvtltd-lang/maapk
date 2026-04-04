@@ -1583,7 +1583,6 @@ class _PartnerPreferenceMultiSelectSheetState
             const SizedBox(height: 16),
             TextField(
               controller: _searchController,
-              autofocus: true,
               textInputAction: TextInputAction.search,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
