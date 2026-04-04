@@ -20,8 +20,7 @@ class IDVerificationScreen extends StatefulWidget {
 }
 
 class _IDVerificationScreenState extends State<IDVerificationScreen>
-    with TickerProviderStateMixin {
-  static const Duration _autoRefreshInterval = Duration(seconds: 30);
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   static const double _kPulseScaleMin = 0.94;
   static const double _kPulseScaleMax = 1.06;
 
@@ -41,8 +40,6 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   bool _isUploading = false;
   bool _hasConsented = false;
   bool _isScanning = false;
-
-  Timer? _refreshTimer;
 
   late AnimationController _fadeController;
   late AnimationController _pulseController;
@@ -75,25 +72,24 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _checkDocumentStatus();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fadeController.dispose();
     _pulseController.dispose();
-    _refreshTimer?.cancel();
     _documentNumberController.dispose();
     _ocrService.dispose();
     super.dispose();
   }
 
-  void _startAutoRefresh() {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
-      if (_documentStatus == 'pending' && mounted) {
-        _checkDocumentStatus();
-      }
-    });
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _checkDocumentStatus();
+    }
   }
 
   Future<void> _checkDocumentStatus() async {
@@ -129,9 +125,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             _rejectReason = result['reject_reason'] ?? '';
           });
           if (newStatus == 'pending') {
-            _startAutoRefresh();
-          } else {
-            _refreshTimer?.cancel();
+            // no-op: status will be re-checked on next app resume
           }
         }
       }
@@ -187,7 +181,6 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
           _documentStatus = 'pending';
           _rejectReason = '';
         });
-        _startAutoRefresh();
         _fadeController.forward(from: 0);
         _showSuccess("Document submitted! We'll notify you once it's verified.");
       } else {
@@ -1262,7 +1255,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Status refreshes automatically every ${_autoRefreshInterval.inSeconds} seconds.',
+              'Status is checked when you return to the app.',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ),
