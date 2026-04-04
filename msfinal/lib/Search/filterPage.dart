@@ -485,12 +485,15 @@ class _FilterPageState extends State<FilterPage> {
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black12),
       ),
-      child: DropdownButton<String>(
-        value: value,
-        underline: const SizedBox(),
-        isExpanded: true,
-        items: list.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: onChange,
+      child: ExcludeFocus(
+        excluding: true,
+        child: DropdownButton<String>(
+          value: value,
+          underline: const SizedBox(),
+          isExpanded: true,
+          items: list.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          onChanged: onChange,
+        ),
       ),
     );
   }

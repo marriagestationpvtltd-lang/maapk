@@ -643,77 +643,83 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
 
 
         // Age Range Filter
-        DropdownButtonHideUnderline(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: _selectedAgeRange.isEmpty ? Colors.grey[100] : Color(0xFFEA4935).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _selectedAgeRange.isEmpty ? Colors.grey[300]! : Color(0xFFEA4935),
+        ExcludeFocus(
+          excluding: true,
+          child: DropdownButtonHideUnderline(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: _selectedAgeRange.isEmpty ? Colors.grey[100] : Color(0xFFEA4935).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _selectedAgeRange.isEmpty ? Colors.grey[300]! : Color(0xFFEA4935),
+                ),
               ),
-            ),
-            child: DropdownButton<String>(
-              value: _selectedAgeRange.isEmpty ? null : _selectedAgeRange,
-              hint: Row(
-                children: [
-                  Icon(Icons.timeline, size: 16, color: Colors.grey[600]),
-                  SizedBox(width: 6),
-                  Text('Age Range', style: TextStyle(color: Colors.grey[600])),
+              child: DropdownButton<String>(
+                value: _selectedAgeRange.isEmpty ? null : _selectedAgeRange,
+                hint: Row(
+                  children: [
+                    Icon(Icons.timeline, size: 16, color: Colors.grey[600]),
+                    SizedBox(width: 6),
+                    Text('Age Range', style: TextStyle(color: Colors.grey[600])),
+                  ],
+                ),
+                items: [
+                  DropdownMenuItem(value: '', child: Text('All Ages')),
+                  DropdownMenuItem(value: '18-25', child: Text('18-25')),
+                  DropdownMenuItem(value: '26-35', child: Text('26-35')),
+                  DropdownMenuItem(value: '36-45', child: Text('36-45')),
+                  DropdownMenuItem(value: '46+', child: Text('46+')),
                 ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedAgeRange = value ?? '';
+                  });
+                },
+                icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                isDense: true,
               ),
-              items: [
-                DropdownMenuItem(value: '', child: Text('All Ages')),
-                DropdownMenuItem(value: '18-25', child: Text('18-25')),
-                DropdownMenuItem(value: '26-35', child: Text('26-35')),
-                DropdownMenuItem(value: '36-45', child: Text('36-45')),
-                DropdownMenuItem(value: '46+', child: Text('46+')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedAgeRange = value ?? '';
-                });
-              },
-              icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-              isDense: true,
             ),
           ),
         ),
 
         // City Filter
         if (_availableCities.isNotEmpty)
-          DropdownButtonHideUnderline(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: _selectedCity.isEmpty ? Colors.grey[100] : Color(0xFFEA4935).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _selectedCity.isEmpty ? Colors.grey[300]! : Color(0xFFEA4935),
+          ExcludeFocus(
+            excluding: true,
+            child: DropdownButtonHideUnderline(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _selectedCity.isEmpty ? Colors.grey[100] : Color(0xFFEA4935).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _selectedCity.isEmpty ? Colors.grey[300]! : Color(0xFFEA4935),
+                  ),
                 ),
-              ),
-              child: DropdownButton<String>(
-                value: _selectedCity.isEmpty ? null : _selectedCity,
-                hint: Row(
-                  children: [
-                    Icon(Icons.location_city, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 6),
-                    Text('City', style: TextStyle(color: Colors.grey[600])),
+                child: DropdownButton<String>(
+                  value: _selectedCity.isEmpty ? null : _selectedCity,
+                  hint: Row(
+                    children: [
+                      Icon(Icons.location_city, size: 16, color: Colors.grey[600]),
+                      SizedBox(width: 6),
+                      Text('City', style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
+                  items: [
+                    DropdownMenuItem(value: '', child: Text('All Cities')),
+                    ..._availableCities.map((city) {
+                      return DropdownMenuItem(value: city, child: Text(city));
+                    }).toList(),
                   ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCity = value ?? '';
+                    });
+                  },
+                  icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                  isDense: true,
                 ),
-                items: [
-                  DropdownMenuItem(value: '', child: Text('All Cities')),
-                  ..._availableCities.map((city) {
-                    return DropdownMenuItem(value: city, child: Text(city));
-                  }).toList(),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCity = value ?? '';
-                  });
-                },
-                icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                isDense: true,
               ),
             ),
           ),

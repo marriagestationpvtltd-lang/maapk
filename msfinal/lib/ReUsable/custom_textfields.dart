@@ -263,38 +263,41 @@ class CustomDropdownField<T> extends StatelessWidget {
           ),
           AppSpacing.verticalSM,
         ],
-        DropdownButtonFormField<T>(
-          value: value,
-          items: items,
-          onChanged: onChanged,
-          style: AppTextStyles.bodyLarge,
-          decoration: InputDecoration(
-            hintText: hintText,
-            errorText: errorText,
-            prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: AppColors.textSecondary)
-                : null,
-            filled: true,
-            fillColor: AppColors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.spacingMD,
-              vertical: AppDimensions.spacingMD,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: AppDimensions.borderRadiusMD,
-              borderSide: const BorderSide(color: AppColors.border, width: 1),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: AppDimensions.borderRadiusMD,
-              borderSide: const BorderSide(color: AppColors.border, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: AppDimensions.borderRadiusMD,
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: AppDimensions.borderRadiusMD,
-              borderSide: const BorderSide(color: AppColors.error, width: 1),
+        ExcludeFocus(
+          excluding: true,
+          child: DropdownButtonFormField<T>(
+            value: value,
+            items: items,
+            onChanged: onChanged,
+            style: AppTextStyles.bodyLarge,
+            decoration: InputDecoration(
+              hintText: hintText,
+              errorText: errorText,
+              prefixIcon: prefixIcon != null
+                  ? Icon(prefixIcon, color: AppColors.textSecondary)
+                  : null,
+              filled: true,
+              fillColor: AppColors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.spacingMD,
+                vertical: AppDimensions.spacingMD,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: AppDimensions.borderRadiusMD,
+                borderSide: const BorderSide(color: AppColors.border, width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: AppDimensions.borderRadiusMD,
+                borderSide: const BorderSide(color: AppColors.border, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: AppDimensions.borderRadiusMD,
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: AppDimensions.borderRadiusMD,
+                borderSide: const BorderSide(color: AppColors.error, width: 1),
+              ),
             ),
           ),
         ),
