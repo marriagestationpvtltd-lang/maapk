@@ -54,11 +54,6 @@ class AgoraTokenService {
         throw Exception('Token is missing or invalid in API response');
       }
 
-      // Optional: verify token format
-      if (token.startsWith('007')) {
-        throw Exception('Invalid token format - must start with 007');
-      }
-
       print('✅ Token received: ${token.length} chars');
       return token;
     } catch (e) {
