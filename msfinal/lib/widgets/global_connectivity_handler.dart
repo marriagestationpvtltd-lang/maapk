@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../constant/app_colors.dart';
@@ -177,65 +178,73 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
             bottom: false,
             child: IgnorePointer(
               ignoring: !_isBannerVisible,
+              child: AnnotatedRegion<SystemUiOverlayStyle>(
+                value: const SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                  systemStatusBarContrastEnforced: false,
+                ),
                 child: AnimatedSlide(
                   duration: const Duration(milliseconds: 220),
                   offset: _isBannerVisible
                       ? Offset.zero
                       : const Offset(0, _hiddenBannerOffsetMultiplier),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  child: Material(
-                    color: _bannerColor,
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 6,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 16,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _bannerMessage,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Material(
+                      color: _bannerColor,
+                      borderRadius: BorderRadius.circular(12),
+                      elevation: 6,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 16,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _bannerMessage,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                          if (_bannerColor == AppColors.error)
-                            TextButton(
-                              onPressed: _isRetrying ? null : _handleRetry,
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                            if (_bannerColor == AppColors.error)
+                              TextButton(
+                                onPressed: _isRetrying ? null : _handleRetry,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: _isRetrying
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(
-                                          Colors.white,
+                                child: _isRetrying
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Retry',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                    )
-                                  : const Text(
-                                      'Retry',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                            ),
-                        ],
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
