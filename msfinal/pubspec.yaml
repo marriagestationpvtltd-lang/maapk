@@ -23,6 +23,7 @@ dependencies:
 
   # Media
   image_picker: ^1.2.1
+  google_mlkit_text_recognition: ^0.13.1
 
   # Location
   geolocator: ^11.0.1
