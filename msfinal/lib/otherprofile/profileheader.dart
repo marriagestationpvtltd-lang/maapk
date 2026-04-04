@@ -187,6 +187,17 @@ class ProfileHeader extends StatelessWidget {
                   width: screenWidth,
                   height: imageHeight - 80,
                   fit: BoxFit.cover,
+                  placeholder: (_, __) => Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Icon(
+                    Icons.person,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
                 ),
               ),
               Container(color: Colors.black.withOpacity(0.3)),
