@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'full_screen_image.dart';
+import '../utils/time_utils.dart';
 
 class ProfileHeader extends StatelessWidget {
   final Map<String, dynamic> personalDetail;
@@ -9,6 +10,8 @@ class ProfileHeader extends StatelessWidget {
   final bool hasRequestedPhoto;
   final Function onRequestPhotoAccess;
   final String id;
+  final bool isOnline;
+  final DateTime? lastSeen;
 
   const ProfileHeader({
     Key? key,
@@ -17,6 +20,8 @@ class ProfileHeader extends StatelessWidget {
     required this.hasRequestedPhoto,
     required this.onRequestPhotoAccess,
     required this.id,
+    this.isOnline = false,
+    this.lastSeen,
   }) : super(key: key);
 
   @override
@@ -47,6 +52,10 @@ class ProfileHeader extends StatelessWidget {
               children: [
                 // Name and verification
                 _buildNameAndVerification(),
+                const SizedBox(height: 6),
+
+                // Online status
+                _buildOnlineStatus(),
                 const SizedBox(height: 8),
 
                 // Member ID and location row
@@ -475,6 +484,43 @@ class ProfileHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildOnlineStatus() {
+    if (isOnline) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: const BoxDecoration(
+              color: Color(0xFF22C55E),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          const Text(
+            'Online',
+            style: TextStyle(
+              color: Color(0xFF22C55E),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+    if (lastSeen != null) {
+      return Text(
+        formatLastSeen(lastSeen!),
+        style: TextStyle(
+          color: Colors.grey.shade500,
+          fontSize: 13,
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildNameAndVerification() {

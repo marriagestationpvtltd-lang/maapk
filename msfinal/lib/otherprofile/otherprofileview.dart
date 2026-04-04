@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart' hide ErrorWidget;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ms2026/otherprofile/profileheader.dart';
 import 'package:ms2026/otherprofile/profiletabs.dart';
 import 'package:ms2026/otherprofile/requestdiag.dart';
 import 'package:ms2026/otherprofile/service_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:convert';
 
 import '../Notification/notification_inbox_service.dart';
@@ -38,11 +40,49 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   final ProfileService _profileService = ProfileService();
 
+  bool _isOtherUserOnline = false;
+  DateTime? _otherUserLastSeen;
+  StreamSubscription<DocumentSnapshot>? _onlineStatusSub;
+
   @override
   void initState() {
     super.initState();
     _loadProfileData();
     _checkDocumentStatus();
+    _startOnlineStatusListener();
+  }
+
+  @override
+  void dispose() {
+    _onlineStatusSub?.cancel();
+    super.dispose();
+  }
+
+  void _startOnlineStatusListener() {
+    _onlineStatusSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId.toString())
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      bool online = false;
+      DateTime? lastSeen;
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final bool isOnline = data['isOnline'] == true;
+        final Timestamp? ts = data['lastSeen'] as Timestamp?;
+        lastSeen = ts?.toDate();
+        final bool recentlySeen = lastSeen != null &&
+            DateTime.now().difference(lastSeen).inMinutes < 5;
+        online = isOnline || recentlySeen;
+      }
+      if (_isOtherUserOnline != online || _otherUserLastSeen != lastSeen) {
+        setState(() {
+          _isOtherUserOnline = online;
+          _otherUserLastSeen = lastSeen;
+        });
+      }
+    });
   }
 
   Future<void> _loadProfileData() async {
@@ -282,8 +322,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
             personalDetail: _profileData!.personalDetail,
             showBlurredImage: _showBlurredImage,
             hasRequestedPhoto: _hasRequestedPhoto,
-
-            onRequestPhotoAccess: _requestPhotoAccess, id: widget.userId.toString(),
+            onRequestPhotoAccess: _requestPhotoAccess,
+            id: widget.userId.toString(),
+            isOnline: _isOtherUserOnline,
+            lastSeen: _otherUserLastSeen,
           ),
 
           GallerySection(
