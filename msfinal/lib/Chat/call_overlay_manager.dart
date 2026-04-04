@@ -609,10 +609,16 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
           ? IncomingVideoCallScreen(callData: data)
           : IncomingCallScreen(callData: data),
     );
-    currentState.push(route).whenComplete(() {
+    try {
+      currentState.push(route).whenComplete(() {
+        _isNavigatingToCall = false;
+        CallManager().isCallScreenShowing = false;
+      });
+    } catch (_) {
+      // Reset flags if push fails so future calls are not blocked.
       _isNavigatingToCall = false;
       CallManager().isCallScreenShowing = false;
-    });
+    }
   }
 
   @override

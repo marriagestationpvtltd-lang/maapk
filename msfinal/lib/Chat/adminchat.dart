@@ -520,24 +520,31 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           data['type'] == 'video_call' || data['isVideoCall'] == 'true';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        // Dart's event loop is single-threaded, so the check-and-set below is
+        // effectively atomic — no other Dart code runs between them.
         // isCallScreenShowing is set by the first listener that handles this
         // call (usually CallOverlayWrapper). If it is already true, the global
         // handler has already pushed the screen — skip to avoid duplicates.
         if (CallManager().isCallScreenShowing) return;
         CallManager().isCallScreenShowing = true;
-        Navigator.of(context)
-            .push(
-              MaterialPageRoute(
-                settings: const RouteSettings(name: activeCallRouteName),
-                fullscreenDialog: true,
-                builder: (_) => isVideoCall
-                    ? IncomingVideoCallScreen(callData: data)
-                    : IncomingCallScreen(callData: data),
-              ),
-            )
-            .whenComplete(() {
+        try {
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
+                  fullscreenDialog: true,
+                  builder: (_) => isVideoCall
+                      ? IncomingVideoCallScreen(callData: data)
+                      : IncomingCallScreen(callData: data),
+                ),
+              )
+              .whenComplete(() {
+            CallManager().isCallScreenShowing = false;
+          });
+        } catch (_) {
+          // Reset the flag if push fails so future calls are not blocked.
           CallManager().isCallScreenShowing = false;
-        });
+        }
       });
     });
   }
