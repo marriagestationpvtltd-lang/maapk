@@ -14,7 +14,7 @@ import '../Auth/Screen/Edit/edit5.dart';
 import '../Auth/Screen/Edit/edit6.dart';
 import '../Auth/Screen/Edit/edit7.dart';
 import '../Auth/Screen/Edit/edit8.dart';
-import '../Auth/Screen/signupscreen10.dart';
+import '../Auth/Screen/marital_document_screen.dart';
 import '../Auth/SuignupModel/signup_model.dart';
 import '../DeleteAccount/deleteAccointScreen.dart';
 import '../Package/PackageScreen.dart';
@@ -177,7 +177,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchDocumentStatus(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/check_document_status.php'),
+        Uri.parse('https://digitallami.com/Api2/check_marital_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': int.parse(userId)}),
       );
@@ -199,7 +199,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         }
       }
     } catch (e) {
-      debugPrint('Document status fetch failed: $e');
+      debugPrint('Marital document status fetch failed: $e');
     }
   }
 
@@ -1509,7 +1509,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         title = 'Document Rejected';
         subtitle = 'Your document was rejected. Please upload a valid document to get verified.';
         action = TextButton.icon(
-          onPressed: () => _openEditPage(const IDVerificationScreen()),
+          onPressed: () => _openEditPage(const MaritalDocumentUploadScreen()),
           icon: const Icon(Icons.upload_file_rounded, size: 18),
           label: const Text('Re-upload Document'),
           style: TextButton.styleFrom(foregroundColor: const Color(0xFFD32F2F)),
@@ -1522,7 +1522,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         title = 'Document Required';
         subtitle = 'Since your marital status is "$maritalStatus", you must upload a supporting document (e.g. death certificate / divorce decree / court order) to get your profile verified.';
         action = ElevatedButton.icon(
-          onPressed: () => _openEditPage(const IDVerificationScreen()),
+          onPressed: () => _openEditPage(const MaritalDocumentUploadScreen()),
           icon: const Icon(Icons.upload_rounded, size: 18, color: Colors.white),
           label: const Text('Upload Document', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
