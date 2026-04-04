@@ -354,7 +354,7 @@ class RegistrationStepContainer extends StatelessWidget {
                   // Scrollable content area
                   // -----------------------------------------------------------
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                     child: child,
                   ),
 
@@ -363,7 +363,6 @@ class RegistrationStepContainer extends StatelessWidget {
                   // float up with the keyboard. Users scroll down to reach them.
                   // -----------------------------------------------------------
                   Container(
-                    margin: const EdgeInsets.only(top: 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: AppColors.white,
