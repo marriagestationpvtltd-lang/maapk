@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -19,6 +20,7 @@ import '../DeleteAccount/deleteAccointScreen.dart';
 import '../Package/PackageScreen.dart';
 import '../Startup/onboarding.dart';
 import '../constant/app_colors.dart';
+import '../service/connectivity_service.dart';
 import '../otherenew/blocked_users_screen.dart';
 import '../settings/settings_screen.dart';
 
@@ -28,6 +30,21 @@ class MatrimonyProfilePage extends StatefulWidget {
 }
 
 class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
+  static const SystemUiOverlayStyle _onlineStatusBarStyle =
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      );
+  static const SystemUiOverlayStyle _offlineStatusBarStyle =
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      );
+
   Map<String, dynamic>? profileData;
   bool isLoading = true;
   bool isProfileVerified = false;
@@ -37,10 +54,13 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   String? _activePackageName;
   String? _activePackageExpiry;
   String _docStatus = 'not_uploaded';
+  bool _isCheckingConnectivity = false;
+  bool? _lastConnectivityState;
 
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(_onlineStatusBarStyle);
     fetchProfileData();
   }
 
@@ -621,76 +641,171 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD32F2F)),
-          ),
-        ),
-      );
+  void _syncConnectivityUi(bool isConnected) {
+    if (_lastConnectivityState == isConnected) {
+      return;
     }
 
-    if (profileData == null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: Colors.red, size: 50),
-              SizedBox(height: 20),
-              Text('No profile data found'),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: fetchProfileData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFD32F2F),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                child: Text('Retry', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
-      );
+    final previousState = _lastConnectivityState;
+    _lastConnectivityState = isConnected;
+
+    SystemChrome.setSystemUIOverlayStyle(
+      isConnected ? _onlineStatusBarStyle : _offlineStatusBarStyle,
+    );
+
+    if (previousState == false && isConnected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          fetchProfileData();
+        }
+      });
+    }
+  }
+
+  Future<void> _handleOfflineRetry(ConnectivityService connectivityService) async {
+    if (_isCheckingConnectivity) {
+      return;
     }
 
-    final personalDetail = _asMap(profileData!['personalDetail']);
-    final familyDetail = _asMap(profileData!['familyDetail']);
-    final lifestyle = _asMap(profileData!['lifestyle']);
-    final partner = _asMap(profileData!['partner']);
+    setState(() {
+      _isCheckingConnectivity = true;
+    });
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(personalDetail, lifestyle, familyDetail),
-            _buildCompletionSection(
-              personalDetail: personalDetail,
-              familyDetail: familyDetail,
-              lifestyle: lifestyle,
-              partner: partner,
-            ),
-            _buildDocumentStatusSection(personalDetail),
-            _buildMemberTypeSection(),
-            _buildPackageDetailsSection(),
-            _buildProfileInfo(personalDetail),
-            _buildAboutMe(personalDetail, lifestyle, familyDetail),
-            _buildPersonalDetails(personalDetail),
-            _buildCommunityDetails(personalDetail),
-            _buildProfessionalDetails(personalDetail),
-            _buildFamilyDetails(familyDetail),
-            _buildLifestyle(lifestyle),
-            _buildPartnerPreferences(partner),
-            SizedBox(height: 20),
-          ],
+    final hasInternet = await connectivityService.checkConnectivity();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isCheckingConnectivity = false;
+    });
+
+    if (hasInternet) {
+      await fetchProfileData();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No internet connection. Please try again.'),
+        backgroundColor: Color(0xFFD32F2F),
+      ),
+    );
+  }
+
+  Widget _buildOnlineScaffold({required Widget child}) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _onlineStatusBarStyle,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: Container(
+          color: const Color(0xFFF7F8FC),
+          child: child,
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ConnectivityService>(
+      builder: (context, connectivityService, _) {
+        final isConnected = connectivityService.isConnected;
+        _syncConnectivityUi(isConnected);
+
+        if (!isConnected) {
+          return KeyedSubtree(
+            key: const ValueKey('my-profile-offline'),
+            child: _ProfileOfflineView(
+              connectivityService: connectivityService,
+              isCheckingConnectivity: _isCheckingConnectivity,
+              onRetry: () => _handleOfflineRetry(connectivityService),
+            ),
+          );
+        }
+
+        if (isLoading) {
+          return KeyedSubtree(
+            key: const ValueKey('my-profile-online-loading'),
+            child: _buildOnlineScaffold(
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD32F2F)),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (profileData == null) {
+          return KeyedSubtree(
+            key: const ValueKey('my-profile-online-empty'),
+            child: _buildOnlineScaffold(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                    const SizedBox(height: 20),
+                    const Text('No profile data found'),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: fetchProfileData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD32F2F),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Retry',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final personalDetail = _asMap(profileData!['personalDetail']);
+        final familyDetail = _asMap(profileData!['familyDetail']);
+        final lifestyle = _asMap(profileData!['lifestyle']);
+        final partner = _asMap(profileData!['partner']);
+
+        return KeyedSubtree(
+          key: const ValueKey('my-profile-online'),
+          child: _buildOnlineScaffold(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildHeader(personalDetail, lifestyle, familyDetail),
+                  _buildCompletionSection(
+                    personalDetail: personalDetail,
+                    familyDetail: familyDetail,
+                    lifestyle: lifestyle,
+                    partner: partner,
+                  ),
+                  _buildDocumentStatusSection(personalDetail),
+                  _buildMemberTypeSection(),
+                  _buildPackageDetailsSection(),
+                  _buildProfileInfo(personalDetail),
+                  _buildAboutMe(personalDetail, lifestyle, familyDetail),
+                  _buildPersonalDetails(personalDetail),
+                  _buildCommunityDetails(personalDetail),
+                  _buildProfessionalDetails(personalDetail),
+                  _buildFamilyDetails(familyDetail),
+                  _buildLifestyle(lifestyle),
+                  _buildPartnerPreferences(partner),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -733,134 +848,154 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Column(
-        children: [
-          SizedBox(height: 40),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (Navigator.canPop(context))
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (Navigator.canPop(context))
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    )
+                  else
+                    const SizedBox(width: 48),
+                  const Text(
+                    'My Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  )
-                else
-                  SizedBox(width: 48),
-                Text(
-                  'My Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    icon: const Icon(Icons.settings, color: Colors.white),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const SettingsScreen()),
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.settings, color: Colors.white),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsScreen()),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Profile Image and Basic Info
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        image: DecorationImage(
-                          image: NetworkImage(_getFullImageUrl(personalDetail['profile_picture'])),
-                          fit: BoxFit.cover,
+            // Profile Image and Basic Info
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          image: DecorationImage(
+                            image: NetworkImage(
+                              _getFullImageUrl(personalDetail['profile_picture']),
+                            ),
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
-                    ),
-                    if (isProfileVerified)
+                      if (isProfileVerified)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFD32F2F),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.verified,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       Positioned(
                         bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFD32F2F),
-                            shape: BoxShape.circle,
+                        left: 0,
+                        child: InkWell(
+                          onTap: () => _editProfilePicture(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD32F2F),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
-                          child: Icon(Icons.verified, color: Colors.white, size: 20),
                         ),
                       ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      child: InkWell(
-                        onTap: () => _editProfilePicture(context),
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFD32F2F),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${_displayValue(personalDetail['firstName'], fallback: '')} ${_displayValue(personalDetail['lastName'], fallback: '')}, ${_calculateAge(personalDetail['birthDate'])}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                 Row(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     Text(
-                       '${_displayValue(personalDetail['firstName'], fallback: '')} ${_displayValue(personalDetail['lastName'], fallback: '')}, ${_calculateAge(personalDetail['birthDate'])}',
-                       style: TextStyle(
-                         color: Colors.white,
-                         fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(width: 8),
+                      if (isProfileVerified)
+                        const Icon(Icons.verified, color: Colors.white, size: 20),
+                    ],
+                  ),
+                  if (profileSubtitle.isNotEmpty)
+                    Text(
+                      profileSubtitle,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(width: 8),
-                    if (isProfileVerified)
-                      Icon(Icons.verified, color: Colors.white, size: 20),
-                  ],
-                 ),
-                 if (profileSubtitle.isNotEmpty)
-                   Text(
-                     profileSubtitle,
-                     style: TextStyle(
-                       color: Colors.white.withOpacity(0.9),
-                       fontSize: 14,
-                     ),
-                     textAlign: TextAlign.center,
-                   ),
-                 SizedBox(height: 10),
-                 Wrap(
-                   alignment: WrapAlignment.center,
-                   spacing: 10,
-                   runSpacing: 10,
-                   children: [
-                     if (!_isMissing(personalDetail['religionName']))
-                       _buildInfoBadge(_stringValue(personalDetail['religionName']), Icons.person),
-                     if (!_isMissing(personalDetail['communityName']))
-                       _buildInfoBadge(_stringValue(personalDetail['communityName']), Icons.castle),
-                     if (!_isMissing(personalDetail['degree']))
-                       _buildInfoBadge(_stringValue(personalDetail['degree']), Icons.school),
-                     if (!_isMissing(model.gender))
-                       _buildInfoBadge(_stringValue(model.gender), Icons.wc),
-                   ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      if (!_isMissing(personalDetail['religionName']))
+                        _buildInfoBadge(
+                          _stringValue(personalDetail['religionName']),
+                          Icons.person,
+                        ),
+                      if (!_isMissing(personalDetail['communityName']))
+                        _buildInfoBadge(
+                          _stringValue(personalDetail['communityName']),
+                          Icons.castle,
+                        ),
+                      if (!_isMissing(personalDetail['degree']))
+                        _buildInfoBadge(
+                          _stringValue(personalDetail['degree']),
+                          Icons.school,
+                        ),
+                      if (!_isMissing(model.gender))
+                        _buildInfoBadge(_stringValue(model.gender), Icons.wc),
+                    ],
                  ),
                  SizedBox(height: 16),
                  Container(
@@ -898,11 +1033,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                        ),
                      ],
                    ),
-                 ),
-               ],
-             ),
-           ),
-        ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2917,6 +3053,116 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         _buildInfoRow(label, value),
         Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100),
       ],
+    );
+  }
+}
+
+class _ProfileOfflineView extends StatelessWidget {
+  const _ProfileOfflineView({
+    required this.connectivityService,
+    required this.isCheckingConnectivity,
+    required this.onRetry,
+  });
+
+  final ConnectivityService connectivityService;
+  final bool isCheckingConnectivity;
+  final Future<void> Function() onRetry;
+
+  String _message() {
+    if (connectivityService.isWifiConnected) {
+      return 'Wi-Fi is connected, but internet access is unavailable.';
+    }
+
+    if (connectivityService.isMobileConnected) {
+      return 'Mobile data is connected, but internet access is unavailable.';
+    }
+
+    return 'Please reconnect to continue viewing your profile.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: Container(
+          width: double.infinity,
+          color: const Color(0xFFD32F2F),
+          child: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      color: Colors.white,
+                      size: 72,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'No Internet',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _message(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: isCheckingConnectivity ? null : onRetry,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFFD32F2F),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: isCheckingConnectivity
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFD32F2F),
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Retry',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
