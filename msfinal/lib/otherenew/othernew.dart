@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui'; // Required for ImageFilter
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,7 @@ import '../constant/constant.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import '../utils/image_utils.dart';
+import '../utils/time_utils.dart';
 import 'modelfile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -390,10 +392,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfileData();
     _loadUserData();
     addProfileView(widget.userId);
-    _checkBlockStatus(); // Add this line
+    _checkBlockStatus();
+    _startOnlineStatusListener();
+  }
 
-
-
+  @override
+  void dispose() {
+    _onlineStatusSub?.cancel();
+    super.dispose();
   }
 
 
@@ -501,6 +507,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String name = '';
   bool isLoading = true;
   String docstatus = '';
+
+  bool _isOtherUserOnline = false;
+  DateTime? _otherUserLastSeen;
+  StreamSubscription<DocumentSnapshot>? _onlineStatusSub;
+
+  void _startOnlineStatusListener() {
+    _onlineStatusSub?.cancel();
+    _onlineStatusSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      bool online = false;
+      DateTime? lastSeen;
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final bool isOnline = data['isOnline'] == true;
+        final Timestamp? ts = data['lastSeen'] as Timestamp?;
+        lastSeen = ts?.toDate();
+        final bool recentlySeen = lastSeen != null &&
+            DateTime.now().difference(lastSeen).inMinutes < 5;
+        online = isOnline || recentlySeen;
+      }
+      if (_isOtherUserOnline != online || _otherUserLastSeen != lastSeen) {
+        setState(() {
+          _isOtherUserOnline = online;
+          _otherUserLastSeen = lastSeen;
+        });
+      }
+    });
+  }
 
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -624,7 +662,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               red: red,
               buttonGradient: buttonGradient,
               onPhotoRequestPressed: () => _handlePhotoRequest(context),
-              onUpgradePressed: () => _showUpgradeDialog(context), userid: widget.userId,
+              onUpgradePressed: () => _showUpgradeDialog(context),
+              userid: widget.userId,
+              isOnline: _isOtherUserOnline,
+              lastSeen: _otherUserLastSeen,
             ),
             const SizedBox(height: 16),
             _ContactInfoSection(
@@ -979,6 +1020,8 @@ class _ProfileHeaderSection extends StatelessWidget {
   final LinearGradient buttonGradient;
   final VoidCallback onPhotoRequestPressed;
   final VoidCallback onUpgradePressed;
+  final bool isOnline;
+  final DateTime? lastSeen;
 
    _ProfileHeaderSection({
     required this.userProfile,
@@ -987,6 +1030,8 @@ class _ProfileHeaderSection extends StatelessWidget {
     required this.onPhotoRequestPressed,
     required this.onUpgradePressed,
     required this.userid,
+    this.isOnline = false,
+    this.lastSeen,
   });
 
   @override
@@ -1055,6 +1100,35 @@ class _ProfileHeaderSection extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 4),
+          if (isOnline)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF22C55E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text(
+                  'Online',
+                  style: TextStyle(
+                    color: Color(0xFF22C55E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            )
+          else if (lastSeen != null)
+            Text(
+              formatLastSeen(lastSeen!),
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
           const SizedBox(height: 3),
           Text(
             userProfile.studentStatus,
