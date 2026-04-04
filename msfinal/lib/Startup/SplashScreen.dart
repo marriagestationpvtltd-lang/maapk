@@ -576,9 +576,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         return AnimatedBuilder(
           animation: _dotsController,
           builder: (context, child) {
-            final raw = (_dotsController.value - delay).clamp(0.0, 1.0);
-            final t = raw < 0.5 ? raw * 2.0 : (1.0 - raw) * 2.0;
-            final bounce = Curves.easeInOut.transform(t);
+            final rawProgress = (_dotsController.value - delay).clamp(0.0, 1.0);
+            final bounceProgress = rawProgress < 0.5 ? rawProgress * 2.0 : (1.0 - rawProgress) * 2.0;
+            final bounce = Curves.easeInOut.transform(bounceProgress);
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 5),
               width: 8,
