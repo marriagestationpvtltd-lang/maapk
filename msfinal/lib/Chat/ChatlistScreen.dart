@@ -418,7 +418,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             MaterialPageRoute(
               builder: (context) => AdminChatScreen(
                 senderID: userId,
-                userName: name,
+                userName: 'Admin',
                 isAdmin: false,
               ),
             ),

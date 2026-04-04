@@ -15,6 +15,7 @@ import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
 import '../otherenew/othernew.dart';
+import '../utils/time_utils.dart';
 
 class AdminChatScreen extends StatefulWidget {
   final String senderID;
@@ -73,6 +74,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
 
   // Admin online status
   bool _adminOnline = false;
+  DateTime? _adminLastSeen;
   StreamSubscription<DocumentSnapshot>? _adminStatusSubscription;
 
   // Swipe-to-reply offsets (keyed by message ID)
@@ -189,7 +191,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         .snapshots()
         .listen((doc) {
       if (!mounted) return;
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        setState(() {
+          _adminOnline = false;
+          _adminLastSeen = null;
+        });
+        return;
+      }
       final data = doc.data() as Map<String, dynamic>;
       final bool online = data['isOnline'] == true;
       final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
@@ -198,6 +206,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           DateTime.now().difference(lastSeen).inMinutes < 5;
       setState(() {
         _adminOnline = online || recentlySeen;
+        _adminLastSeen = lastSeen;
       });
     });
   }
@@ -1790,6 +1799,54 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     );
   }
 
+  void _showOfficeHoursDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.schedule, color: _primaryGradient.colors[0]),
+            const SizedBox(width: 8),
+            const Text('Office Hours'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _officeHoursDialogRow(Icons.calendar_today, 'Sunday – Friday'),
+            const SizedBox(height: 6),
+            _officeHoursDialogRow(Icons.access_time, '10:00 AM – 5:00 PM'),
+            const Divider(height: 20),
+            _officeHoursDialogRow(Icons.block, 'Saturday: Closed',
+                color: Colors.red.shade700),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _officeHoursDialogRow(IconData icon, String text, {Color? color}) {
+    final Color iconColor = color ?? _primaryGradient.colors[0];
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: iconColor),
+        const SizedBox(width: 8),
+        Text(text,
+            style: TextStyle(
+                fontSize: 14,
+                color: color ?? _textColor)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1800,34 +1857,80 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(widget.userName,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 20)),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 5),
-                  decoration: BoxDecoration(
-                    color: _adminOnline
-                        ? const Color(0xFF22C55E)
-                        : Colors.grey.shade400,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Text(
-                  _adminOnline ? 'Online' : 'Offline',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.9)),
-                ),
-              ],
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white.withOpacity(0.25),
+              child: const Icon(Icons.support_agent,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Admin Support',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: 17)),
+                  if (_adminOnline)
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          'Online',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.9)),
+                        ),
+                      ],
+                    )
+                  else if (_adminLastSeen != null)
+                    Text(
+                      formatLastSeen(_adminLastSeen!),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.85)),
+                    )
+                  else if (!widget.isAdmin)
+                    Text(
+                      'Replies within 10 minutes',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9)),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          'Offline',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.9)),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1876,10 +1979,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
             },
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {
-// Show options menu
-            },
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            tooltip: 'Office Hours',
+            onPressed: _showOfficeHoursDialog,
           ),
         ],
       ),
