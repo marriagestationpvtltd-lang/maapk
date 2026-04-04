@@ -26,6 +26,7 @@ import '../pushnotification/pushservice.dart';
 import '../webrtc/webrtc.dart';
 import 'call_overlay_manager.dart';
 import 'widgets/typing_indicator.dart';
+import '../utils/time_utils.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatRoomId;
@@ -429,15 +430,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   /// Format lastSeen timestamp into a human-readable "last active" string.
-  String _formatLastSeen(DateTime lastSeen) {
-    final diff = DateTime.now().difference(lastSeen);
-    if (diff.inMinutes < 1) return 'last active just now';
-    if (diff.inMinutes < 60) return 'last active ${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return 'last active ${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'last active yesterday';
-    if (diff.inDays < 7) return 'last active ${diff.inDays}d ago';
-    return 'last active a while ago';
-  }
+  String _formatLastSeen(DateTime lastSeen) => formatLastSeen(lastSeen);
 
 
   void _onTypingChanged() {

@@ -11,6 +11,7 @@ import '../Models/chatservice.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../online/onlineservice.dart';
+import '../utils/time_utils.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
 import '../Calling/call_history_screen.dart';
@@ -394,15 +395,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   /// Format a lastSeen timestamp into a human-readable "last active" string.
-  String _formatLastSeen(DateTime lastSeen) {
-    final diff = DateTime.now().difference(lastSeen);
-    if (diff.inMinutes < 1) return 'last active just now';
-    if (diff.inMinutes < 60) return 'last active ${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return 'last active ${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'last active yesterday';
-    if (diff.inDays < 7) return 'last active ${diff.inDays}d ago';
-    return 'last active a while ago';
-  }
+  String _formatLastSeen(DateTime lastSeen) => formatLastSeen(lastSeen);
 
   Widget _buildPinnedAdminCard() {
     final String subtitle = _adminLoading
