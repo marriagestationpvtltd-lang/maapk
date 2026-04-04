@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Auth/Screen/Edit/3edit.dart';
+import '../Auth/Screen/Edit/Community.dart';
 import '../Auth/Screen/Edit/edit5.dart';
 import '../Auth/Screen/Edit/edit6.dart';
 import '../Auth/Screen/Edit/edit7.dart';
@@ -609,7 +610,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             _buildPackageDetailsSection(),
             _buildProfileInfo(personalDetail),
             _buildAboutMe(personalDetail, lifestyle, familyDetail),
-            _buildPersonalDetails(personalDetail, lifestyle),
+            _buildPersonalDetails(personalDetail),
+            _buildCommunityDetails(personalDetail),
             _buildProfessionalDetails(personalDetail),
             _buildFamilyDetails(familyDetail),
             _buildLifestyle(lifestyle),
@@ -1838,7 +1840,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   Widget _buildPersonalDetails(
     Map<String, dynamic> personalDetail,
-    Map<String, dynamic> lifestyle,
   ) {
     final model = context.read<SignupModel>();
     return _buildSection(
@@ -1849,11 +1850,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           _buildDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
           _buildDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
           _buildDetailRow('Gender', _displayValue(_firstFilled([personalDetail['gender'], model.gender]))),
-          _buildDetailRow('Religion', _displayValue(personalDetail['religionName'])),
-          _buildDetailRow('Caste', _displayValue(personalDetail['communityName'])),
-          _buildDetailRow('Sub Caste', _displayValue(personalDetail['subCommunityName'])),
-          _buildDetailRow('Manglik', _displayValue(personalDetail['manglik'])),
-          _buildDetailRow('Diet', _displayValue(lifestyle['diet'])),
+          _buildDetailRow('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
+          _buildDetailRow('Height', _displayValue(personalDetail['height_name'])),
+          if (!_isMissing(personalDetail['weight_name']))
+            _buildDetailRow('Weight', _displayValue(personalDetail['weight_name'])),
           _buildDetailRow(
             'Disability',
             _displayValue(
@@ -1862,11 +1862,32 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             ),
           ),
           _buildDetailRow('Blood Group', _displayValue(personalDetail['bloodGroup'])),
+          if (!_isMissing(personalDetail['complexion']))
+            _buildDetailRow('Complexion', _displayValue(personalDetail['complexion'])),
+          if (!_isMissing(personalDetail['bodyType']))
+            _buildDetailRow('Body Type', _displayValue(personalDetail['bodyType'])),
           _buildDetailRow('Birth Time', _displayValue(personalDetail['birthtime'])),
           _buildDetailRow('Birth Place', _displayValue(personalDetail['birthcity'])),
         ],
       ),
       onEdit: () => _editPersonalDetails(),
+    );
+  }
+
+  Widget _buildCommunityDetails(Map<String, dynamic> personalDetail) {
+    return _buildSection(
+      title: 'Religion & Community',
+      icon: Icons.temple_hindu_outlined,
+      content: Column(
+        children: [
+          _buildDetailRow('Religion', _displayValue(personalDetail['religionName'])),
+          _buildDetailRow('Caste', _displayValue(personalDetail['communityName'])),
+          _buildDetailRow('Sub Caste', _displayValue(personalDetail['subCommunityName'])),
+          _buildDetailRow('Mother Tongue', _displayValue(personalDetail['motherTongue'])),
+          _buildDetailRow('Manglik', _displayValue(personalDetail['manglik'])),
+        ],
+      ),
+      onEdit: () => _editCommunityDetails(),
     );
   }
 
@@ -2212,6 +2233,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   void _editPersonalDetails() {
     _openEditPage(
       PersonalDetailsPagee(
+        initialData: _asMap(profileData?['personalDetail']),
+      ),
+    );
+  }
+
+  void _editCommunityDetails() {
+    _openEditPage(
+      CommunityDetailsPageEdit(
         initialData: _asMap(profileData?['personalDetail']),
       ),
     );

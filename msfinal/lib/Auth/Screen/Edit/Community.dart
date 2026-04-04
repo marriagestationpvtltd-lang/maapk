@@ -8,7 +8,9 @@ import '../../../ReUsable/dropdownwidget.dart';
 
 
 class CommunityDetailsPageEdit extends StatefulWidget {
-  const CommunityDetailsPageEdit({super.key});
+  const CommunityDetailsPageEdit({super.key, this.initialData});
+
+  final Map<String, dynamic>? initialData;
 
   @override
   State<CommunityDetailsPageEdit> createState() => _CommunityDetailsPageEditState();
@@ -105,6 +107,44 @@ class _CommunityDetailsPageEditState extends State<CommunityDetailsPageEdit> {
     'Jaisi': 4,
     'Other': 5,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+      _populateFromInitialData(widget.initialData!);
+    }
+  }
+
+  void _populateFromInitialData(Map<String, dynamic> data) {
+    final religionName = data['religionName']?.toString();
+    final communityName = data['communityName']?.toString();
+    final subCommunityName = data['subCommunityName']?.toString();
+    final motherTongue = data['motherTongue']?.toString();
+
+    if (religionName != null && religionName.isNotEmpty) {
+      _selectedReligion = _matchOption(_religionOptions, religionName);
+    }
+    if (communityName != null && communityName.isNotEmpty) {
+      _selectedCommunity = _matchOption(_communityOptions, communityName);
+    }
+    if (subCommunityName != null && subCommunityName.isNotEmpty) {
+      _selectedSubcommunity = _matchOption(_subcommunityOptions, subCommunityName);
+    }
+    if (motherTongue != null && motherTongue.isNotEmpty) {
+      _selectedCastLanguage = _matchOption(_castLanguageOptions, motherTongue);
+    }
+  }
+
+  String? _matchOption(List<String> options, String value) {
+    try {
+      return options.firstWhere(
+        (o) => o.toLowerCase() == value.toLowerCase(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
