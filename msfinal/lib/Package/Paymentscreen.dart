@@ -45,6 +45,7 @@ class _PaymentPageState extends State<PaymentPage> {
   PaymentMethod _selectedMethod = PaymentMethod.khalti;
   bool _isProcessing = false;
   bool _isActivating = false;
+  bool _isCancelled = false;
   String _paymentStatus = '';
   bool _showWebView = false;
   String? _paymentUrl;
@@ -68,9 +69,7 @@ class _PaymentPageState extends State<PaymentPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
             if (_showWebView) {
-              setState(() {
-                _showWebView = false;
-              });
+              _handlePaymentCancel();
             } else if (!_isProcessing) {
               Navigator.of(context).pop();
             }
@@ -483,6 +482,8 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _processPayment() async {
     setState(() {
       _isProcessing = true;
+      _isCancelled = false;
+      _isActivating = false;
       _paymentStatus = 'Initiating payment...';
     });
 
@@ -638,13 +639,14 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   void _handleUrlChange(String url) {
+    if (_isActivating || _isCancelled) return;
     final lowerUrl = url.toLowerCase();
-    // Check for explicit success patterns
-    if (lowerUrl.contains('success.php') || lowerUrl.contains('success=true')) {
-      _handlePaymentSuccess(url);
-    // Check for explicit cancel/failure path segments or query values
-    } else if (_isCancelUrl(lowerUrl)) {
+    // Check cancel/failure FIRST — Khalti may redirect cancel back through the
+    // same success.php endpoint but with cancel/failure status query parameters.
+    if (_isCancelUrl(lowerUrl)) {
       _handlePaymentCancel();
+    } else if (lowerUrl.contains('success.php') || lowerUrl.contains('success=true')) {
+      _handlePaymentSuccess(url);
     }
   }
 
@@ -662,13 +664,17 @@ class _PaymentPageState extends State<PaymentPage> {
     for (final pattern in cancelPaths) {
       if (lowerUrl.contains(pattern)) return true;
     }
-    // Match query parameter values like ?status=cancelled or ?result=declined
+    // Match query parameter values like ?status=cancelled, ?status=User+cancelled,
+    // ?result=declined, etc. Uses contains() so partial phrases like "user cancelled"
+    // are also caught.
     final uri = Uri.tryParse(lowerUrl);
     if (uri != null) {
       final params = uri.queryParameters;
-      const cancelValues = {'cancelled', 'failed', 'failure', 'declined', 'cancel'};
       for (final value in params.values) {
-        if (cancelValues.contains(value.toLowerCase())) return true;
+        final lowerValue = value.toLowerCase();
+        if (lowerValue.contains('cancel') ||
+            lowerValue.contains('fail') ||
+            lowerValue == 'declined') return true;
       }
     }
     return false;
@@ -677,6 +683,7 @@ class _PaymentPageState extends State<PaymentPage> {
   void _handlePaymentCancel() {
     if (!mounted) return;
     setState(() {
+      _isCancelled = true;
       _showWebView = false;
       _paymentStatus = 'Payment was cancelled.';
       _isProcessing = false;
