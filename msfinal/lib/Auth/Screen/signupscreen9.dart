@@ -1622,16 +1622,21 @@ class _PartnerPreferenceMultiSelectSheetState
                         padding: const EdgeInsets.only(bottom: 8),
                         child: InkWell(
                           onTap: () {
-                            setState(() {
-                              if (option == 'Any') {
+                            if (option == 'Any') {
+                              setState(() {
                                 _tempSelected = ['Any'];
-                              } else {
+                              });
+                              _updateSelection(_tempSelected);
+                              Navigator.pop(context);
+                            } else {
+                              setState(() {
                                 _tempSelected.remove('Any');
-                                _tempSelected.add(option);
-                              }
-                            });
-                            _updateSelection(_tempSelected);
-                            Navigator.pop(context);
+                                if (!_tempSelected.contains(option)) {
+                                  _tempSelected.add(option);
+                                }
+                              });
+                              _updateSelection(_tempSelected);
+                            }
                           },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
