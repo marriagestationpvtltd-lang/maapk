@@ -281,6 +281,7 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
           children: [
             RegistrationStepContainer(
               onBack: () => Navigator.pop(context),
+              onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
               onContinue: _validateAndSubmit,
               isLoading: _isLoading,
               canContinue: _canContinue,
@@ -294,6 +295,7 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
                     currentStep: 5,
                     totalSteps: 11,
                     onBack: () => Navigator.pop(context),
+                    onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                   ),
                   const SizedBox(height: 32),
 

@@ -151,6 +151,7 @@ class _LifestylePageState extends State<LifestylePage> with SingleTickerProvider
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
+          onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
           onContinue: _validateAndSubmit,
           isLoading: _isLoading,
           canContinue: !_isLoading,
@@ -166,6 +167,7 @@ class _LifestylePageState extends State<LifestylePage> with SingleTickerProvider
                   currentStep: 9,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
+                  onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 ),
                 const SizedBox(height: 32),
 

@@ -241,6 +241,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
             scrollController: scrollController,
             onContinue: _isSubmitting ? null : _validateAndSubmit,
             onBack: () => Navigator.pop(context),
+            onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
             continueText: 'Continue',
             canContinue: !_isSubmitting,
             isLoading: _isSubmitting,
@@ -254,6 +255,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                   currentStep: 3,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
+                  onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 ),
 
                 const SizedBox(height: 32),

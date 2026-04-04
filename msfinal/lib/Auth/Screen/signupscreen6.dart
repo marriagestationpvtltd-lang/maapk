@@ -384,6 +384,7 @@ class _EducationCareerPageState extends State<EducationCareerPage> with SingleTi
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
+          onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
           onContinue: _validateAndSubmit,
           isLoading: isLoading,
           canContinue: !isLoading,
@@ -399,6 +400,7 @@ class _EducationCareerPageState extends State<EducationCareerPage> with SingleTi
                   currentStep: 7,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
+                  onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 ),
                 const SizedBox(height: 32),
 
