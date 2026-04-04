@@ -1223,7 +1223,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                         backgroundImage: resolvedOtherImage.isNotEmpty
                             ? NetworkImage(resolvedOtherImage)
                             : null,
-                        onBackgroundImageError: (_, __) {},
+                        onBackgroundImageError:
+                            resolvedOtherImage.isNotEmpty ? (_, __) {} : null,
                         child: resolvedOtherImage.isEmpty
                             ? Icon(Icons.person,
                                 size: 28, color: Colors.grey[400])

@@ -1189,7 +1189,8 @@ String usertye = '';
                 backgroundImage: userimage.isNotEmpty
                     ? NetworkImage('https://digitallami.com/Api2/$userimage')
                     : null,
-                onBackgroundImageError: (_, __) {},
+                onBackgroundImageError:
+                    userimage.isNotEmpty ? (_, __) {} : null,
                 child: userimage.isEmpty
                     ? const Icon(Icons.person_rounded,
                         color: AppColors.textHint, size: 22)
