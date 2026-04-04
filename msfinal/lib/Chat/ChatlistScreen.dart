@@ -24,7 +24,8 @@ class ChatListScreen extends StatefulWidget {
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
+class _ChatListScreenState extends State<ChatListScreen>
+    with WidgetsBindingObserver {
   String usertye = '';
   String userimage = '';
   var pageno;
@@ -50,9 +51,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
   static const String _adminUserId = '1';
   static const String _adminDisplayName = 'Admin Support';
 
+  // Chat rooms stream stored once to prevent blinking on rebuilds
+  Stream<QuerySnapshot>? _chatRoomsStream;
+  List<QueryDocumentSnapshot> _cachedRooms = [];
+
+  // Online status for chat participants
+  final Map<String, bool> _onlineStatuses = {};
+  StreamSubscription<QuerySnapshot>? _onlineStatusSubscription;
+
+  // Admin online status
+  bool _adminOnline = false;
+  StreamSubscription<DocumentSnapshot>? _adminStatusSubscription;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     OnlineStatusService().start();
     _scrollController.addListener(_onScroll);
@@ -60,9 +74,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _adminChatSubscription?.cancel();
+    _onlineStatusSubscription?.cancel();
+    _adminStatusSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      OnlineStatusService().setOffline();
+    } else if (state == AppLifecycleState.resumed) {
+      OnlineStatusService().start();
+    }
   }
 
   void _onScroll() {
@@ -113,6 +140,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       await _loadPendingChatRequests(user.id?.toString() ?? userIdString);
       _startAdminChatListener(user.id?.toString() ?? userIdString);
+      _initChatRoomsStream();
+      _startAdminStatusListener();
 
     } catch (e) {
       print('Error loading user data: $e');
@@ -256,6 +285,68 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
+  /// Initialise the chat rooms stream once so rebuilds don't create a new
+  /// stream (which causes a brief CircularProgressIndicator blink).
+  void _initChatRoomsStream() {
+    if (userId.isEmpty) return;
+    final FirebaseService firebaseService = FirebaseService();
+    setState(() {
+      _chatRoomsStream = firebaseService.getUserChatRooms(userId);
+    });
+  }
+
+  /// Listen to admin's Firestore users document for real-time online status.
+  void _startAdminStatusListener() {
+    _adminStatusSubscription?.cancel();
+    _adminStatusSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_adminUserId)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      if (!doc.exists) return;
+      final data = doc.data() as Map<String, dynamic>;
+      final bool online = data['isOnline'] == true;
+      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+      final DateTime? lastSeen = lastSeenTs?.toDate();
+      final bool recentlySeen = lastSeen != null &&
+          DateTime.now().difference(lastSeen).inMinutes < 5;
+      setState(() {
+        _adminOnline = online || recentlySeen;
+      });
+    });
+  }
+
+  /// Listen to Firestore for online status of all chat participants.
+  void _startOnlineStatusListeners(List<String> participantIds) {
+    if (participantIds.isEmpty) return;
+    _onlineStatusSubscription?.cancel();
+    // Firestore supports up to 30 values in whereIn; split if needed.
+    final ids = participantIds.take(30).toList();
+    _onlineStatusSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: ids)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      final updated = <String, bool>{};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final bool online = data['isOnline'] == true;
+        final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+        final DateTime? lastSeen = lastSeenTs?.toDate();
+        final bool recentlySeen = lastSeen != null &&
+            DateTime.now().difference(lastSeen).inMinutes < 5;
+        updated[doc.id] = online || recentlySeen;
+      }
+      setState(() {
+        _onlineStatuses
+          ..clear()
+          ..addAll(updated);
+      });
+    });
+  }
+
   String _formatTime(DateTime? time) {
     if (time == null) return '';
     return DateFormat('hh:mm a').format(time);
@@ -307,11 +398,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.white.withOpacity(0.2),
-                child: const Icon(Icons.support_agent,
-                    color: Colors.white, size: 24),
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    child: const Icon(Icons.support_agent,
+                        color: Colors.white, size: 24),
+                  ),
+                  Positioned(
+                    bottom: 1,
+                    right: 1,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _adminOnline
+                            ? const Color(0xFF22C55E)
+                            : Colors.grey.shade400,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -359,15 +469,49 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: BoxDecoration(
+                            color: _adminOnline
+                                ? const Color(0xFF22C55E)
+                                : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          _adminOnline ? 'Online' : 'Offline',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (!_adminLoading && subtitle.isNotEmpty) ...[
+                          Text(
+                            ' · ',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -775,18 +919,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _debugFirebaseData,
-          child: const Icon(Icons.bug_report),
-        ),
+        floatingActionButton: null,
     );
   }
 
   Widget _buildChatListWithDebug() {
-    final FirebaseService _firebaseService = FirebaseService();
+    // Use the pre-initialised stream so rebuilds don't create a new connection.
+    if (_chatRoomsStream == null) {
+      return _cachedRooms.isEmpty
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF90E18)))
+          : _buildRoomsList(_cachedRooms);
+    }
 
     return StreamBuilder<QuerySnapshot>(
-      stream: _firebaseService.getUserChatRooms(userId),
+      stream: _chatRoomsStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -801,34 +948,53 @@ class _ChatListScreenState extends State<ChatListScreen> {
           );
         }
 
+        // While waiting: show cached rooms if available to avoid blinking.
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFF90E18)));
+          if (_cachedRooms.isNotEmpty) {
+            return _buildRoomsList(_cachedRooms);
+          }
+          return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF90E18)));
         }
 
         final chatRooms = snapshot.data!.docs;
 
-        // Calculate total unread count and conversations
-        int totalUnread = 0;
-        int unreadConversations = 0;
-        for (var chatRoom in chatRooms) {
-          final data = chatRoom.data() as Map<String, dynamic>;
-          final unreadCount = Map<String, int>.from(data['unreadCount'] ?? {});
-          final myUnread = unreadCount[userId] ?? 0;
-          totalUnread += myUnread;
-          if (myUnread > 0) unreadConversations++;
-        }
-
-        // Update state if changed
+        // Cache rooms and start/refresh online-status listener.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted &&
-              (_totalUnreadCount != totalUnread ||
-                  _totalUnreadConversations != unreadConversations ||
-                  _cachedTotalRooms != chatRooms.length)) {
+          if (!mounted) return;
+          final participantIds = <String>{};
+          for (final doc in chatRooms) {
+            final data = doc.data() as Map<String, dynamic>;
+            final participants =
+                List<String>.from(data['participants'] ?? []);
+            for (final p in participants) {
+              if (p.trim() != userId.trim()) participantIds.add(p.trim());
+            }
+          }
+          // Calculate unread counts
+          int totalUnread = 0;
+          int unreadConversations = 0;
+          for (final doc in chatRooms) {
+            final data = doc.data() as Map<String, dynamic>;
+            final unreadCount =
+                Map<String, int>.from(data['unreadCount'] ?? {});
+            final myUnread = unreadCount[userId] ?? 0;
+            totalUnread += myUnread;
+            if (myUnread > 0) unreadConversations++;
+          }
+          if (_totalUnreadCount != totalUnread ||
+              _totalUnreadConversations != unreadConversations ||
+              _cachedTotalRooms != chatRooms.length ||
+              _cachedRooms.length != chatRooms.length) {
             setState(() {
+              _cachedRooms = chatRooms;
               _totalUnreadCount = totalUnread;
               _totalUnreadConversations = unreadConversations;
               _cachedTotalRooms = chatRooms.length;
             });
+            if (participantIds.isNotEmpty) {
+              _startOnlineStatusListeners(participantIds.toList());
+            }
           }
         });
 
@@ -837,7 +1003,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                Icon(Icons.chat_bubble_outline,
+                    size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text(
                   'No conversations yet',
@@ -848,299 +1015,289 @@ class _ChatListScreenState extends State<ChatListScreen> {
           );
         }
 
-        final displayedRooms = chatRooms.sublist(0, _displayCount.clamp(0, chatRooms.length));
+        return _buildRoomsList(chatRooms);
+      },
+    );
+  }
 
-        // Build the chat list with pagination
-        return Container(
-          color: Colors.white,
-          child: ListView.separated(
-            controller: _scrollController,
-            itemCount: displayedRooms.length + (_isLoadingMore ? 1 : 0),
-            separatorBuilder: (_, __) => const Divider(indent: 72, height: 1, color: Color(0xFFE0E0E0)),
-            itemBuilder: (context, index) {
-            // Loading indicator at the bottom
-            if (index == displayedRooms.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator(color: Color(0xFFF90E18))),
-              );
+  Widget _buildRoomsList(List<QueryDocumentSnapshot> chatRooms) {
+    final displayedRooms =
+        chatRooms.sublist(0, _displayCount.clamp(0, chatRooms.length));
+
+    return Container(
+      color: Colors.white,
+      child: ListView.separated(
+        controller: _scrollController,
+        itemCount: displayedRooms.length + (_isLoadingMore ? 1 : 0),
+        separatorBuilder: (_, __) =>
+            const Divider(indent: 72, height: 1, color: Color(0xFFE0E0E0)),
+        itemBuilder: (context, index) {
+          // Loading indicator at the bottom
+          if (index == displayedRooms.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                  child:
+                      CircularProgressIndicator(color: Color(0xFFF90E18))),
+            );
+          }
+
+          final chatRoom = displayedRooms[index];
+          final data = chatRoom.data() as Map<String, dynamic>;
+
+          final participants =
+              List<String>.from(data['participants'] ?? []);
+          final participantNames =
+              Map<String, String>.from(data['participantNames'] ?? {});
+          final participantImages =
+              Map<String, String>.from(data['participantImages'] ?? {});
+          final unreadCount =
+              Map<String, int>.from(data['unreadCount'] ?? {});
+          final lastMessage = data['lastMessage'] ?? '';
+          final Timestamp? lastMessageTimestamp =
+              data['lastMessageTime'] as Timestamp?;
+          final DateTime? lastMessageTime = lastMessageTimestamp?.toDate();
+          final lastMessageType = data['lastMessageType'] ?? 'text';
+          final lastMessageSenderId =
+              data['lastMessageSenderId'] ?? '';
+          final int unreadForMe = unreadCount[userId] ?? 0;
+
+          // Find the OTHER participant (not me)
+          String otherParticipantId = '';
+          String otherPersonName = '';
+
+          for (var participantId in participants) {
+            if (participantId.trim() != userId.trim()) {
+              otherParticipantId = participantId;
+              otherPersonName =
+                  participantNames[otherParticipantId] ?? 'Unknown';
+              break;
             }
+          }
 
-            final chatRoom = displayedRooms[index];
-            final data = chatRoom.data() as Map<String, dynamic>;
+          if (otherParticipantId.isEmpty) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: const Text(
+                'Error: Could not find other participant',
+                style: TextStyle(color: Colors.red),
+              ),
+            );
+          }
 
-            final participants = List<String>.from(data['participants'] ?? []);
-            final participantNames = Map<String, String>.from(data['participantNames'] ?? {});
-            final participantImages = Map<String, String>.from(data['participantImages'] ?? {});
-            final unreadCount = Map<String, int>.from(data['unreadCount'] ?? {});
-            final lastMessage = data['lastMessage'] ?? '';
-            final Timestamp? lastMessageTimestamp =
-                data['lastMessageTime'] as Timestamp?;
-            final DateTime? lastMessageTime = lastMessageTimestamp?.toDate();
-            final lastMessageType = data['lastMessageType'] ?? 'text';
-            final lastMessageSenderId = data['lastMessageSenderId'] ?? '';
-            final participantLocations = data['participantLocations'] != null
-                ? Map<String, dynamic>.from(data['participantLocations'])
-                : <String, dynamic>{};
-            final int unreadForMe = unreadCount[userId] ?? 0;
+          // Determine if last message was sent by me
+          final isLastMessageFromMe =
+              lastMessageSenderId == userId;
 
-            print('\n=== Building Chat Item $index ===');
-            print('Participants: $participants');
-            print('Participant Names: $participantNames');
-            print('My userId: $userId');
-            print('My name from master data: $name');
+          // Prepare message preview
+          String messagePreview = '';
+          if (lastMessageType == 'image') {
+            messagePreview =
+                isLastMessageFromMe ? 'You: 📷 Photo' : '📷 Photo';
+          } else if (lastMessageType == 'voice') {
+            messagePreview = isLastMessageFromMe
+                ? 'You: 🎤 Voice message'
+                : '🎤 Voice message';
+          } else {
+            messagePreview =
+                isLastMessageFromMe ? 'You: $lastMessage' : lastMessage;
+          }
 
-            // Find the OTHER participant (not me)
-            String otherParticipantId = '';
-            String otherPersonName = '';
-            dynamic rawLocation;
-            String locationLabel = 'Location not shared';
-            bool hasLocation = false;
+          final String formattedTime = _formatTime(lastMessageTime);
 
-            for (var participantId in participants) {
-              if (participantId.trim() != userId.trim()) {
-                otherParticipantId = participantId;
+          // Online status for this participant
+          final bool isOnline =
+              _onlineStatuses[otherParticipantId] ?? false;
 
-                // Get name from Firebase data
-                otherPersonName = participantNames[otherParticipantId] ?? 'Unknown';
-                rawLocation = participantLocations[otherParticipantId];
-                if ((rawLocation?.toString().trim().isNotEmpty ?? false)) {
-                  locationLabel = rawLocation.toString().trim();
-                  hasLocation = true;
-                }
-
-                // DEBUG: Check if the name matches what we expect
-                print('Found other participant: ID=$otherParticipantId, Name from Firebase=$otherPersonName');
-
-                break;
-              }
-            }
-
-            // If no other participant found, show error
-            if (otherParticipantId.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                child: const Text(
-                  'Error: Could not find other participant',
-                  style: TextStyle(color: Colors.red),
-                ),
-              );
-            }
-
-            // Determine if last message was sent by me
-            final isLastMessageFromMe = lastMessageSenderId == userId;
-
-            // Prepare message preview
-            String messagePreview = '';
-
-            if (lastMessageType == 'image') {
-              messagePreview = isLastMessageFromMe ? 'You: 📷 Photo' : '📷 Photo';
-            } else if (lastMessageType == 'voice') {
-              messagePreview = isLastMessageFromMe ? 'You: 🎤 Voice message' : '🎤 Voice message';
-            } else {
-              messagePreview = isLastMessageFromMe ? 'You: $lastMessage' : lastMessage;
-            }
-
-            // Format time
-            String formattedTime = _formatTime(lastMessageTime);
-
-            return InkWell(
-              onTap: () {
-                print('\n=== NAVIGATING TO CHAT ===');
-                print('My ID: $userId, My Name: $name');
-                print('Other Person ID: $otherParticipantId, Other Person Name: $otherPersonName');
-                if (docstatus == "approved" && usertye == "paid") {   Navigator.push(
+          return InkWell(
+            onTap: () {
+              if (docstatus == "approved" && usertye == "paid") {
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatDetailScreen(
                       chatRoomId: data['chatRoomId'] ?? chatRoom.id,
                       receiverId: otherParticipantId,
-                      receiverName: otherPersonName, // Use name from Firebase
+                      receiverName: otherPersonName,
                       receiverImage: participantImages[otherParticipantId] ??
                           'https://via.placeholder.com/150',
                       currentUserId: userId,
-                      currentUserName: name, // Your name from master data
+                      currentUserName: name,
                       currentUserImage: userimage,
                     ),
                   ),
-                );}
-                if (docstatus == "not_uploaded" && usertye == 'free') {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => IDVerificationScreen()));
-                }
-                if (usertye == "free" && docstatus == 'approved') {
-                  showUpgradeDialog(context);
-                }
-
-
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.white, Color(0xFFF8FAFC)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: unreadForMe > 0
-                        ? const Color(0xFFFFE4E6)
-                        : const Color(0xFFE5E7EB),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                );
+              }
+              if (docstatus == "not_uploaded" && usertye == 'free') {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => IDVerificationScreen()));
+              }
+              if (usertye == "free" && docstatus == 'approved') {
+                showUpgradeDialog(context);
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Colors.white, Color(0xFFF8FAFC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Profile Image with online status
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: NetworkImage(
-                            participantImages[otherParticipantId] ??
-                            "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg"
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: unreadForMe > 0
+                      ? const Color(0xFFFFE4E6)
+                      : const Color(0xFFE5E7EB),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile Image with online status indicator
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: NetworkImage(
+                          participantImages[otherParticipantId] ??
+                              "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg",
+                        ),
+                      ),
+                      // Green online dot (top-right)
+                      if (isOnline)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            width: 13,
+                            height: 13,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF22C55E),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.white, width: 2),
+                            ),
                           ),
                         ),
-                        if (unreadForMe > 0)
-                          Positioned(
-                            bottom: -2,
-                            right: -2,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF90E18),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '$unreadForMe',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                      // Unread count badge (bottom-right)
+                      if (unreadForMe > 0)
+                        Positioned(
+                          bottom: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF90E18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$unreadForMe',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
+                  ),
 
-                    const SizedBox(width: 12),
+                  const SizedBox(width: 12),
 
-                    // Chat Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              // Other Person's Name
-                              Expanded(
-                                child: Text(
-                                  otherPersonName,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: unreadForMe > 0
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: const Color(0xFF0F172A),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                  // Chat Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                otherPersonName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: unreadForMe > 0
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (formattedTime.isNotEmpty)
+                              Text(
+                                formattedTime,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: unreadForMe > 0
+                                      ? const Color(0xFFF90E18)
+                                      : Colors.grey[600],
+                                  fontWeight: unreadForMe > 0
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                                 ),
                               ),
-
-                              // Time
-                              if (formattedTime.isNotEmpty)
-                                Text(
-                                  formattedTime,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: unreadForMe > 0
-                                        ? const Color(0xFFF90E18)
-                                        : Colors.grey[600],
-                                    fontWeight: unreadForMe > 0
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        if (isOnline)
+                          Row(
+                            children: const [
+                              Icon(Icons.circle,
+                                  size: 8, color: Color(0xFF22C55E)),
+                              SizedBox(width: 4),
+                              Text(
+                                'Online',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF22C55E),
+                                  fontWeight: FontWeight.w500,
                                 ),
+                              ),
                             ],
                           ),
-
-                          const SizedBox(height: 5),
-
-                          Text(
-                            messagePreview,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: unreadForMe > 0
-                                  ? const Color(0xFF0F172A)
-                                  : Colors.grey[700],
-                              fontWeight: unreadForMe > 0
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 3),
+                        Text(
+                          messagePreview,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: unreadForMe > 0
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey[700],
+                            fontWeight: unreadForMe > 0
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
-                          const SizedBox(height: 8),
-                          // Removed location chip and "Tap to continue chat" message as per user request
-                        ],
-                      ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          },
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 
-  // Debug function to check Firebase data
-  Future<void> _debugFirebaseData() async {
-    print('\n=== DEBUG FIREBASE DATA ===');
-    print('Current User ID: $userId');
-    print('Current User Name: $name');
-
-    try {
-      final chatRooms = await FirebaseFirestore.instance
-          .collection('chatRooms')
-          .where('participants', arrayContains: userId)
-          .get();
-
-      print('Total chat rooms found: ${chatRooms.docs.length}');
-
-      for (var doc in chatRooms.docs) {
-        final data = doc.data();
-        print('\n--- Chat Room: ${doc.id} ---');
-        print('Participants: ${data['participants']}');
-        print('Participant Names: ${data['participantNames']}');
-        print('Last Message: "${data['lastMessage']}"');
-        print('Last Message Type: ${data['lastMessageType']}');
-        print('Last Message Sender ID: "${data['lastMessageSenderId']}"');
-        print('Unread Count: ${data['unreadCount']}');
-
-        // Check who is who
-        final participants = List<String>.from(data['participants'] ?? []);
-        for (var participant in participants) {
-          print('  Participant $participant: ${data['participantNames']?[participant]}');
-        }
-      }
-    } catch (e) {
-      print('Error debugging: $e');
-    }
-  }
 
   void showUpgradeDialog(BuildContext context) {
     showDialog(

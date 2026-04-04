@@ -70,6 +70,10 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   bool _streamLoading = true;
   bool _streamHasError = false;
 
+  // Admin online status
+  bool _adminOnline = false;
+  StreamSubscription<DocumentSnapshot>? _adminStatusSubscription;
+
   // Swipe-to-reply offsets (keyed by message ID)
   final Map<String, double> _swipeOffsets = {};
 
@@ -99,6 +103,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     super.initState();
     _loadUserImage();
     _scrollController.addListener(_onScroll);
+    _startAdminStatusListener();
     _msgSubscription = _messagesStream().listen(
       (snapshot) {
         if (!mounted) return;
@@ -160,12 +165,34 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   @override
   void dispose() {
     _msgSubscription?.cancel();
+    _adminStatusSubscription?.cancel();
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _messageFocusNode.dispose();
     _audioPlayer.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _startAdminStatusListener() {
+    _adminStatusSubscription?.cancel();
+    _adminStatusSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_adminUserId)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      if (!doc.exists) return;
+      final data = doc.data() as Map<String, dynamic>;
+      final bool online = data['isOnline'] == true;
+      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+      final DateTime? lastSeen = lastSeenTs?.toDate();
+      final bool recentlySeen = lastSeen != null &&
+          DateTime.now().difference(lastSeen).inMinutes < 5;
+      setState(() {
+        _adminOnline = online || recentlySeen;
+      });
+    });
   }
 
   void _scrollToBottom() {
@@ -1556,13 +1583,31 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.userName,
-                style: TextStyle(
+                style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     fontSize: 20)),
-            Text('Typically replies within 10 minutes',
-                style: TextStyle(
-                    fontSize: 13, color: Colors.white.withOpacity(0.8))),
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(right: 5),
+                  decoration: BoxDecoration(
+                    color: _adminOnline
+                        ? const Color(0xFF22C55E)
+                        : Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Text(
+                  _adminOnline ? 'Online' : 'Offline',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.9)),
+                ),
+              ],
+            ),
           ],
         ),
         elevation: 0,
