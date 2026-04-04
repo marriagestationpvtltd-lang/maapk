@@ -178,7 +178,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       pinned: true,
       backgroundColor: AppColors.primary,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white, size: 20),
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white, size: 22),
         onPressed: () => Navigator.of(context).pop(),
       ),
       actions: [
@@ -198,10 +198,13 @@ class _SubscriptionPageState extends State<SubscriptionPage>
               );
             }
           },
-          icon: const Icon(Icons.history_rounded, color: AppColors.white, size: 20),
+          icon: const Icon(Icons.history_rounded, color: AppColors.white, size: 22),
           label: Text(
             'History',
-            style: AppTextStyles.labelMedium.copyWith(color: AppColors.white),
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 15,
+            ),
           ),
         ),
       ],
@@ -231,7 +234,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 Text(
                   'Upgrade to Premium',
                   style: AppTextStyles.whiteHeading.copyWith(
-                    fontSize: 24,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -239,7 +243,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                 Text(
                   'Unlock all features and find your perfect match',
                   style: AppTextStyles.whiteBody.copyWith(
-                    fontSize: 14,
+                    fontSize: 15,
                     color: AppColors.white.withOpacity(0.9),
                   ),
                   textAlign: TextAlign.center,
@@ -252,7 +256,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           'Subscription Plans',
           style: AppTextStyles.labelLarge.copyWith(
             color: AppColors.white,
-            fontSize: 18,
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
           ),
         ),
         titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
@@ -288,7 +293,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                   'Active Plan: $_activePackageName',
                   style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.white,
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -297,7 +302,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                     'Expires: $_activePackageExpiry',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.white.withOpacity(0.85),
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                   ),
               ],
@@ -325,7 +330,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           Text(
             'Choose Your Plan',
             style: AppTextStyles.heading3.copyWith(
-              fontSize: 22,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -388,7 +394,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SizedBox(
-        height: 470,
+        height: 500,
         child: PageView.builder(
           controller: _pageController,
           itemCount: packages.length,
@@ -468,8 +474,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
               Text(
                 'Why go Premium?',
                 style: AppTextStyles.heading4.copyWith(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -495,14 +501,15 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                       Text(
                         f.title,
                         style: AppTextStyles.labelMedium.copyWith(
-                          fontSize: 15,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         f.subtitle,
                         style: AppTextStyles.bodySmall.copyWith(
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -692,7 +699,7 @@ class _PackagePlanCard extends StatelessWidget {
                             Text(
                               'Most Popular',
                               style: AppTextStyles.labelSmall.copyWith(
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: config.gradient.first,
                               ),
@@ -707,8 +714,8 @@ class _PackagePlanCard extends StatelessWidget {
                 Text(
                   package.name,
                   style: AppTextStyles.whiteHeading.copyWith(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                   maxLines: 2,
@@ -727,8 +734,8 @@ class _PackagePlanCard extends StatelessWidget {
                     package.duration,
                     style: AppTextStyles.labelSmall.copyWith(
                       color: config.accentColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -743,8 +750,8 @@ class _PackagePlanCard extends StatelessWidget {
                       child: Text(
                         package.priceString,
                         style: AppTextStyles.whiteHeading.copyWith(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
                         ),
                         maxLines: 1,
@@ -753,12 +760,12 @@ class _PackagePlanCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
                         '/ plan',
                         style: AppTextStyles.whiteBody.copyWith(
                           color: AppColors.white.withOpacity(0.7),
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -773,8 +780,8 @@ class _PackagePlanCard extends StatelessWidget {
                     package.description,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.white.withOpacity(0.8),
-                      fontSize: 13,
-                      height: 1.45,
+                      fontSize: 12,
+                      height: 1.4,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -796,7 +803,7 @@ class _PackagePlanCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       elevation: 0,
                     ),
                     onPressed: () {
@@ -816,7 +823,7 @@ class _PackagePlanCard extends StatelessWidget {
                       'Subscribe Now',
                       style: AppTextStyles.labelLarge.copyWith(
                         fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                        fontSize: 15,
                         color: config.gradient.first,
                       ),
                     ),
@@ -835,13 +842,13 @@ class _PackagePlanCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(Icons.check_circle_rounded, color: accentColor, size: 19),
+          Icon(Icons.check_circle_rounded, color: accentColor, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: AppTextStyles.whiteBody.copyWith(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
