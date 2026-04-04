@@ -123,32 +123,26 @@ class _CommunityDetailsPageEditState extends State<CommunityDetailsPageEdit> {
     final motherTongue = data['motherTongue']?.toString();
 
     if (religionName != null && religionName.isNotEmpty) {
-      final match = _religionOptions.firstWhere(
-        (o) => o.toLowerCase() == religionName.toLowerCase(),
-        orElse: () => religionName,
-      );
-      _selectedReligion = match;
+      _selectedReligion = _matchOption(_religionOptions, religionName);
     }
     if (communityName != null && communityName.isNotEmpty) {
-      final match = _communityOptions.firstWhere(
-        (o) => o.toLowerCase() == communityName.toLowerCase(),
-        orElse: () => communityName,
-      );
-      _selectedCommunity = match;
+      _selectedCommunity = _matchOption(_communityOptions, communityName);
     }
     if (subCommunityName != null && subCommunityName.isNotEmpty) {
-      final match = _subcommunityOptions.firstWhere(
-        (o) => o.toLowerCase() == subCommunityName.toLowerCase(),
-        orElse: () => subCommunityName,
-      );
-      _selectedSubcommunity = match;
+      _selectedSubcommunity = _matchOption(_subcommunityOptions, subCommunityName);
     }
     if (motherTongue != null && motherTongue.isNotEmpty) {
-      final match = _castLanguageOptions.firstWhere(
-        (o) => o.toLowerCase() == motherTongue.toLowerCase(),
-        orElse: () => motherTongue,
+      _selectedCastLanguage = _matchOption(_castLanguageOptions, motherTongue);
+    }
+  }
+
+  String? _matchOption(List<String> options, String value) {
+    try {
+      return options.firstWhere(
+        (o) => o.toLowerCase() == value.toLowerCase(),
       );
-      _selectedCastLanguage = match;
+    } catch (_) {
+      return null;
     }
   }
 
