@@ -55,6 +55,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   String _currentUserId = '';
   String _currentUserName = '';
   String _currentUserImage = '';
+  String _chatRoomId = '';  // chat room for inline call messages
 
   @override
   void initState() {
@@ -130,6 +131,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _recipientName = widget.callData['recipientName'] ?? 'You';
     _isVideoCall = widget.callData['type'] == 'video_call' ||
         (widget.callData['isVideoCall']?.toString() == 'true');
+    _chatRoomId = widget.callData['chatRoomId']?.toString() ?? '';
   }
 
   void _initializeOverlay() {
@@ -322,6 +324,19 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       recipientUid: '0',
       channelName: _channel,
     );
+
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'video',
+        callStatus: 'declined',
+        duration: 0,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
+    }
+
     await _end();
   }
 
@@ -342,6 +357,18 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'video',
+        callStatus: 'missed',
+        duration: 0,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
+    }
+
     await _end();
   }
 
@@ -356,6 +383,18 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         status: CallStatus.declined,
         duration: 0,
       );
+    }
+
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'video',
+        callStatus: 'declined',
+        duration: 0,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
     }
 
     await _end();
@@ -382,6 +421,18 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         status: CallStatus.completed,
         duration: _duration.inSeconds,
       );
+    }
+
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'video',
+        callStatus: _callActive ? 'completed' : 'missed',
+        duration: _duration.inSeconds,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
     }
 
     // Navigate away FIRST so the user never sees the black AgoraRTC screen

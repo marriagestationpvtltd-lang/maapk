@@ -52,6 +52,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   String _currentUserId = '';
   String _currentUserName = '';
   String _currentUserImage = '';
+  String _chatRoomId = '';  // chat room for inline call messages
 
   @override
   void initState() {
@@ -125,6 +126,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _callerId = widget.callData['callerId'];
     _callerName = widget.callData['callerName'];
     _recipientName = widget.callData['recipientName'] ?? 'You';
+    _chatRoomId = widget.callData['chatRoomId']?.toString() ?? '';
   }
 
   void _initializeOverlay() {
@@ -284,6 +286,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       );
     }
 
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'audio',
+        callStatus: 'missed',
+        duration: 0,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
+    }
+
     await _end();
   }
 
@@ -298,6 +312,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         status: CallStatus.declined,
         duration: 0,
       );
+    }
+
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'audio',
+        callStatus: 'declined',
+        duration: 0,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
     }
 
     await _end();
@@ -324,6 +350,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         status: CallStatus.completed,
         duration: _duration.inSeconds,
       );
+    }
+
+    // Write inline call message to chat (recipient side backup)
+    if (_chatRoomId.isNotEmpty) {
+      unawaited(CallHistoryService.logCallMessageInChat(
+        callerId: _callerId,
+        callType: 'audio',
+        callStatus: _callActive ? 'completed' : 'missed',
+        duration: _duration.inSeconds,
+        chatRoomId: _chatRoomId,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
+      ));
     }
 
     if (_joined) {
