@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../pushnotification/pushservice.dart';
+import '../Calling/callmanager.dart';
 import '../Calling/incommingcall.dart';
 import '../Calling/incomingvideocall.dart';
 import '../navigation/app_navigation.dart';
@@ -580,6 +581,9 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
     // _isNavigatingToCall stays true from push() until the call screen is popped.
     // This prevents duplicate screens from appearing (e.g. duplicate FCM delivery).
     if (_isNavigatingToCall) return;
+    // isCallScreenShowing is a shared flag so that local screen listeners
+    // (e.g. AdminChatScreen) can detect that we're already showing the UI.
+    if (CallManager().isCallScreenShowing) return;
 
     final currentState = navigatorKey.currentState;
     if (currentState == null) {
@@ -597,6 +601,7 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
     }
 
     _isNavigatingToCall = true;
+    CallManager().isCallScreenShowing = true;
     final route = MaterialPageRoute(
       settings: const RouteSettings(name: activeCallRouteName),
       fullscreenDialog: true,
@@ -604,9 +609,16 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
           ? IncomingVideoCallScreen(callData: data)
           : IncomingCallScreen(callData: data),
     );
-    currentState.push(route).whenComplete(() {
+    try {
+      currentState.push(route).whenComplete(() {
+        _isNavigatingToCall = false;
+        CallManager().isCallScreenShowing = false;
+      });
+    } catch (_) {
+      // Reset flags if push fails so future calls are not blocked.
       _isNavigatingToCall = false;
-    });
+      CallManager().isCallScreenShowing = false;
+    }
   }
 
   @override
