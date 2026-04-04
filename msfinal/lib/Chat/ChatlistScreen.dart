@@ -1229,6 +1229,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                       receiverId: otherParticipantId,
                       receiverName: otherPersonName,
                       receiverImage: resolvedOtherImage,
+                      receiverPrivacy: otherParticipantPrivacy,
+                      receiverPhotoRequest: otherParticipantPhotoRequest,
                       currentUserId: userId,
                       currentUserName: name,
                       currentUserImage: resolveApiImageUrl(userimage),
