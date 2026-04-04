@@ -22,6 +22,9 @@ class VideoCallScreen extends StatefulWidget {
   final String otherUserName;
   final String otherUserImage;
   final bool isOutgoingCall; // Add this
+  final String? chatRoomId; // For writing inline call message to chat
+  final bool isAdminChat; // True when called from AdminChatScreen
+  final String? adminChatReceiverId; // Receiver ID for admin chat call messages
 
   const VideoCallScreen({
     super.key,
@@ -32,6 +35,9 @@ class VideoCallScreen extends StatefulWidget {
     required this.otherUserName,
     required this.otherUserImage,
     this.isOutgoingCall = true, // Default to outgoing
+    this.chatRoomId,
+    this.isAdminChat = false,
+    this.adminChatReceiverId,
   });
 
   @override
@@ -397,7 +403,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     // Always stop ringtone when ending call
     await _stopRingtone();
 
-    // Update call history
+    // Update call history and write inline call message to chat (outgoing only)
     if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
       CallStatus callStatus;
       if (_callActive && _remoteUid != null) {
@@ -413,6 +419,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         status: callStatus,
         duration: _duration.inSeconds,
       );
+
+      if (widget.isOutgoingCall) {
+        unawaited(CallHistoryService.logCallMessageInChat(
+          callerId: widget.currentUserId,
+          callType: 'video',
+          callStatus: callStatus.toString().split('.').last,
+          duration: _duration.inSeconds,
+          chatRoomId: widget.chatRoomId,
+          isAdminChat: widget.isAdminChat,
+          adminChatSenderId: widget.isAdminChat ? widget.currentUserId : null,
+          adminChatReceiverId: widget.isAdminChat ? widget.adminChatReceiverId : null,
+        ));
+      }
     }
 
     // Send end/cancel notifications
