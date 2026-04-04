@@ -106,11 +106,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
   static const int _messagesPerPage = 20;
+  // Pagination cursor – only updated on first load and during loadMore (never on stream updates)
   DocumentSnapshot? _lastDocument;
 
   // Call history variables
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
+  StreamSubscription? _callHistorySubscription;
 
   // Typing indicator
   Timer? _typingDebounce;
@@ -119,6 +121,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   StreamSubscription? _audioPlayerStateSubscription;
   StreamSubscription? _audioPlayerPositionSubscription;
   StreamSubscription? _audioPlayerDurationSubscription;
+  // Track whether the next scroll-to-bottom should be forced (own message sent)
+  bool _forceScrollToBottom = false;
 
   // Scroll-to-reply + highlight
   final Map<String, GlobalKey> _messageKeys = {};
@@ -219,31 +223,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
-  Future<void> _loadCallHistory() async {
-    try {
-      // Get call history between current user and receiver
-      final allCalls = await CallHistoryService.getCallHistoryPaginated(
-        userId: widget.currentUserId,
-        limit: 100,
-      );
+  void _loadCallHistory() {
+    // Use a live stream so the section updates whenever a call is made/ended
+    _callHistorySubscription =
+        CallHistoryService.getCallHistory(widget.currentUserId).listen(
+      (allCalls) {
+        // Filter calls for this specific chat partner
+        final filteredCalls = allCalls.where((call) {
+          return (call.callerId == widget.currentUserId &&
+                  call.recipientId == widget.receiverId) ||
+              (call.recipientId == widget.currentUserId &&
+                  call.callerId == widget.receiverId);
+        }).toList();
 
-      // Filter calls for this specific chat
-      final filteredCalls = allCalls.where((call) {
-        return (call.callerId == widget.currentUserId &&
-                call.recipientId == widget.receiverId) ||
-            (call.recipientId == widget.currentUserId &&
-                call.callerId == widget.receiverId);
-      }).toList();
-
-      if (mounted) {
-        setState(() {
-          _callHistory = filteredCalls;
-        });
-      }
-    } catch (e) {
-      print('Error loading call history: $e');
-    }
-
+        if (mounted) {
+          setState(() {
+            _callHistory = filteredCalls;
+          });
+        }
+      },
+      onError: (e) {
+        print('Error loading call history: $e');
+      },
+    );
   }
   Future<void> _checkBlockStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -315,7 +317,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   /// Scroll to the message with [messageId] and briefly highlight it.
   void _scrollToMessage(String messageId) {
     final key = _messageKeys[messageId];
-    if (key?.currentContext == null) return;
+    if (key?.currentContext == null) {
+      // Original message is not visible – inform the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Original message is not in view. Scroll up to find it.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     Scrollable.ensureVisible(
       key!.currentContext!,
@@ -345,6 +356,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _swipeAnimationController?.dispose();
     _typingDebounce?.cancel();
     _typingSubscription?.cancel();
+    _callHistorySubscription?.cancel();
     _clearTyping(); // Remove our typing entry on exit
     super.dispose();
   }
@@ -449,12 +461,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'isDeletedForSender': false,
         'isDeletedForReceiver': false,
       };
-      await NotificationService.sendChatNotification(
-        recipientUserId: widget.receiverId.toString(),
-        senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
-        senderId: widget.currentUserId.toString(),
-        message: messageText,
-      );
 
       // Add reply data if replying to a message
       if (isReplying && repliedMessage != null) {
@@ -473,10 +479,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       _cancelReply();
       _cancelEdit();
 
-      // Scroll to bottom
+      // Force scroll to bottom after own message
+      _forceScrollToBottom = true;
       _scrollToBottom();
 
-      // Create message document (do this after UI updates)
+      // Create message document first, then send notification
       await _firestore
           .collection('chatRooms')
           .doc(widget.chatRoomId)
@@ -492,6 +499,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'lastMessageSenderId': widget.currentUserId,
         'unreadCount.${widget.receiverId}': FieldValue.increment(1),
       });
+
+      // Send notification after message is saved
+      await NotificationService.sendChatNotification(
+        recipientUserId: widget.receiverId.toString(),
+        senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
+        senderId: widget.currentUserId.toString(),
+        message: messageText,
+      );
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -630,10 +645,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
     }
 
-    FocusScope.of(context).requestFocus(FocusNode());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(FocusNode());
-    });
+    _messageFocusNode.requestFocus();
   }
 
   void _cancelReply() {
@@ -656,10 +668,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
     }
 
-    FocusScope.of(context).requestFocus(FocusNode());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(FocusNode());
-    });
+    _messageFocusNode.requestFocus();
   }
 
   void _cancelEdit() {
@@ -685,12 +694,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   void _onHorizontalDragUpdate(DragUpdateDetails details, bool isMine) {
     if (!_isDragging) return;
 
-    _dragOffset += details.delta.dx;
+    final newOffset = _dragOffset + details.delta.dx;
 
-    if (isMine && _dragOffset > 0) return;
-    if (!isMine && _dragOffset < 0) return;
+    // Only accept leftward drag on own messages, rightward on others'
+    if (isMine && newOffset > 0) return;
+    if (!isMine && newOffset < 0) return;
 
-    _dragOffset = _dragOffset.clamp(-100.0, 100.0);
+    setState(() {
+      _dragOffset = newOffset.clamp(-100.0, 100.0);
+    });
   }
 
   void _onHorizontalDragEnd(DragEndDetails details, bool isMine) {
@@ -737,6 +749,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         );
       }
     });
+  }
+
+  /// Returns true when the user is within 150px of the bottom of the list.
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    final pos = _scrollController.position;
+    return pos.pixels >= pos.maxScrollExtent - 150;
   }
 
   // VOICE PLAYBACK
@@ -1395,8 +1414,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (selectedMessage != null &&
-                    selectedMessage!['messageType'] == 'text')
+                // Reply is available for all message types
+                if (selectedMessage != null)
                   _menuItem(Icons.reply, "Reply", () {
                     _setReplyMessage(selectedMessage!);
                   }),
@@ -1626,32 +1645,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
         final messages = snapshot.data!.docs;
 
-        // Schedule UI updates after first load completes
+        // On first load, set the pagination cursor and scroll to bottom
         if (_isFirstLoad) {
+          if (messages.isNotEmpty) {
+            _lastDocument = messages.last;
+          }
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Scroll to bottom after messages are loaded
             _scrollToBottom();
-            // Auto-focus keyboard after scroll completes
             Future.delayed(const Duration(milliseconds: 400), () {
               if (mounted) {
                 _messageFocusNode.requestFocus();
               }
             });
           });
+          _isFirstLoad = false;
+
+          _cachedMessages = messages
+              .map((doc) => doc.data() as Map<String, dynamic>)
+              .toList()
+              .reversed
+              .toList();
+        } else {
+          // Merge stream messages with existing cache, preserving paginated (older) messages.
+          // Key = messageId for O(1) lookup.
+          final streamMsgIds = <String>{};
+          for (final doc in messages) {
+            final data = doc.data() as Map<String, dynamic>;
+            final id = data['messageId'] as String?;
+            if (id != null) streamMsgIds.add(id);
+          }
+
+          // Keep messages that are NOT in the stream (older paginated messages)
+          final olderMessages = _cachedMessages.where((m) {
+            final id = m['messageId'] as String?;
+            return id != null && !streamMsgIds.contains(id);
+          }).toList();
+
+          // Build updated stream messages (newest 20)
+          final streamMessages = messages
+              .map((doc) => doc.data() as Map<String, dynamic>)
+              .toList()
+              .reversed
+              .toList();
+
+          // Combine: older paginated first, then stream messages
+          _cachedMessages = [...olderMessages, ...streamMessages];
+
+          // Sort entire list by timestamp to ensure correct order
+          _cachedMessages.sort((a, b) {
+            final tsA = a['timestamp'];
+            final tsB = b['timestamp'];
+            if (tsA == null || tsB == null) return 0;
+            final dateA = tsA is Timestamp ? tsA.toDate() : tsA as DateTime;
+            final dateB = tsB is Timestamp ? tsB.toDate() : tsB as DateTime;
+            return dateA.compareTo(dateB);
+          });
+
+          // Auto-scroll only if near bottom or own message was just sent
+          if (_forceScrollToBottom || _isNearBottom()) {
+            _forceScrollToBottom = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToBottom();
+            });
+          }
         }
-
-        _isFirstLoad = false;
-
-        // Update last document for pagination
-        if (messages.isNotEmpty) {
-          _lastDocument = messages.last;
-        }
-
-        // Convert to list and REVERSE to get ascending order (oldest first)
-        _cachedMessages = messages.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return data;
-        }).toList().reversed.toList(); // REVERSE the list
 
         if (_cachedMessages.isEmpty && _callHistory.isEmpty) {
           return Center(
@@ -1669,11 +1726,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           );
         }
 
-        // Scroll to bottom when messages are first loaded
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
-        });
-
         return _buildMessagesFromCache();
       },
     );
@@ -1684,11 +1736,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     setState(() => _isLoadingMore = true);
 
-    // Save current scroll position before loading
-    final double currentScrollPosition = _scrollController.hasClients
+    // Capture scroll metrics before inserting older messages
+    final double scrollExtentBefore = _scrollController.hasClients
+        ? _scrollController.position.maxScrollExtent
+        : 0.0;
+    final double currentPixels = _scrollController.hasClients
         ? _scrollController.position.pixels
         : 0.0;
-    final int oldMessageCount = _cachedMessages.length;
 
     try {
       final moreMessages = await _firestore
@@ -1710,32 +1764,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         return;
       }
 
+      // Advance the pagination cursor to the oldest document in this batch
       _lastDocument = moreMessages.docs.last;
 
-      final newMessages = moreMessages.docs.map((doc) {
-        return doc.data() as Map<String, dynamic>;
-      }).toList();
+      final newMessages = moreMessages.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList()
+          .reversed
+          .toList(); // oldest first
 
       setState(() {
-        // Add new messages at the beginning (they are older)
-        _cachedMessages.insertAll(0, newMessages.reversed);
+        // Prepend older messages
+        _cachedMessages.insertAll(0, newMessages);
         _isLoadingMore = false;
       });
 
-      // Restore scroll position after new messages are added
-      // This prevents jumping to the top when older messages load
+      // Restore scroll position using the actual change in maxScrollExtent
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          final int newMessageCount = _cachedMessages.length;
-          final int addedMessages = newMessageCount - oldMessageCount;
-
-          // Estimate average message height (adjust based on your UI)
-          // This includes message bubble + padding + date headers
-          const double estimatedMessageHeight = 80.0;
-          final double scrollOffset = addedMessages * estimatedMessageHeight;
-
-          // Jump to adjusted position to maintain user's view
-          _scrollController.jumpTo(currentScrollPosition + scrollOffset);
+          final double scrollExtentAfter =
+              _scrollController.position.maxScrollExtent;
+          final double addedHeight = scrollExtentAfter - scrollExtentBefore;
+          _scrollController.jumpTo(currentPixels + addedHeight);
         }
       });
     } catch (e) {
@@ -1831,7 +1881,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       if (isDeleted) continue;
 
-      final timestamp = (data['timestamp'] as Timestamp).toDate();
+      final rawTs = data['timestamp'];
+      if (rawTs == null) continue;
+      final timestamp = rawTs is Timestamp ? rawTs.toDate() : rawTs as DateTime;
       final dateKey = _formatDateForGrouping(timestamp);
 
       groupedMessages.putIfAbsent(dateKey, () => []);
@@ -1847,8 +1899,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       // Sort messages within each date group by timestamp (oldest first)
       messagesForDate.sort((a, b) {
-        final timeA = (a['timestamp'] as Timestamp).toDate();
-        final timeB = (b['timestamp'] as Timestamp).toDate();
+        final rawA = a['timestamp'];
+        final rawB = b['timestamp'];
+        if (rawA == null || rawB == null) return 0;
+        final timeA = rawA is Timestamp ? rawA.toDate() : rawA as DateTime;
+        final timeB = rawB is Timestamp ? rawB.toDate() : rawB as DateTime;
         return timeA.compareTo(timeB);
       });
 
@@ -1857,7 +1912,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       // Add all messages for this date
       for (final data in messagesForDate) {
-        final timestamp = (data['timestamp'] as Timestamp).toDate();
+        final rawTs = data['timestamp'];
+        final timestamp = rawTs is Timestamp
+            ? rawTs.toDate()
+            : rawTs is DateTime
+                ? rawTs
+                : DateTime.now();
 
         messageWidgets.add(_messageBubble(
           isMine: data['senderId'] == widget.currentUserId,
