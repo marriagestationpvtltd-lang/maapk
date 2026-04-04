@@ -50,13 +50,41 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
   final type = data['type']?.toString() ?? '';
 
-  // Trigger call response for response notifications
+  // Trigger call response for response notifications.
+  // NOTE: This runs in a background Dart isolate – the stream event will NOT
+  // reach the main isolate's listeners. We persist the event to SharedPreferences
+  // so that the main isolate can process it when the app resumes.
   NotificationService.triggerCallResponse(data);
 
-  // Trigger incoming call for new call notifications
+  // Trigger incoming call for new call notifications (stream call for same reason)
   if (type == 'call' || type == 'video_call') {
     NotificationService.triggerIncomingCall(data);
   }
+
+  // Persist events that the main isolate must process on resume
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final ts = DateTime.now().millisecondsSinceEpoch;
+
+    if (type == 'call' || type == 'video_call') {
+      // Save incoming call so CallOverlayWrapper can show the screen on resume
+      await prefs.setString(
+        'pending_incoming_call',
+        json.encode({...data, '_receivedAt': ts}),
+      );
+    } else if (type == 'call_response' ||
+        type == 'video_call_response' ||
+        type == 'call_ended' ||
+        type == 'video_call_ended' ||
+        type == 'call_cancelled' ||
+        type == 'video_call_cancelled') {
+      // Save call termination event so OutgoingCall/VideoCall screens can close on resume
+      await prefs.setString(
+        'pending_call_event',
+        json.encode({...data, '_receivedAt': ts}),
+      );
+    }
+  } catch (_) {}
 
   // Always record notification in inbox
   await NotificationInboxService.recordIncomingRemoteNotification(
@@ -819,8 +847,29 @@ Future<void> setupFirebaseMessaging() async {
       fallbackBody: message.notification?.body,
     );
 
+    final type = data['type']?.toString() ?? '';
+
+    // Handle call termination events – trigger the stream so active call screens close
+    const callTerminationTypes = {
+      'call_response',
+      'video_call_response',
+      'call_ended',
+      'video_call_ended',
+      'call_cancelled',
+      'video_call_cancelled',
+    };
+    if (callTerminationTypes.contains(type)) {
+      NotificationService.triggerCallResponse(data);
+      return;
+    }
+
     // Navigate based on notification type
     if (data['type'] == 'call' || data['type'] == 'video_call') {
+      // Clear the SharedPreferences-persisted call so the overlay doesn't double-push
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('pending_incoming_call');
+      } catch (_) {}
       await CallStateRecoveryManager().handleNotificationTap(data);
     } else if (data['type'] == 'chat_message' || data['type'] == 'chat') {
       _navigateToChatFromMessageNotification(data);

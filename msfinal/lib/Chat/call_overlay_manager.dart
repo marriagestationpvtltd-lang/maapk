@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../pushnotification/pushservice.dart';
 import '../Calling/incommingcall.dart';
 import '../Calling/incomingvideocall.dart';
@@ -487,66 +489,74 @@ class CallOverlayWrapper extends StatefulWidget {
   State<CallOverlayWrapper> createState() => _CallOverlayWrapperState();
 }
 
-class _CallOverlayWrapperState extends State<CallOverlayWrapper> {
+class _CallOverlayWrapperState extends State<CallOverlayWrapper>
+    with WidgetsBindingObserver {
   StreamSubscription<Map<String, dynamic>>? _incomingCallSubscription;
+  // Prevent multiple simultaneous call-screen pushes
+  bool _isNavigatingToCall = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupIncomingCallListener();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app comes to the foreground, check if a call notification
+    // arrived while the app was in the background (separate Dart isolate),
+    // which would NOT have triggered the in-app stream.
+    if (state == AppLifecycleState.resumed) {
+      _checkPendingIncomingCall();
+    }
+  }
+
+  /// Reads any incoming-call data that was saved by the background isolate
+  /// and navigates to the appropriate call screen.
+  Future<void> _checkPendingIncomingCall() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingStr = prefs.getString('pending_incoming_call');
+      if (pendingStr == null) return;
+
+      final data = json.decode(pendingStr) as Map<String, dynamic>;
+      final receivedAt = data['_receivedAt'] as int?;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Discard stale entries (> 60 s – after which the call would time out)
+      if (receivedAt == null || now - receivedAt > 60000) {
+        await prefs.remove('pending_incoming_call');
+        return;
+      }
+
+      // Remove before navigating to prevent re-processing
+      await prefs.remove('pending_incoming_call');
+
+      final isVideoCall =
+          data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+      _pushCallScreen(data, isVideoCall);
+    } catch (e) {
+      debugPrint('❌ Error checking pending incoming call: $e');
+    }
+  }
+
   void _setupIncomingCallListener() {
-    // Listen to incoming call stream with error handling
+    // Cancel any existing subscription before creating a new one
+    _incomingCallSubscription?.cancel();
     _incomingCallSubscription = NotificationService.incomingCalls.listen(
       (data) {
         print('📱 CallOverlayWrapper: Incoming call received: $data');
-
-        // Navigate to incoming call screen
-        final isVideoCall = data['type'] == 'video_call' || data['isVideoCall'] == 'true';
-
+        final isVideoCall =
+            data['type'] == 'video_call' || data['isVideoCall'] == 'true';
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          final currentContext = navigatorKey.currentContext;
-          final currentState = navigatorKey.currentState;
-
-          if (currentState != null && currentContext != null) {
-            // Check if we're already on a call page to avoid duplicates
-            final route = ModalRoute.of(currentContext);
-            if (route?.settings.name?.contains('call') ?? false) {
-              print('⚠️ Already on a call page, skipping navigation');
-              return;
-            }
-
-            if (isVideoCall) {
-              currentState.push(
-                MaterialPageRoute(
-                  settings: const RouteSettings(name: activeCallRouteName),
-                  fullscreenDialog: true,
-                  builder: (context) => IncomingVideoCallScreen(
-                    callData: data,
-                  ),
-                ),
-              );
-            } else {
-              currentState.push(
-                MaterialPageRoute(
-                  settings: const RouteSettings(name: activeCallRouteName),
-                  fullscreenDialog: true,
-                  builder: (context) => IncomingCallScreen(
-                    callData: data,
-                  ),
-                ),
-              );
-            }
-          } else {
-            print('❌ Navigator state is null, cannot navigate to incoming call');
-          }
+          _pushCallScreen(data, isVideoCall);
         });
       },
       onError: (error, stackTrace) {
         print('❌ Error in incoming call stream: $error');
         print('Stack trace: $stackTrace');
-        // Re-subscribe after error
+        // Re-subscribe after error (cancel old sub first)
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
             _setupIncomingCallListener();
@@ -557,8 +567,49 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper> {
     );
   }
 
+  /// Pushes the incoming call screen on top of whatever is currently visible.
+  /// Retries up to [maxRetries] times if the navigator is not yet ready.
+  void _pushCallScreen(
+    Map<String, dynamic> data,
+    bool isVideoCall, {
+    int retryCount = 0,
+    int maxRetries = 3,
+  }) {
+    // _isNavigatingToCall stays true from push() until the call screen is popped.
+    // This prevents duplicate screens from appearing (e.g. duplicate FCM delivery).
+    if (_isNavigatingToCall) return;
+
+    final currentState = navigatorKey.currentState;
+    if (currentState == null) {
+      if (retryCount < maxRetries) {
+        Future.delayed(Duration(milliseconds: 400 * (retryCount + 1)), () {
+          if (mounted) {
+            _pushCallScreen(data, isVideoCall,
+                retryCount: retryCount + 1, maxRetries: maxRetries);
+          }
+        });
+      } else {
+        print('❌ Navigator state unavailable after $maxRetries retries');
+      }
+      return;
+    }
+
+    _isNavigatingToCall = true;
+    final route = MaterialPageRoute(
+      settings: const RouteSettings(name: activeCallRouteName),
+      fullscreenDialog: true,
+      builder: (context) => isVideoCall
+          ? IncomingVideoCallScreen(callData: data)
+          : IncomingCallScreen(callData: data),
+    );
+    currentState.push(route).whenComplete(() {
+      _isNavigatingToCall = false;
+    });
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _incomingCallSubscription?.cancel();
     super.dispose();
   }
