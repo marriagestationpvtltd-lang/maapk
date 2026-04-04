@@ -10,11 +10,15 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../Auth/Screen/signupscreen10.dart';
 import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
+import 'ChatdetailsScreen.dart';
+import '../Models/masterdata.dart';
 import '../otherenew/othernew.dart';
+import '../utils/image_utils.dart';
 import '../utils/time_utils.dart';
 
 class AdminChatScreen extends StatefulWidget {
@@ -85,6 +89,10 @@ class _AdminChatScreenState extends State<AdminChatScreen>
   bool _showCallHistory = false;
   bool _callHistoryLoaded = false;
 
+  // Current user verification state (loaded for non-admin)
+  String _currentUserDocStatus = '';
+  String _currentUserType = '';
+
 // Updated color scheme with gradients
   final LinearGradient _primaryGradient = const LinearGradient(
     colors: [Color(0xFF6B46C1), Color(0xFF9F7AEA)],
@@ -106,6 +114,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserImage();
+    if (!widget.isAdmin) {
+      _loadCurrentUserData();
+    }
     _scrollController.addListener(_onScroll);
     _startAdminStatusListener();
     _msgSubscription = _messagesStream().listen(
@@ -146,6 +157,247 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         _sendProfileCard();
       });
     }
+  }
+
+  Future<void> _loadCurrentUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+      final userData = jsonDecode(userDataString);
+      final userId = userData['id']?.toString() ?? '';
+      if (userId.isEmpty) return;
+
+      final url = Uri.parse(
+        'https://digitallami.com/Api2/masterdata.php?userid=$userId',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final res = jsonDecode(response.body);
+        if (res['success'] == true) {
+          final masterData = UserMasterData.fromJson(res['data']);
+          if (mounted) {
+            setState(() {
+              _currentUserDocStatus = masterData.docStatus;
+              _currentUserType = masterData.usertype;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading current user data: $e');
+    }
+  }
+
+  Future<void> _handleProfileCardChat(BuildContext context, String userId, String displayName) async {
+    if (_currentUserDocStatus.isEmpty || _currentUserType.isEmpty) {
+      await _loadCurrentUserData();
+    }
+    if (!context.mounted) return;
+
+    final docStatus = _currentUserDocStatus;
+    final userType = _currentUserType;
+
+    if (docStatus == 'approved' && userType == 'paid') {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userDataString = prefs.getString('user_data');
+        if (userDataString == null) return;
+        final userData = jsonDecode(userDataString);
+        final currentUserId = userData['id']?.toString() ?? '';
+        final currentUserName = userData['firstName']?.toString() ?? '';
+
+        final List<String> ids = [currentUserId, userId];
+        ids.sort();
+        final chatRoomId = ids.join('_');
+
+        final chatRoomDoc = await FirebaseFirestore.instance
+            .collection('chatRooms')
+            .doc(chatRoomId)
+            .get();
+
+        if (!chatRoomDoc.exists) {
+          await FirebaseFirestore.instance
+              .collection('chatRooms')
+              .doc(chatRoomId)
+              .set({
+            'chatRoomId': chatRoomId,
+            'participants': [currentUserId, userId],
+            'participantNames': {
+              currentUserId: currentUserName,
+              userId: displayName,
+            },
+            'participantImages': {
+              currentUserId: resolveApiImageUrl(_currentUserImage),
+              userId: '',
+            },
+            'unreadCount': {currentUserId: 0, userId: 0},
+            'lastMessage': '',
+            'lastMessageType': 'text',
+            'lastMessageTime': DateTime.now(),
+            'lastMessageSenderId': '',
+            'createdAt': DateTime.now(),
+            'updatedAt': DateTime.now(),
+          });
+        }
+
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatDetailScreen(
+              chatRoomId: chatRoomId,
+              receiverId: userId,
+              receiverName: displayName.isNotEmpty ? displayName : 'User $userId',
+              receiverImage: '',
+              currentUserId: currentUserId,
+              currentUserName: currentUserName.isNotEmpty ? currentUserName : 'User $currentUserId',
+              currentUserImage: resolveApiImageUrl(_currentUserImage),
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error opening chat: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to open chat. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else if (docStatus == 'not_uploaded' && userType == 'free') {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => IDVerificationScreen()));
+    } else if (userType == 'free' && docStatus == 'approved') {
+      _showUpgradeChatDialog(context);
+    } else if (userType == 'paid' && docStatus != 'approved') {
+      _showDocumentVerificationDialog(context);
+    } else if (docStatus == 'pending') {
+      _showDocumentPendingDialog(context);
+    } else if (docStatus == 'rejected') {
+      _showDocumentRejectedDialog(context);
+    } else {
+      _showUpgradeChatDialog(context);
+    }
+  }
+
+  Future<void> _handleProfileCardViewProfile(BuildContext context, String userId) async {
+    if (_currentUserDocStatus.isEmpty) {
+      await _loadCurrentUserData();
+    }
+    if (!context.mounted) return;
+
+    final docStatus = _currentUserDocStatus;
+    if (docStatus == 'approved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)),
+      );
+    } else if (docStatus == 'pending') {
+      _showDocumentPendingDialog(context);
+    } else if (docStatus == 'rejected') {
+      _showDocumentRejectedDialog(context);
+    } else {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+      );
+    }
+  }
+
+  void _showUpgradeChatDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Premium Membership Required'),
+        content: const Text(
+          'You have not taken a premium membership, therefore you cannot chat. '
+          'Please upgrade your plan to start chatting.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocumentVerificationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Document Verification Pending'),
+        content: const Text(
+          'Your document verification is in progress. '
+          'Please wait for approval before starting a chat.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocumentPendingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Document Under Review'),
+        content: const Text(
+          'Your document is currently under review. '
+          'You will be able to chat once it has been verified.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocumentRejectedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Document Rejected'),
+        content: const Text(
+          'Your document was rejected. '
+          'Please upload a valid document to continue.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+              );
+            },
+            child: const Text('Re-upload'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadUserImage() async {
@@ -1696,12 +1948,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     child: TextButton.icon(
                       onPressed: () {
                         if (userId.isNotEmpty) {
-                          // If user is already in this chat (viewing their own card), scroll to input
-                          // If admin is viewing a user's card, open that user's chat
-                          if (!widget.isAdmin) {
-                            _messageFocusNode.requestFocus();
-                            _scrollToBottom();
-                          } else {
+                          if (widget.isAdmin) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -1712,6 +1959,8 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                                 ),
                               ),
                             );
+                          } else {
+                            _handleProfileCardChat(context, userId, displayName);
                           }
                         }
                       },
@@ -1738,12 +1987,16 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     child: TextButton.icon(
                       onPressed: () {
                         if (userId.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProfileScreen(userId: userId),
-                            ),
-                          );
+                          if (widget.isAdmin) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProfileScreen(userId: userId),
+                              ),
+                            );
+                          } else {
+                            _handleProfileCardViewProfile(context, userId);
+                          }
                         }
                       },
                       icon: Icon(Icons.person_outline,
