@@ -1301,6 +1301,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     return values.where(_isMissing).length;
   }
 
+  // API responses currently use a mix of placeholder values for unset marital
+  // status, so keep them grouped here and avoid showing a false document prompt.
   static const Set<String> _maritalStatusesWithoutRequiredDocument = {
     '',
     'still unmarried',
@@ -1317,8 +1319,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   bool _requiresMaritalStatusDocument(dynamic maritalStatus) {
     final normalizedStatus = _normalizeMaritalStatus(maritalStatus);
-    return normalizedStatus.isNotEmpty &&
-        !_maritalStatusesWithoutRequiredDocument.contains(normalizedStatus);
+    if (normalizedStatus.isEmpty) {
+      return false;
+    }
+    return !_maritalStatusesWithoutRequiredDocument.contains(normalizedStatus);
   }
 
   Widget _buildDocumentStatusSection(Map<String, dynamic> personalDetail) {
