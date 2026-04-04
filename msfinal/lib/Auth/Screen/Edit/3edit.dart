@@ -91,6 +91,11 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
   bool _hasSavedData = false;
   int? _userId;
 
+  // Full profile data for About Me generation
+  Map<String, dynamic> _fullProfileData = {};
+  String _userFirstName = '';
+  String _userLastName = '';
+
   // Service instance
   late UserPersonalDetailService _detailService;
 
@@ -107,6 +112,21 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     } else {
       _loadUserData();
     }
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final firstName = prefs.getString('user_firstName') ?? '';
+      final lastName = prefs.getString('user_lastName') ?? '';
+      if (mounted) {
+        setState(() {
+          _userFirstName = firstName;
+          _userLastName = lastName;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadUserData() async {
@@ -179,6 +199,17 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
   void _populateFormWithData(Map<String, dynamic> data) {
     print('Populating form with data: $data');
+
+    // Store full data for About Me generation
+    _fullProfileData = Map<String, dynamic>.from(data);
+
+    // Also capture name if available in the data
+    if (data['firstName'] != null && data['firstName'].toString().isNotEmpty) {
+      _userFirstName = data['firstName'].toString();
+    }
+    if (data['lastName'] != null && data['lastName'].toString().isNotEmpty) {
+      _userLastName = data['lastName'].toString();
+    }
 
     // Marital Status
     final maritalId = data['maritalStatusId']?.toString();
@@ -255,6 +286,74 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  String _generateAboutMeText() {
+    final String name = [_userFirstName, _userLastName]
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+
+    int age = 0;
+    try {
+      final rawDate = _fullProfileData['birthDate']?.toString() ?? '';
+      if (rawDate.isNotEmpty) {
+        final dob = DateTime.parse(rawDate);
+        final today = DateTime.now();
+        age = today.year - dob.year;
+        if (today.month < dob.month ||
+            (today.month == dob.month && today.day < dob.day)) {
+          age--;
+        }
+      }
+    } catch (_) {}
+
+    String clean(String? v) {
+      final s = v?.trim() ?? '';
+      return (s.isEmpty || s.toLowerCase() == 'null') ? '' : s;
+    }
+
+    final marital = clean(_selectedMaritalStatus);
+    final city = clean(_fullProfileData['city']?.toString());
+    final country = clean(_fullProfileData['country']?.toString());
+    final religion = clean(_fullProfileData['religionName']?.toString());
+    final community = clean(_fullProfileData['communityName']?.toString());
+    final degree = clean(_fullProfileData['degree']?.toString());
+    final designation = clean(_fullProfileData['designation']?.toString());
+    final company = clean(_fullProfileData['companyname']?.toString());
+
+    final sentences = <String>[];
+
+    // Intro sentence
+    final introParts = <String>[];
+    if (name.isNotEmpty) introParts.add(name);
+    if (age > 0) introParts.add('$age years old');
+    final locationStr = [city, country].where((s) => s.isNotEmpty).join(', ');
+    if (locationStr.isNotEmpty) introParts.add('based in $locationStr');
+    if (introParts.isNotEmpty) {
+      sentences.add('I am ${introParts.join(', ')}.');
+    }
+
+    if (marital.isNotEmpty) sentences.add('My marital status is $marital.');
+
+    // Work sentence — only build when it produces grammatical output
+    if (designation.isNotEmpty && company.isNotEmpty) {
+      sentences.add('I work as a $designation at $company.');
+    } else if (designation.isNotEmpty) {
+      sentences.add('I work as a $designation.');
+    } else if (company.isNotEmpty) {
+      sentences.add('I am employed at $company.');
+    }
+    if (degree.isNotEmpty) sentences.add('I hold a degree in $degree.');
+
+    // Background sentence
+    final bgParts = <String>[];
+    if (religion.isNotEmpty) bgParts.add(religion);
+    if (community.isNotEmpty) bgParts.add(community);
+    if (bgParts.isNotEmpty) {
+      sentences.add('My background is rooted in ${bgParts.join(' and ')}.');
+    }
+
+    return sentences.join(' ').trim();
   }
 
   @override
@@ -688,6 +787,41 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
                     // About Yourself
                     _buildSectionTitle("About Yourself"),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.auto_awesome, color: Color(0xFF48A54C), size: 18),
+                        label: const Text(
+                          'Auto Generate Your About Me',
+                          style: TextStyle(color: Color(0xFF48A54C), fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF48A54C)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          final generated = _generateAboutMeText();
+                          if (generated.isNotEmpty) {
+                            setState(() {
+                              _aboutYourselfController.text = generated;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please fill in more profile details to auto-generate.',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       height: 120,

@@ -2353,29 +2353,69 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                 "Edit About Me",
                 style: TextStyle(color: Color(0xFFD32F2F)),
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("Update your about me information"),
-                  SizedBox(height: 20),
-                  TextFormField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      labelText: "About Me",
-                      border: OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFD32F2F)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Update your about me information"),
+                    SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: Icon(Icons.auto_awesome, color: Color(0xFFD32F2F), size: 18),
+                        label: Text(
+                          'Auto Generate Your About Me',
+                          style: TextStyle(color: Color(0xFFD32F2F), fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Color(0xFFD32F2F)),
+                          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          final pd = _asMap(profileData?['personalDetail']);
+                          final lf = _asMap(profileData?['lifestyle']);
+                          final fd = _asMap(profileData?['familyDetail']);
+                          final generated = _generateAboutMe(pd, lf, fd);
+                          if (generated.isNotEmpty) {
+                            setStateDialog(() {
+                              _controller.text = generated;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Please fill in more profile details to auto-generate.',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
                       ),
                     ),
-                    maxLines: 5,
-                    maxLength: 500,
-                  ),
-                  if (isSaving)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: CircularProgressIndicator(color: Color(0xFFD32F2F)),
+                    SizedBox(height: 12),
+                    TextFormField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        labelText: "About Me",
+                        border: OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFD32F2F)),
+                        ),
+                      ),
+                      maxLines: 5,
+                      maxLength: 500,
                     ),
-                ],
+                    if (isSaving)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: CircularProgressIndicator(color: Color(0xFFD32F2F)),
+                      ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
