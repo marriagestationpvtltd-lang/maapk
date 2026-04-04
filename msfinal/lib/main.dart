@@ -27,6 +27,7 @@ import 'otherenew/service.dart';
 import 'otherprofile/otherprofileview.dart';
 import 'constant/app_theme.dart';
 import 'navigation/app_navigation.dart';
+import 'online/onlineservice.dart';
 import 'service/connectivity_service.dart';
 import 'widgets/global_connectivity_handler.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -889,11 +890,46 @@ void main() async {
     setupFirebaseMessaging();
     // Initialize call recovery after first frame
     callRecoveryManager.initialize();
+    // Start online presence tracking if the user is already logged in
+    // (handles app restarts without going through SplashScreen login)
+    SharedPreferences.getInstance().then((prefs) {
+      final userData = prefs.getString('user_data');
+      if (userData != null && userData.isNotEmpty) {
+        OnlineStatusService().start();
+      }
+    });
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      OnlineStatusService().start();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      OnlineStatusService().setOffline();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -341,8 +341,8 @@ class _CallScreenState extends State<CallScreen> {
         ),
       );
 
-      // Timeout if no answer
-      _timeoutTimer = Timer(const Duration(seconds: 30), () {
+      // Timeout if no answer — 45 s gives enough time for FCM delivery on slow networks
+      _timeoutTimer = Timer(const Duration(seconds: 45), () {
         if (_remoteUid == null) {
           if (widget.isOutgoingCall) {
             // Send missed-call notification to the CALLEE (other user)

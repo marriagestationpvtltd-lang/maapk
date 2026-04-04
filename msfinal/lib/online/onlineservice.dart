@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show unawaited;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,20 +16,24 @@ class OnlineStatusService {
   final String _apiUrl =
       "https://digitallami.com/request/update_last_login.php";
 
-  /// 🔥 Start tracking (call on app start)
+  /// 🔥 Start tracking (call on app start / app resume)
   void start() {
     _updateNow(); // immediate call
-
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      _updateNow();
-    });
+    _restartTimer();
   }
 
   /// 🛑 Stop tracking (optional)
   void stop() {
     _timer?.cancel();
     _timer = null;
+  }
+
+  /// Restart the periodic timer (also used after errors).
+  void _restartTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      _updateNow();
+    });
   }
 
   /// 🔄 Update lastLogin API and Firestore online status
@@ -41,21 +46,26 @@ class OnlineStatusService {
 
       final userData = jsonDecode(userDataString);
       final userId = userData["id"].toString();
+      if (userId.isEmpty || userId == 'null') return;
 
-      // Update HTTP API
-      await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"user_id": userId}),
-      );
-
-      // Update Firestore online status
+      // Update Firestore online status first (lower latency, drives UI)
       await _firestore.collection('users').doc(userId).set({
         'isOnline': true,
         'lastSeen': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      // Update HTTP API (best-effort, non-blocking for UI)
+      unawaited(http.post(
+        Uri.parse(_apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"user_id": userId}),
+      ).catchError((e) {
+        print("⚠️ Online API update failed (non-critical): $e");
+      }));
     } catch (e) {
       print("❌ Online status error: $e");
+      // Restart the timer in case of transient error
+      _restartTimer();
     }
   }
 
@@ -69,6 +79,7 @@ class OnlineStatusService {
 
       final userData = jsonDecode(userDataString);
       final userId = userData["id"].toString();
+      if (userId.isEmpty || userId == 'null') return;
 
       await _firestore.collection('users').doc(userId).set({
         'isOnline': false,
