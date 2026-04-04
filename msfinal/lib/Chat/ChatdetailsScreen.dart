@@ -31,12 +31,15 @@ import 'widgets/typing_indicator.dart';
 import '../constant/constant.dart';
 import '../utils/time_utils.dart';
 import '../utils/image_utils.dart';
+import '../utils/privacy_utils.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatRoomId;
   final String receiverId;
   final String receiverName;
   final String receiverImage;
+  final String? receiverPrivacy;
+  final String? receiverPhotoRequest;
   final String currentUserId;
   final String currentUserName;
   final String currentUserImage;
@@ -47,6 +50,8 @@ class ChatDetailScreen extends StatefulWidget {
     required this.receiverId,
     required this.receiverName,
     required this.receiverImage,
+    this.receiverPrivacy,
+    this.receiverPhotoRequest,
     required this.currentUserId,
     required this.currentUserName,
     required this.currentUserImage,
@@ -2789,17 +2794,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 ),
               );
             },
-            child: CircleAvatar(
+            child: PrivacyUtils.buildPrivacyAwareAvatar(
+              imageUrl: resolvedReceiverImage,
+              privacy: widget.receiverPrivacy,
+              photoRequest: widget.receiverPhotoRequest,
               radius: 22,
               backgroundColor: Colors.grey[600],
-              backgroundImage: resolvedReceiverImage.isNotEmpty
-                  ? NetworkImage(resolvedReceiverImage)
-                  : null,
-              onBackgroundImageError:
-                  resolvedReceiverImage.isNotEmpty ? (_, __) {} : null,
-              child: resolvedReceiverImage.isEmpty
-                  ? const Icon(Icons.person, color: Colors.white, size: 22)
-                  : null,
             ),
           ),
           const SizedBox(width: 10),

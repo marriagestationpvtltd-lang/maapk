@@ -397,7 +397,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
                               ),
                               child: BackdropFilter(
                                 filter:
-                                    ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                                    ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                                 child: Container(
                                   color: AppColors.black.withOpacity(0.05),
                                 ),
