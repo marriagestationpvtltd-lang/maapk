@@ -35,10 +35,10 @@ class _PersonalDetailsPageEditState extends State<PersonalDetailsPageEdit> {
 
   // Dropdown options
   final List<String> _maritalStatusOptions = [
-    'Single',
-    'Married',
+    'Still Unmarried',
     'Widowed',
     'Divorced',
+    'Waiting Divorce',
   ];
 
   final List<String> _bloodGroupOptions = [
@@ -163,7 +163,7 @@ class _PersonalDetailsPageEditState extends State<PersonalDetailsPageEdit> {
 
 
                   const SizedBox(height: 10),
-                  if (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed') ...[
+                  if (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed' || _selectedMaritalStatus == 'Waiting Divorce') ...[
                     //   _buildSectionTitle("Children Status?"),
                     const SizedBox(height: 8),
                     _buildSectionTitle("Children Status"),
