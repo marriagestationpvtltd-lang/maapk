@@ -389,7 +389,6 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
     // Release engine resources after navigation (fire-and-forget)
     if (_engineInitialized) unawaited(_releaseEngineAsync());
-    unawaited(_stopForegroundService());
   }
 
   Future<void> _end() async {
@@ -403,6 +402,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
+    unawaited(_stopForegroundService());
   }
 
   // ================= TOGGLE CAMERA =================
