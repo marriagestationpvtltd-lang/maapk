@@ -56,14 +56,15 @@ class AppNavbar extends StatelessWidget {
         child: SizedBox(
           height: 56,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(items.length, (index) {
               final isActive = selectedIndex == index;
               final item = items[index];
-              return _buildNavItem(
-                item: item,
-                index: index,
-                isActive: isActive,
+              return Expanded(
+                child: _buildNavItem(
+                  item: item,
+                  index: index,
+                  isActive: isActive,
+                ),
               );
             }),
           ),
@@ -81,7 +82,6 @@ class AppNavbar extends StatelessWidget {
       onTap: () => onItemSelected(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 72,
         height: 56,
         child: Center(
           child: AnimatedContainer(
