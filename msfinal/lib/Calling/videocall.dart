@@ -97,6 +97,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   // Call history tracking
   String? _callHistoryId;
   DateTime? _callStartTime;
+  static const Duration _kOutgoingCallTimeout = Duration(seconds: 30);
+  static const Duration _kPostAcceptConnectionTimeout = Duration(seconds: 20);
 
   @override
   void initState() {
@@ -174,7 +176,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _responseSubscription = NotificationService.callResponses.listen((data) {
       final type = data['type']?.toString();
       final channelName = data['channelName']?.toString();
-      if (channelName != null && channelName.isNotEmpty && channelName != _channel) {
+      if (_channel.isNotEmpty &&
+          channelName != null &&
+          channelName.isNotEmpty &&
+          channelName != _channel) {
         return;
       }
 
@@ -183,15 +188,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         if (mounted) {
           setState(() {
             _remoteAccepted = accepted;
-            if (!accepted) {
+            if (accepted) {
               _isCallRinging = false;
             }
           });
         }
 
         if (!accepted) {
+          unawaited(_stopRingtone());
           _endCall();
         } else {
+          unawaited(_stopRingtone());
+          _armOutgoingTimeout(_kPostAcceptConnectionTimeout);
           _syncOverlayState();
         }
       } else if (type == 'video_call_ended') {
@@ -365,15 +373,21 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         ),
       );
 
-      // Timeout
-      _timeoutTimer = Timer(const Duration(seconds: 30), () {
-        if (_remoteUid == null) _endCall();
-      });
+      _armOutgoingTimeout(_kOutgoingCallTimeout);
 
     } catch (e) {
       debugPrint("Video call init error: $e");
       await _exit();
     }
+  }
+
+  void _armOutgoingTimeout(Duration duration) {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(duration, () {
+      if (_remoteUid == null) {
+        _endCall();
+      }
+    });
   }
 
 

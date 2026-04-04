@@ -74,8 +74,11 @@ class _CallScreenState extends State<CallScreen> {
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _connectionStatus;
+  bool _remoteAccepted = false;
 
   static const Duration _kConnectivityLossTimeout = Duration(seconds: 30);
+  static const Duration _kOutgoingCallTimeout = Duration(seconds: 45);
+  static const Duration _kPostAcceptConnectionTimeout = Duration(seconds: 20);
 
   // Call history tracking
   String? _callHistoryId;
@@ -121,14 +124,33 @@ class _CallScreenState extends State<CallScreen> {
     _responseSubscription = NotificationService.callResponses.listen((data) {
       final type = data['type']?.toString();
       final channelName = data['channelName']?.toString();
-      if (channelName != null && channelName.isNotEmpty && channelName != _channel) {
+      if (_channel.isNotEmpty &&
+          channelName != null &&
+          channelName.isNotEmpty &&
+          channelName != _channel) {
         return;
       }
 
       if (type == 'call_response') {
         final accepted = data['accepted'] == 'true';
-        if (!accepted) {
-          if (mounted) setState(() => _callDeclined = true);
+        if (accepted) {
+          if (mounted) {
+            setState(() {
+              _remoteAccepted = true;
+              _isCallRinging = false;
+            });
+          }
+          unawaited(_stopRingtone());
+          _armOutgoingTimeout(_kPostAcceptConnectionTimeout);
+          _syncOverlayState();
+        } else {
+          if (mounted) {
+            setState(() {
+              _remoteAccepted = false;
+              _callDeclined = true;
+            });
+          }
+          unawaited(_stopRingtone());
           _endCall();
         }
       } else if (type == 'call_ended') {
@@ -159,7 +181,7 @@ class _CallScreenState extends State<CallScreen> {
   void _syncOverlayState() {
     final statusText = _callActive
         ? 'Connected'
-        : (_isCallRinging ? 'Calling...' : 'Connecting...');
+        : (_isCallRinging && !_remoteAccepted ? 'Calling...' : 'Connecting...');
     CallOverlayManager().updateCallState(
       statusText: statusText,
       duration: _duration,
@@ -341,24 +363,27 @@ class _CallScreenState extends State<CallScreen> {
         ),
       );
 
-      // Timeout if no answer — 45 s gives enough time for FCM delivery on slow networks
-      _timeoutTimer = Timer(const Duration(seconds: 45), () {
-        if (_remoteUid == null) {
-          if (widget.isOutgoingCall) {
-            // Send missed-call notification to the CALLEE (other user)
-            NotificationService.sendMissedCallNotification(
-              callerId: widget.otherUserId,
-              callerName: widget.currentUserName,
-              senderId: widget.currentUserId,
-            );
-          }
-          _endCall();
-        }
-      });
+      _armOutgoingTimeout(_kOutgoingCallTimeout);
     } catch (e) {
       debugPrint('Init error: $e');
       await _exit();
     }
+  }
+
+  void _armOutgoingTimeout(Duration duration) {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(duration, () {
+      if (_remoteUid == null) {
+        if (widget.isOutgoingCall) {
+          NotificationService.sendMissedCallNotification(
+            callerId: widget.otherUserId,
+            callerName: widget.currentUserName,
+            senderId: widget.currentUserId,
+          );
+        }
+        _endCall();
+      }
+    });
   }
 
   // ================= CALL TIMER =================
@@ -573,7 +598,7 @@ class _CallScreenState extends State<CallScreen> {
                 Text(
                   _callActive
                       ? 'Connected with ${widget.otherUserName}'
-                      : (_isCallRinging
+                      : (_isCallRinging && !_remoteAccepted
                       ? 'Calling ${widget.otherUserName}...'
                       : 'Connecting...'),
                   style: const TextStyle(color: Colors.white, fontSize: 22),
@@ -582,7 +607,7 @@ class _CallScreenState extends State<CallScreen> {
                 Text(
                   _callActive
                       ? _format(_duration)
-                      : (_isCallRinging ? 'Ringing...' : 'Connecting...'),
+                      : (_isCallRinging && !_remoteAccepted ? 'Ringing...' : 'Connecting...'),
                   style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
