@@ -2695,7 +2695,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               backgroundImage: resolvedReceiverImage.isNotEmpty
                   ? NetworkImage(resolvedReceiverImage)
                   : null,
-              onBackgroundImageError: (_, __) {},
+              onBackgroundImageError:
+                  resolvedReceiverImage.isNotEmpty ? (_, __) {} : null,
               child: resolvedReceiverImage.isEmpty
                   ? const Icon(Icons.person, color: Colors.white, size: 22)
                   : null,
