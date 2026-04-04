@@ -46,7 +46,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   bool _isCheckingVersion = true;
   String? _errorMessage;
 
-  // Completes when the entrance animation finishes
+  // Completes when the entrance animation finishes.
+  // Guaranteed to be set in initState before any async callback can use it.
   late Future<void> _animationCompleted;
 
   // Current app versions - Update these with your actual current versions
@@ -72,9 +73,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _setupAnimations();
-    // Start animation and server check in parallel; store animation future
-    // so _proceedWithNavigation() can wait for it to finish before navigating.
-    _animationCompleted = _entranceController.forward().orCancel.catchError((_) {});
+    // TickerCanceled is expected when the widget disposes while the animation
+    // is still running (e.g. user leaves the app); swallow it intentionally.
+    _animationCompleted = _entranceController.forward().orCancel
+        .catchError((Object e) {
+          if (e is! TickerCanceled) debugPrint('Splash animation error: $e');
+        });
     _checkAppVersion();
   }
 
