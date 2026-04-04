@@ -15,6 +15,7 @@ import '../utils/time_utils.dart';
 import '../utils/image_utils.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
+import '../pushnotification/pushservice.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
@@ -622,6 +623,45 @@ class _ChatListScreenState extends State<ChatListScreen>
       if (mounted) Navigator.pop(context);
 
       if (success) {
+        // Create chat room and send "Ok Let's Talk" message
+        try {
+          final firebaseService = FirebaseService();
+          final senderId = proposal.senderId ?? '';
+          final senderName =
+              '${proposal.firstName ?? ''} ${proposal.lastName ?? ''}'.trim();
+          final senderImage =
+              resolveApiImageUrl(proposal.profilePicture ?? '');
+
+          if (senderId.isNotEmpty) {
+            final chatRoomId = await firebaseService.getOrCreateChatRoom(
+              user1Id: userId,
+              user2Id: senderId,
+              user1Name: name,
+              user2Name: senderName,
+              user1Image: resolveApiImageUrl(userimage),
+              user2Image: senderImage,
+            );
+
+            await firebaseService.sendMessage(
+              chatRoomId: chatRoomId,
+              senderId: userId,
+              receiverId: senderId,
+              message: "Ok Let's Talk",
+              messageType: 'text',
+            );
+
+            // Send notification to the request sender
+            await NotificationService.sendChatNotification(
+              recipientUserId: senderId,
+              senderName: name,
+              senderId: userId,
+              message: "Ok Let's Talk",
+            );
+          }
+        } catch (e) {
+          print('Error creating chat room or sending initial message: $e');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Chat request accepted"),
