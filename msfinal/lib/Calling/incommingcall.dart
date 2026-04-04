@@ -485,15 +485,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _cancelSubscription?.cancel();
     // Release Agora engine if not already released
     if (_engineInitialized) {
-      unawaited(() async {
-        try {
-          if (_joined) await _engine.leaveChannel();
-          await _engine.release();
-        } catch (_) {}
-      }());
+      unawaited(_releaseEngineAsync());
     }
     unawaited(_stopForegroundService());
     super.dispose();
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (_) {}
   }
 
   Future<void> _startForegroundService() async {

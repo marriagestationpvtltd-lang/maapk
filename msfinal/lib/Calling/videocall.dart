@@ -443,8 +443,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     await _exit();
 
     // Release engine resources after navigation (fire-and-forget)
-    if (_joined) unawaited(_engine.leaveChannel());
-    if (_engineInitialized) unawaited(_engine.release());
+    if (_engineInitialized) unawaited(_releaseEngineAsync());
     unawaited(_stopForegroundService());
   }
 
@@ -463,6 +462,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       otherUserName: widget.otherUserName,
       callId: _channel,
     );
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (_) {}
   }
 
   Future<void> _stopForegroundService() async {
@@ -887,12 +894,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _ringtonePlayer.dispose();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
-      unawaited(() async {
-        try {
-          if (_joined) await _engine.leaveChannel();
-          await _engine.release();
-        } catch (_) {}
-      }());
+      unawaited(_releaseEngineAsync());
     }
     unawaited(_stopForegroundService());
     super.dispose();

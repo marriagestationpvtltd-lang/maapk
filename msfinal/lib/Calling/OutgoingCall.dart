@@ -420,14 +420,7 @@ class _CallScreenState extends State<CallScreen> {
 
     // Release engine resources after navigation (fire-and-forget)
     if (_engineInitialized) {
-      unawaited(() async {
-        try {
-          await _engine.leaveChannel();
-          await _engine.release();
-        } catch (e) {
-          debugPrint("Engine cleanup error: $e");
-        }
-      }());
+      unawaited(_releaseEngineAsync());
     }
     unawaited(_stopForegroundService());
   }
@@ -439,6 +432,16 @@ class _CallScreenState extends State<CallScreen> {
       Navigator.of(context).pop();
     }
     unawaited(_stopForegroundService());
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (e) {
+      debugPrint("Engine cleanup error: $e");
+    }
   }
 
   Future<void> _startForegroundService() async {
@@ -614,12 +617,7 @@ class _CallScreenState extends State<CallScreen> {
     _ringtonePlayer.dispose();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
-      unawaited(() async {
-        try {
-          if (_joined) await _engine.leaveChannel();
-          await _engine.release();
-        } catch (_) {}
-      }());
+      unawaited(_releaseEngineAsync());
     }
     unawaited(_stopForegroundService());
     super.dispose();
