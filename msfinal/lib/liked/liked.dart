@@ -25,6 +25,12 @@ class FavoritePeoplePage extends StatefulWidget {
 }
 
 class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
+  static const String _defaultLocationLabel = 'Location not available';
+  static const String _defaultProfessionLabel = 'Profession not available';
+  static const String _defaultProfileImage =
+      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e';
+  static const double _badgeLabelMaxWidth = 150;
+
   List<dynamic> favoritePeople = [];
   bool isLoading = true;
   bool _isRefreshing = false;
@@ -965,13 +971,14 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     final lastName = person['lastName']?.toString() ?? '';
     final fullName = '$firstName $lastName';
     final isVerified = person['isVerified'] == 1 || person['isVerified'] == '1';
-    final city = person['city']?.toString() ?? 'Location not available';
-    final designation = person['designation']?.toString() ?? 'Profession not available';
+    final city = person['city']?.toString() ?? _defaultLocationLabel;
+    final designation =
+        person['designation']?.toString() ?? _defaultProfessionLabel;
     final rawProfileImage = person['profile_picture']?.toString() ?? '';
     final resolvedProfileImage = resolveApiImageUrl(rawProfileImage);
     final profileImage = resolvedProfileImage.isNotEmpty
         ? resolvedProfileImage
-        : 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e';
+        : _defaultProfileImage;
     final age = person['age']?.toString() ?? '';
     final photoRequestStatus = _getPhotoRequestStatus(person);
 
@@ -1174,14 +1181,14 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                               spacing: 8,
                               runSpacing: 8,
                               children: [
-                                if (designation != 'Profession not available')
+                                if (designation != _defaultProfessionLabel)
                                   _buildImageBadge(
                                     icon: Icons.work_outline_rounded,
                                     label: designation,
                                     badgeColor: Colors.white,
                                     darkText: true,
                                   ),
-                                if (city != 'Location not available')
+                                if (city != _defaultLocationLabel)
                                   _buildImageBadge(
                                     icon: Icons.location_on_outlined,
                                     label: city,
@@ -1308,7 +1315,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
           ),
           const SizedBox(width: 6),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
+            constraints: const BoxConstraints(maxWidth: _badgeLabelMaxWidth),
             child: Text(
               label,
               maxLines: 1,
