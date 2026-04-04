@@ -19,7 +19,10 @@ class MainControllerScreen extends StatefulWidget {
 }
 
 class _MainControllerScreenState extends State<MainControllerScreen> {
+  static const int _chatTabIndex = 2;
+
   late int _selectedIndex;
+  int _chatRefreshKey = 0;
   String? _senderId;
   String? _senderName;
   String? _currentUserImage;
@@ -54,7 +57,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
       MatrimonyHomeScreen(),  // index 0
       FavoritePeoplePage(),   // index 1
       _senderId != null
-          ? ChatListScreen()
+          ? ChatListScreen(key: ValueKey(_chatRefreshKey))
           : const Center(child: Text('Loading chat...')), // index 2
       MatrimonyProfilePage(), // index 3
     ];
@@ -83,6 +86,9 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
           currentUserImage: _currentUserImage,
           onItemSelected: (index) {
             setState(() {
+              if (_selectedIndex != _chatTabIndex && index == _chatTabIndex) {
+                _chatRefreshKey++;
+              }
               _selectedIndex = index;
             });
           },

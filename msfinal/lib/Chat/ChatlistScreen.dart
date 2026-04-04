@@ -20,7 +20,7 @@ import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
 
 class ChatListScreen extends StatefulWidget {
-  ChatListScreen({super.key});
+  const ChatListScreen({super.key});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
