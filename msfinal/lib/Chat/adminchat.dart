@@ -17,6 +17,7 @@ import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
 import 'ChatdetailsScreen.dart';
 import '../Models/masterdata.dart';
+import '../Package/PackageScreen.dart';
 import '../otherenew/othernew.dart';
 import '../utils/image_utils.dart';
 import '../utils/time_utils.dart';
@@ -267,19 +268,48 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           );
         }
       }
-    } else if (docStatus == 'not_uploaded' && userType == 'free') {
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => IDVerificationScreen()));
-    } else if (userType == 'free' && docStatus == 'approved') {
-      _showUpgradeChatDialog(context);
-    } else if (userType == 'paid' && docStatus != 'approved') {
-      _showDocumentVerificationDialog(context);
+    } else if (docStatus.isEmpty || docStatus == 'not_uploaded') {
+      _showDocumentUploadRequiredDialog(context);
     } else if (docStatus == 'pending') {
       _showDocumentPendingDialog(context);
     } else if (docStatus == 'rejected') {
       _showDocumentRejectedDialog(context);
+    } else if (userType == 'free' && docStatus == 'approved') {
+      _showUpgradeChatDialog(context);
+    } else if (userType == 'paid' && docStatus != 'approved') {
+      _showDocumentVerificationDialog(context);
     } else {
       _showUpgradeChatDialog(context);
     }
+  }
+
+  void _showDocumentUploadRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Verify Documents First'),
+        content: const Text(
+          'Please verify your documents before you can start a chat.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => IDVerificationScreen()),
+              );
+            },
+            child: const Text('Verify Now'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleProfileCardViewProfile(BuildContext context, String userId) async {
@@ -322,7 +352,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+              );
+            },
             child: const Text('Upgrade'),
           ),
         ],
