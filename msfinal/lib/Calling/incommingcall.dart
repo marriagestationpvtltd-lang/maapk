@@ -86,7 +86,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       if (type == 'call_cancelled' || type == 'call_ended') {
         final channelName = data['channelName']?.toString();
         if (channelName == _channel) {
-          if (!_callActive) {
+          if (_remoteUid == null) {
             _end();
           }
         }

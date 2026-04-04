@@ -89,7 +89,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       if (type == 'video_call_cancelled' || type == 'video_call_ended') {
         final channelName = data['channelName']?.toString();
         if (channelName == _channel) {
-          if (!_callActive) {
+          if (_remoteUid == null) {
             _end();
           }
         }
