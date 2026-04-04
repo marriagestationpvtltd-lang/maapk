@@ -32,7 +32,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
   bool _isRefreshScheduled = false;
   String _bannerMessage = '';
   Color _bannerColor = AppColors.textSecondary;
-  IconData _bannerIcon = Icons.wifi_off_rounded;
 
   @override
   void didChangeDependencies() {
@@ -87,7 +86,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       _isBannerVisible = true;
       _wasConnected = false;
       _bannerColor = AppColors.error;
-      _bannerIcon = Icons.wifi_off_rounded;
       _bannerMessage = _buildOfflineMessage(connectivityService);
     });
   }
@@ -127,7 +125,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       _isBannerVisible = true;
       _wasConnected = true;
       _bannerColor = Colors.black;
-      _bannerIcon = Icons.wifi_rounded;
       _bannerMessage = 'Back online';
     });
 
@@ -245,12 +242,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            _bannerIcon,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _bannerMessage,
