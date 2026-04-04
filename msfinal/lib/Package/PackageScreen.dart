@@ -633,6 +633,7 @@ class _PackagePlanCard extends StatelessWidget {
   final bool isPopular;
 
   const _PackagePlanCard({
+    super.key,
     required this.package,
     required this.config,
     this.isPopular = false,
