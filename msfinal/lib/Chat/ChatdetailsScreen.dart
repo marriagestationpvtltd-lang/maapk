@@ -124,6 +124,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // Receiver online status
   bool _isOtherUserOnline = false;
+  DateTime? _otherUserLastSeen;
   StreamSubscription<DocumentSnapshot>? _otherUserStatusSub;
   StreamSubscription? _audioPlayerStateSubscription;
   StreamSubscription? _audioPlayerPositionSubscription;
@@ -410,19 +411,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         .listen((doc) {
       if (!mounted) return;
       bool online = false;
+      DateTime? lastSeen;
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         final bool isOnline = data['isOnline'] == true;
         final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-        final DateTime? lastSeen = lastSeenTs?.toDate();
+        lastSeen = lastSeenTs?.toDate();
         final bool recentlySeen = lastSeen != null &&
             DateTime.now().difference(lastSeen).inMinutes < 5;
         online = isOnline || recentlySeen;
       }
-      if (_isOtherUserOnline != online) {
-        setState(() => _isOtherUserOnline = online);
-      }
+      setState(() {
+        _isOtherUserOnline = online;
+        _otherUserLastSeen = lastSeen;
+      });
     });
+  }
+
+  /// Format lastSeen timestamp into a human-readable "last active" string.
+  String _formatLastSeen(DateTime lastSeen) {
+    final diff = DateTime.now().difference(lastSeen);
+    if (diff.inMinutes < 1) return 'last active just now';
+    if (diff.inMinutes < 60) return 'last active ${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return 'last active ${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'last active yesterday';
+    if (diff.inDays < 7) return 'last active ${diff.inDays}d ago';
+    return 'last active a while ago';
   }
 
 
@@ -2563,6 +2577,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     const Text(
                       "online",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
+                    )
+                  else if (_otherUserLastSeen != null)
+                    Text(
+                      _formatLastSeen(_otherUserLastSeen!),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                 ],
               ),

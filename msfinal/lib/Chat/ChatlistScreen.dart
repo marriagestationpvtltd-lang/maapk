@@ -57,6 +57,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   // Online status for chat participants
   final Map<String, bool> _onlineStatuses = {};
+  final Map<String, DateTime?> _lastSeenTimes = {};
   _CompositeSubscription? _onlineStatusSubscription;
 
   // Admin online status
@@ -350,6 +351,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     // Merge results from all batches using a StreamGroup-like approach with
     // manual merge into _onlineStatuses.
     final merged = <String, bool>{};
+    final mergedLastSeen = <String, DateTime?>{};
     int pendingBatches = batches.length;
     final subscriptions = <StreamSubscription<QuerySnapshot>>[];
 
@@ -368,11 +370,15 @@ class _ChatListScreenState extends State<ChatListScreen>
           final bool recentlySeen = lastSeen != null &&
               DateTime.now().difference(lastSeen).inMinutes < 5;
           merged[doc.id] = online || recentlySeen;
+          mergedLastSeen[doc.id] = lastSeen;
         }
         setState(() {
           _onlineStatuses
             ..clear()
             ..addAll(merged);
+          _lastSeenTimes
+            ..clear()
+            ..addAll(mergedLastSeen);
         });
       });
       subscriptions.add(sub);
@@ -385,6 +391,17 @@ class _ChatListScreenState extends State<ChatListScreen>
   String _formatTime(DateTime? time) {
     if (time == null) return '';
     return DateFormat('hh:mm a').format(time);
+  }
+
+  /// Format a lastSeen timestamp into a human-readable "last active" string.
+  String _formatLastSeen(DateTime lastSeen) {
+    final diff = DateTime.now().difference(lastSeen);
+    if (diff.inMinutes < 1) return 'last active just now';
+    if (diff.inMinutes < 60) return 'last active ${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return 'last active ${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'last active yesterday';
+    if (diff.inDays < 7) return 'last active ${diff.inDays}d ago';
+    return 'last active a while ago';
   }
 
   Widget _buildPinnedAdminCard() {
@@ -1143,6 +1160,8 @@ class _ChatListScreenState extends State<ChatListScreen>
           // Online status for this participant
           final bool isOnline =
               _onlineStatuses[otherParticipantId] ?? false;
+          final DateTime? participantLastSeen =
+              _lastSeenTimes[otherParticipantId];
 
           return InkWell(
             onTap: () {
@@ -1301,6 +1320,21 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   fontSize: 12,
                                   color: Color(0xFF22C55E),
                                   fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (participantLastSeen != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time,
+                                  size: 10, color: Colors.grey),
+                              const SizedBox(width: 3),
+                              Text(
+                                _formatLastSeen(participantLastSeen),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
                                 ),
                               ),
                             ],
