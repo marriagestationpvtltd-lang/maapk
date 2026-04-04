@@ -28,7 +28,47 @@ class PaymentPage extends StatefulWidget {
 }
 
 class _PaymentPageState extends State<PaymentPage> {
+  final ScrollController _scrollController = ScrollController();
 
+  // VAT settings fetched from admin
+  bool _vatEnabled = false;
+  double _vatRate = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVatSettings();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchVatSettings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://digitallami.com/Api2/app_settings.php'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final settings = data['data'];
+          final enabled = settings['vat_enabled'];
+          final rate = settings['vat_rate'];
+          if (mounted) {
+            setState(() {
+              _vatEnabled = enabled == '1' || enabled == 1 || enabled == true;
+              final parsedRate = double.tryParse(rate?.toString() ?? '0') ?? 0.0;
+              // Accept both percentage (e.g. 13) and decimal (e.g. 0.13)
+              _vatRate = parsedRate > 1 ? parsedRate / 100 : parsedRate;
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   String _getPaidBy() {
     switch (_selectedMethod) {
@@ -56,8 +96,7 @@ class _PaymentPageState extends State<PaymentPage> {
   double get processingCharge => widget.amount;
   double get discount => widget.discount;
   double get subtotal => processingCharge - discount;
-  double get taxRate => 0.13;
-  double get taxAmount => subtotal * taxRate;
+  double get taxAmount => _vatEnabled ? subtotal * _vatRate : 0.0;
   double get totalAmount => subtotal + taxAmount;
 
   @override
@@ -100,6 +139,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildPaymentForm() {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,9 +437,15 @@ class _PaymentPageState extends State<PaymentPage> {
               isBold: true),
           const SizedBox(height: 10),
 
-          _buildPriceRow('VAT (13%)', 'Rs. ${taxAmount.toStringAsFixed(0)}',
-              showInfo: true),
-          const SizedBox(height: 16),
+          if (_vatEnabled) ...[
+            _buildPriceRow(
+              'VAT (${(_vatRate * 100).toStringAsFixed(0)}%)',
+              'Rs. ${taxAmount.toStringAsFixed(0)}',
+              showInfo: true,
+            ),
+            const SizedBox(height: 16),
+          ] else
+            const SizedBox(height: 6),
 
           // Total Amount Card
           Container(
@@ -430,7 +476,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Including all taxes',
+                      _vatEnabled ? 'Including all taxes' : 'No tax applied',
                       style: AppTextStyles.whiteBody.copyWith(
                         fontSize: 11,
                         color: AppColors.white.withOpacity(0.7),
@@ -623,6 +669,16 @@ class _PaymentPageState extends State<PaymentPage> {
     if (!_isProcessing) {
       setState(() {
         _selectedMethod = method;
+      });
+      // Scroll to the Pay Now button so user can immediately proceed
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
       });
     }
   }
@@ -848,7 +904,6 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() {
       _isCancelled = true;
       _showWebView = false;
-      _paymentStatus = 'Payment was cancelled.';
       _isProcessing = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -858,6 +913,8 @@ class _PaymentPageState extends State<PaymentPage> {
         duration: Duration(seconds: 3),
       ),
     );
+    // Return to the packages page
+    Navigator.of(context).pop();
   }
 
   Future<Map<String, dynamic>> purchasePackage({
