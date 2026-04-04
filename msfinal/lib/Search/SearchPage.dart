@@ -1534,7 +1534,7 @@ class _SearchPageState extends State<SearchPage>
           ),
         ),
         BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(color: Colors.black.withOpacity(0.15)),
         ),
         Center(
