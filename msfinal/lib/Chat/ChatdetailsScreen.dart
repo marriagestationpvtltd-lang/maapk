@@ -22,6 +22,7 @@ import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
 import '../otherprofile/otherprofileview.dart';
+import '../otherenew/othernew.dart';
 import '../otherenew/service.dart';
 import '../pushnotification/pushservice.dart';
 import '../webrtc/webrtc.dart';
@@ -2697,7 +2698,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => UserProfilePage(userId: widget.receiverId),
+                  builder: (context) => ProfileScreen(userId: widget.receiverId),
                 ),
               );
             },
@@ -2721,7 +2722,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => UserProfilePage(userId: widget.receiverId),
+                    builder: (context) => ProfileScreen(userId: widget.receiverId),
                   ),
                 );
               },
