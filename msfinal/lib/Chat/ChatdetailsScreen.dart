@@ -574,6 +574,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // SEND MESSAGE (with reply support)
   Future<void> _sendMessage() async {
+    if (_isBlocked) return;
     if (_isSending) return;
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty) return;
@@ -1140,7 +1141,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final key = _messageKeys.putIfAbsent(msgId, () => GlobalKey());
 
     final time = _formatTime(timestamp);
-    final userName = isMine ? widget.currentUserName : widget.receiverName;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isHighlighted = _highlightedMessageId == msgId;
 
@@ -1226,20 +1226,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             Column(
               crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                if (!isMine) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
-                    child: Text(
-                      userName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _lightTextColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-
                 if (replyWidget != null) replyWidget,
 
                 Container(
@@ -1643,6 +1629,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   Widget _bottomInputBar() {
+    if (_isBlocked) {
+      return Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(context).padding.bottom + 12,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.block, color: Colors.red.shade400, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'तपाईंले यो प्रयोगकर्तालाई ब्लक गर्नुभएको छ',
+              style: TextStyle(
+                color: Colors.red.shade400,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final hasText = isEditing
         ? _editController.text.trim().isNotEmpty
         : _messageController.text.trim().isNotEmpty;
