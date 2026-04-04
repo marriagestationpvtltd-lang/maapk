@@ -235,7 +235,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         ),
       );
 
-      setState(() => _callActive = true);
+      if (mounted) setState(() => _callActive = true);
       _initializeOverlay();
     } catch (e) {
       debugPrint('Accept error $e');
