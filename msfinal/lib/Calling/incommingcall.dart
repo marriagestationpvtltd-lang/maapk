@@ -408,109 +408,410 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Column(
-            children: [
-              if (_callActive)
-                Align(
-                  alignment: Alignment.topRight,
-                   child: Padding(
-                     padding: const EdgeInsets.only(right: 16, top: 12),
-                     child: CallMinimizeButton(onPressed: _minimizeCall),
-                   ),
-                 ),
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _callActive ? Icons.phone_in_talk : Icons.phone,
-                        color: Colors.white,
-                        size: 80,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _callActive ? 'Connected' : 'Incoming call',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _callerName,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _callActive
-                            ? _format(_duration)
-                            : 'Voice Call',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 40),
-                      _callActive ? _activeControls() : _incomingControls(),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _callActive
+                  ? [
+                      const Color(0xFF1A237E), // Deep indigo
+                      const Color(0xFF0D47A1), // Deep blue
+                      const Color(0xFF01579B), // Darker blue
+                    ]
+                  : [
+                      const Color(0xFF6A1B9A), // Deep purple
+                      const Color(0xFF4A148C), // Darker purple
+                      const Color(0xFF1A237E), // Deep indigo
                     ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                if (_callActive)
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16, top: 12),
+                      child: CallMinimizeButton(onPressed: _minimizeCall),
+                    ),
                   ),
+                Expanded(
+                  child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildIncomingCallUI() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const SizedBox(height: 40),
+        // Top section with caller info
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated avatar with pulse effect
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1500),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.9 + (value * 0.1),
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF00E5FF), // Cyan
+                            Color(0xFF2979FF), // Blue
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2979FF).withOpacity(0.5),
+                            blurRadius: 30,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.person,
+                          size: 80,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 40),
+              // Caller name with fade-in animation
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 600),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: child,
+                  );
+                },
+                child: Text(
+                  _callerName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Call type with icon
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 800),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: child,
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.phone,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Voice Call',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Incoming call text with pulse animation
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1000),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: 0.7 + (value * 0.3),
+                    child: child,
+                  );
+                },
+                child: const Text(
+                  'Incoming Call...',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Bottom section with buttons
+        Padding(
+          padding: const EdgeInsets.only(bottom: 50.0, left: 20, right: 20),
+          child: _incomingControls(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveCallUI() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const SizedBox(height: 60),
+        // Active call info
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.phone_in_talk,
+                color: Colors.white,
+                size: 100,
+              ),
+              const SizedBox(height: 30),
+              const Text(
+                'Connected',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _callerName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(
+                  _format(_duration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Control buttons
+        Padding(
+          padding: const EdgeInsets.only(bottom: 50.0),
+          child: _activeControls(),
+        ),
+      ],
+    );
+  }
+
   Widget _incomingControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
-      _callBtn(Icons.call, Colors.green, _acceptCall, loading: _processing),
-      _callBtn(Icons.call_end, Colors.red, _rejectCall),
+      _modernCallBtn(
+        icon: Icons.call,
+        color: const Color(0xFF4CAF50), // Green
+        onPressed: _acceptCall,
+        loading: _processing,
+        label: 'Accept',
+      ),
+      _modernCallBtn(
+        icon: Icons.call_end,
+        color: const Color(0xFFF44336), // Red
+        onPressed: _rejectCall,
+        label: 'Decline',
+      ),
     ],
   );
 
   Widget _activeControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
-       _callBtn(
-         _micMuted ? Icons.mic_off : Icons.mic,
-         _micMuted ? Colors.orange : Colors.white,
-         _toggleMute,
-       ),
-      _callBtn(Icons.call_end, Colors.red, _endCall),
-       _callBtn(
-         _speakerOn ? Icons.volume_up : Icons.volume_off,
-         _speakerOn ? Colors.blue : Colors.white,
-         _engineInitialized ? () {
-           setState(() => _speakerOn = !_speakerOn);
-           _engine.setEnableSpeakerphone(_speakerOn);
-         } : null,
-       ),
+      _modernControlBtn(
+        icon: _micMuted ? Icons.mic_off : Icons.mic,
+        color: _micMuted ? const Color(0xFFFF9800) : Colors.white,
+        onPressed: _toggleMute,
+        active: !_micMuted,
+      ),
+      _modernCallBtn(
+        icon: Icons.call_end,
+        color: const Color(0xFFF44336),
+        onPressed: _endCall,
+        size: 72,
+      ),
+      _modernControlBtn(
+        icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
+        color: _speakerOn ? const Color(0xFF2196F3) : Colors.white,
+        onPressed: _engineInitialized
+            ? () {
+                setState(() => _speakerOn = !_speakerOn);
+                _engine.setEnableSpeakerphone(_speakerOn);
+              }
+            : null,
+        active: _speakerOn,
+      ),
     ],
   );
 
-  Widget _callBtn(IconData icon, Color color, VoidCallback? onPressed, {bool loading = false}) {
+  Widget _modernCallBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onPressed,
+    bool loading = false,
+    String? label,
+    double size = 72,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: onPressed,
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 150),
+            tween: Tween(begin: 1.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color,
+                        color.withOpacity(0.8),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.5),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: loading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        )
+                      : Icon(icon, color: Colors.white, size: size * 0.45),
+                ),
+              );
+            },
+          ),
+        ),
+        if (label != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _modernControlBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onPressed,
+    bool active = false,
+    double size = 64,
+  }) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 72,
-        height: 72,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.85),
+          color: active
+              ? color.withOpacity(0.3)
+              : Colors.white.withOpacity(0.2),
           shape: BoxShape.circle,
+          border: Border.all(
+            color: color,
+            width: 2,
+          ),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.35),
-              blurRadius: 14,
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: loading
-            ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)))
-            : Icon(icon, color: Colors.white, size: 32),
+        child: Icon(
+          icon,
+          color: color,
+          size: size * 0.5,
+        ),
       ),
     );
   }
