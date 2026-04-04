@@ -150,6 +150,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   static const Color _backgroundColor = Color(0xFFF8FAFC);
   static const Color _textColor = Color(0xFF1F2937);
   static const Color _lightTextColor = Color(0xFF6B7280);
+  static const Color _inputFieldBackground = Color(0xFFF3F4F6);
+  static const Color _sendButtonDisabled = Color(0xFFD1D5DB);
 
   @override
   void initState() {
@@ -1539,7 +1541,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 46),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
+                    color: _inputFieldBackground,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: Colors.grey.shade300,
@@ -1560,7 +1562,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           maxLines: 5,
                           style: const TextStyle(
                             fontSize: 15,
-                            color: Color(0xFF1F2937),
+                            color: _textColor,
                             height: 1.4,
                           ),
                           decoration: InputDecoration(
@@ -1602,9 +1604,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  gradient: hasText ? _primaryGradient : const LinearGradient(
-                    colors: [Color(0xFFD1D5DB), Color(0xFFD1D5DB)],
-                  ),
+                  gradient: hasText ? _primaryGradient : null,
+                  color: hasText ? null : _sendButtonDisabled,
                   shape: BoxShape.circle,
                   boxShadow: hasText
                       ? [
