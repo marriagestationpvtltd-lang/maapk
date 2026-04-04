@@ -34,7 +34,8 @@ class AdminChatScreen extends StatefulWidget {
   State<AdminChatScreen> createState() => _AdminChatScreenState();
 }
 
-class _AdminChatScreenState extends State<AdminChatScreen> {
+class _AdminChatScreenState extends State<AdminChatScreen>
+    with WidgetsBindingObserver {
   static const String _adminUserId = '1';
   static const String _adminUserName = 'Admin';
 
@@ -101,6 +102,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserImage();
     _scrollController.addListener(_onScroll);
     _startAdminStatusListener();
@@ -164,6 +166,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _msgSubscription?.cancel();
     _adminStatusSubscription?.cancel();
     _scrollController.removeListener(_onScroll);
@@ -172,6 +175,13 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     _audioPlayer.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startAdminStatusListener();
+    }
   }
 
   void _startAdminStatusListener() {

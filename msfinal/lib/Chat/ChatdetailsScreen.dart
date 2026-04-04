@@ -118,6 +118,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Timer? _typingDebounce;
   bool _isReceiverTyping = false;
   StreamSubscription? _typingSubscription;
+
+  // Receiver online status
+  bool _isOtherUserOnline = false;
+  StreamSubscription<DocumentSnapshot>? _otherUserStatusSub;
   StreamSubscription? _audioPlayerStateSubscription;
   StreamSubscription? _audioPlayerPositionSubscription;
   StreamSubscription? _audioPlayerDurationSubscription;
@@ -212,6 +216,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     // Start listening to receiver's typing status
     _listenToTypingStatus();
+
+    // Start listening to receiver's online status
+    _startReceiverStatusListener();
   }
 
   void _onScroll() {
@@ -295,8 +302,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     });
   }
 
-  /// Called whenever the input field text changes.  Writes a server-timestamp
-  /// to `chatRooms/{id}.typing.{myUserId}` and clears it after 3 s of idle.
+  /// Listen to the receiver's online status in Firestore `users/{receiverId}`.
+  void _startReceiverStatusListener() {
+    _otherUserStatusSub?.cancel();
+    _otherUserStatusSub = _firestore
+        .collection('users')
+        .doc(widget.receiverId)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      bool online = false;
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final bool isOnline = data['isOnline'] == true;
+        final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+        final DateTime? lastSeen = lastSeenTs?.toDate();
+        final bool recentlySeen = lastSeen != null &&
+            DateTime.now().difference(lastSeen).inMinutes < 5;
+        online = isOnline || recentlySeen;
+      }
+      if (_isOtherUserOnline != online) {
+        setState(() => _isOtherUserOnline = online);
+      }
+    });
+  }
+
+
   void _onTypingChanged() {
     _typingDebounce?.cancel();
     _firestore.collection('chatRooms').doc(widget.chatRoomId).set(
@@ -356,6 +387,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _swipeAnimationController?.dispose();
     _typingDebounce?.cancel();
     _typingSubscription?.cancel();
+    _otherUserStatusSub?.cancel();
     _callHistorySubscription?.cancel();
     _clearTyping(); // Remove our typing entry on exit
     super.dispose();
@@ -2518,7 +2550,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         ),
                       ],
                     )
-                  else
+                  else if (_isOtherUserOnline)
                     const Text(
                       "online",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
