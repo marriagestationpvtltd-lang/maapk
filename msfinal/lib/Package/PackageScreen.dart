@@ -382,7 +382,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SizedBox(
-        height: 480,
+        height: 470,
         child: PageView.builder(
           controller: _pageController,
           itemCount: packages.length,
@@ -702,10 +702,12 @@ class _PackagePlanCard extends StatelessWidget {
                   package.name,
                   style: const TextStyle(
                     color: AppColors.white,
-                    fontSize: 26,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.3,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 // Duration badge
@@ -720,9 +722,11 @@ class _PackagePlanCard extends StatelessWidget {
                     package.duration,
                     style: TextStyle(
                       color: config.accentColor,
-                      fontSize: 13,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -730,13 +734,17 @@ class _PackagePlanCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      package.priceString,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+                    Flexible(
+                      child: Text(
+                        package.priceString,
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -754,26 +762,26 @@ class _PackagePlanCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Divider(color: AppColors.white.withOpacity(0.2), height: 1),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 // Description
                 if (package.description.isNotEmpty)
                   Text(
                     package.description,
                     style: TextStyle(
                       color: AppColors.white.withOpacity(0.75),
-                      fontSize: 13,
-                      height: 1.5,
+                      fontSize: 12.5,
+                      height: 1.4,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 // Features
                 _featureRow(config.accentColor, 'Unlimited Proposals'),
                 _featureRow(config.accentColor, 'Unlimited Chats'),
                 _featureRow(config.accentColor, 'Priority Support'),
                 _featureRow(config.accentColor, package.duration),
-                const Spacer(),
+                const SizedBox(height: 8),
                 // Subscribe button
                 SizedBox(
                   width: double.infinity,
@@ -784,7 +792,7 @@ class _PackagePlanCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       elevation: 0,
                     ),
                     onPressed: () {
@@ -804,7 +812,7 @@ class _PackagePlanCard extends StatelessWidget {
                       'Subscribe Now',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 15,
                         color: config.gradient.first,
                       ),
                     ),
@@ -820,18 +828,19 @@ class _PackagePlanCard extends StatelessWidget {
 
   Widget _featureRow(Color accentColor, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 7),
       child: Row(
         children: [
-          Icon(Icons.check_circle_rounded, color: accentColor, size: 18),
-          const SizedBox(width: 10),
+          Icon(Icons.check_circle_rounded, color: accentColor, size: 17),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 color: AppColors.white,
-                fontSize: 13,
+                fontSize: 12.5,
               ),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
