@@ -576,6 +576,33 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     }).length;
   }
 
+  String _formatDisplayName(String fullName, String age) {
+    final trimmedName = fullName.trim();
+    if (trimmedName.isEmpty && age.isEmpty) return 'Unknown User';
+    if (trimmedName.isEmpty) return 'Unknown User, $age';
+    if (age.isEmpty) return trimmedName;
+    return '$trimmedName, $age';
+  }
+
+  String _photoRequestHighlightLabel(String photoRequestStatus) {
+    switch (photoRequestStatus) {
+      case 'accepted':
+        return 'Photo request accepted';
+      case 'pending':
+        return 'Photo request pending';
+      default:
+        return 'Ready to connect';
+    }
+  }
+
+  TextStyle _badgeTextStyle(bool darkText) {
+    final baseStyle = darkText ? AppTextStyles.bodySmall : AppTextStyles.whiteBody;
+    return baseStyle.copyWith(
+      color: darkText ? AppColors.textPrimary : Colors.white,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
   ({String label, Color color, IconData icon}) _documentStatusStyle() {
     switch (docstatus.toLowerCase()) {
       case 'approved':
@@ -981,6 +1008,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
         : _defaultProfileImage;
     final age = person['age']?.toString() ?? '';
     final photoRequestStatus = _getPhotoRequestStatus(person);
+    final displayName = _formatDisplayName(fullName, age);
 
     // FIXED: Use 'userid' instead of 'id'
     final receiverIdStr = person['userid']?.toString() ?? '0';
@@ -1153,11 +1181,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    age.isNotEmpty
-                                        ? '${fullName.isNotEmpty ? fullName : 'Unknown User'}, $age'
-                                        : fullName.isNotEmpty
-                                            ? fullName
-                                            : 'Unknown User',
+                                    displayName,
                                     style: AppTextStyles.whiteHeading.copyWith(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w700,
@@ -1244,11 +1268,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
                     ),
                     _buildInfoChip(
                       icon: Icons.send_rounded,
-                      label: photoRequestStatus == 'accepted'
-                          ? 'Photo request accepted'
-                          : photoRequestStatus == 'pending'
-                              ? 'Photo request pending'
-                              : 'Ready to connect',
+                      label: _photoRequestHighlightLabel(photoRequestStatus),
                       color: const Color(0xFFF4F2FF),
                       textColor: const Color(0xFF6C4CF1),
                     ),
@@ -1320,11 +1340,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: (darkText ? AppTextStyles.bodySmall : AppTextStyles.whiteBody)
-                  .copyWith(
-                color: darkText ? AppColors.textPrimary : Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+              style: _badgeTextStyle(darkText),
             ),
           ),
         ],
