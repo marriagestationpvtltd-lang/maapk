@@ -854,7 +854,7 @@ String usertye = '';
       shadowColor: Colors.transparent,
       scrolledUnderElevation: 0,
       titleSpacing: 16,
-      systemOverlayStyle: setStatusBar(AppColors.white, Brightness.dark),
+      systemOverlayStyle: setStatusBar(Colors.transparent, Brightness.dark),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(

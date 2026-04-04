@@ -767,7 +767,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
           pinned: true,
           snap: true,
           expandedHeight: 180,
-          systemOverlayStyle: setStatusBar(const Color(0xFFEA4935), Brightness.light),
+          systemOverlayStyle: setStatusBar(Colors.transparent, Brightness.light),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               decoration: BoxDecoration(
