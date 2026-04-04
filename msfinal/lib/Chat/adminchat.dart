@@ -9,8 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
+import '../Calling/call_history_model.dart';
+import '../Calling/call_history_service.dart';
 import '../otherenew/othernew.dart';
 
 class AdminChatScreen extends StatefulWidget {
@@ -56,6 +59,25 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   bool _profileCardSent = false; // Track if profile card was sent
   String _currentUserImage = ''; // Store current user image
 
+  static const int _messagePageSize = 30;
+
+  // Pagination & cache
+  List<DocumentSnapshot> _cachedMessages = [];
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+  DocumentSnapshot? _lastDocument;
+  StreamSubscription<QuerySnapshot>? _msgSubscription;
+  bool _streamLoading = true;
+  bool _streamHasError = false;
+
+  // Swipe-to-reply offsets (keyed by message ID)
+  final Map<String, double> _swipeOffsets = {};
+
+  // Call history
+  List<CallHistory> _callHistory = [];
+  bool _showCallHistory = false;
+  bool _callHistoryLoaded = false;
+
 // Updated color scheme with gradients
   final LinearGradient _primaryGradient = const LinearGradient(
     colors: [Color(0xFF6B46C1), Color(0xFF9F7AEA)],
@@ -76,7 +98,41 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   void initState() {
     super.initState();
     _loadUserImage();
-    // Initial scroll and keyboard focus will be handled after messages load
+    _scrollController.addListener(_onScroll);
+    _msgSubscription = _messagesStream().listen(
+      (snapshot) {
+        if (!mounted) return;
+        final streamDocs = snapshot.docs.reversed.toList(); // chronological
+        final streamDocIds = streamDocs.map((d) => d.id).toSet();
+        final paginatedDocs =
+            _cachedMessages.where((d) => !streamDocIds.contains(d.id)).toList();
+        final newCache = [...paginatedDocs, ...streamDocs];
+        final firstLoad = _isFirstLoad;
+        setState(() {
+          _cachedMessages = newCache;
+          _streamLoading = false;
+          _hasMoreMessages = snapshot.docs.length >= _messagePageSize;
+          if (_lastDocument == null && snapshot.docs.isNotEmpty) {
+            _lastDocument = snapshot.docs.last; // oldest (desc query → last)
+          }
+          if (firstLoad && newCache.isNotEmpty) {
+            _isFirstLoad = false;
+          }
+        });
+        if (firstLoad && newCache.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (mounted) _messageFocusNode.requestFocus();
+            });
+          });
+        }
+      },
+      onError: (_) {
+        if (mounted) setState(() { _streamHasError = true; _streamLoading = false; });
+      },
+    );
+    // Call history is loaded lazily when the user taps the call history header
 
 // Automatically send profile card if provided (optional)
     if (widget.initialProfileData != null && !_profileCardSent) {
@@ -103,6 +159,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
   @override
   void dispose() {
+    _msgSubscription?.cancel();
+    _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _messageFocusNode.dispose();
     _audioPlayer.dispose();
@@ -114,7 +172,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     if (_scrollController.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollController.animateTo(
-          0,
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -128,8 +186,94 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         .collection('adminchat')
         .where('senderid', whereIn: [widget.senderID, _adminUserId])
         .where('receiverid', whereIn: [widget.senderID, _adminUserId])
-        .orderBy('timestamp', descending: false)
+        .orderBy('timestamp', descending: true)
+        .limit(_messagePageSize)
         .snapshots();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels <=
+        _scrollController.position.minScrollExtent + 200) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('adminchat')
+          .where('senderid', whereIn: [widget.senderID, _adminUserId])
+          .where('receiverid', whereIn: [widget.senderID, _adminUserId])
+          .orderBy('timestamp', descending: true)
+          .startAfterDocument(_lastDocument!)
+          .limit(_messagePageSize)
+          .get();
+
+      if (snap.docs.isEmpty) {
+        setState(() { _isLoadingMore = false; _hasMoreMessages = false; });
+        return;
+      }
+
+      final olderDocs = snap.docs.reversed.toList(); // chronological
+      final prevOffset = _scrollController.hasClients
+          ? _scrollController.position.pixels
+          : 0.0;
+
+      setState(() {
+        final existingIds = _cachedMessages.map((d) => d.id).toSet();
+        final newDocs = olderDocs.where((d) => !existingIds.contains(d.id)).toList();
+        _cachedMessages = [...newDocs, ..._cachedMessages];
+        _lastDocument = snap.docs.last;
+        _hasMoreMessages = snap.docs.length >= _messagePageSize;
+        _isLoadingMore = false;
+      });
+
+      // Restore scroll position so newly inserted older messages don't cause a visual jump.
+      // We jump to the previous pixel offset so the user stays at the same apparent position.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent >= prevOffset) {
+          _scrollController.jumpTo(prevOffset);
+        }
+      });
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
+  }
+
+  Future<void> _loadCallHistory() async {
+    try {
+      final all = await CallHistoryService.getCallHistoryPaginated(
+          userId: widget.senderID, limit: 50);
+      final filtered = all
+          .where((c) =>
+              (c.callerId == widget.senderID && c.recipientId == _adminUserId) ||
+              (c.callerId == _adminUserId && c.recipientId == widget.senderID))
+          .toList();
+      if (mounted) setState(() {
+        _callHistory = filtered;
+        _callHistoryLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _callHistoryLoaded = true);
+    }
+  }
+
+  String _formatDateForGrouping(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final d = DateTime(dt.year, dt.month, dt.day);
+    if (d == today) return 'Today';
+    if (d == yesterday) return 'Yesterday';
+    return DateFormat('MMM d, yyyy').format(dt);
+  }
+
+  String _formatCallDateTime(DateTime dt) {
+    return DateFormat('MMM d, h:mm a').format(dt);
   }
 
 // Method to send profile card
@@ -342,7 +486,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     }
   }
 
-// FIXED: Updated message builder with correct sender logic
+// FIXED: Updated message builder with swipe-to-reply
   Widget _buildMessageItem(DocumentSnapshot msg) {
     var data = msg.data() as Map<String, dynamic>;
     bool isMe = data['senderid'] == widget.senderID;
@@ -356,17 +500,58 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     String senderName =
         isFromAdmin ? "Admin Support" : (isMe ? "You" : widget.userName);
 
-    return GestureDetector(
-      onDoubleTap: () => _toggleLike(msgID, data['liked'] ?? false),
-      onLongPress: () => _setReplyTo(msgID, data),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: Row(
-          mainAxisAlignment:
-              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
+    double _swipeOffset = _swipeOffsets[msgID] ?? 0.0;
+
+    return StatefulBuilder(
+      builder: (context, setItemState) {
+        _swipeOffset = _swipeOffsets[msgID] ?? 0.0;
+        return GestureDetector(
+          onDoubleTap: () => _toggleLike(msgID, data['liked'] ?? false),
+          onLongPress: () => _setReplyTo(msgID, data),
+          onHorizontalDragUpdate: (details) {
+            if (details.delta.dx > 0) {
+              setItemState(() {
+                final newOffset = (_swipeOffset + details.delta.dx).clamp(0.0, 70.0);
+                _swipeOffsets[msgID] = newOffset;
+                _swipeOffset = newOffset;
+              });
+            }
+          },
+          onHorizontalDragEnd: (details) {
+            if (_swipeOffset > 50) {
+              _setReplyTo(msgID, data);
+            }
+            setItemState(() {
+              _swipeOffsets[msgID] = 0.0;
+              _swipeOffset = 0.0;
+            });
+          },
+          child: Stack(
+            children: [
+              if (_swipeOffset > 10)
+                Positioned(
+                  left: isMe ? null : 16,
+                  right: isMe ? 16 : null,
+                  top: 0, bottom: 0,
+                  child: Center(
+                    child: AnimatedOpacity(
+                      opacity: (_swipeOffset / 50).clamp(0.0, 1.0),
+                      duration: const Duration(milliseconds: 100),
+                      child: Icon(Icons.reply,
+                          color: _primaryGradient.colors[0], size: 24),
+                    ),
+                  ),
+                ),
+              Transform.translate(
+                offset: Offset(isMe ? -_swipeOffset : _swipeOffset, 0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment:
+                        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
             if (!isMe)
               CircleAvatar(
                 backgroundColor: Colors.transparent,
@@ -519,98 +704,301 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               ),
           ],
         ),
+              ),
+            ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _dateSeparator(String date) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: _lightTextColor.withOpacity(0.3))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              date,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: _lightTextColor,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(child: Divider(color: _lightTextColor.withOpacity(0.3))),
+        ],
       ),
     );
   }
 
-// FIXED: Updated reply preview
-  Widget _buildReplyPreview(String replyToID, bool isMe) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('adminchat')
-          .doc(replyToID)
-          .get(),
-      builder: (context, snap) {
-        if (snap.hasData && snap.data!.exists) {
-          var replyData = snap.data!.data() as Map<String, dynamic>;
-          bool isReplyFromMe = replyData['senderid'] == widget.senderID;
-          bool isReplyFromAdmin = replyData['senderid'] == _adminUserId;
-          String senderName = isReplyFromAdmin
-              ? "Admin"
-              : (isReplyFromMe ? "You" : widget.userName);
+  List<Widget> _buildMessagesFromCache() {
+    final items = <Widget>[];
 
-          String content = replyData['type'] == 'text'
-              ? replyData['message']
-              : '${replyData['type']} message';
-          double textWidth = content.length * 8.0;
-          double minWidth = 100.0;
-          double maxWidth = MediaQuery.of(context).size.width * 0.6;
-          double calculatedWidth = textWidth.clamp(minWidth, maxWidth);
+    // Always show call history section at the top (loads lazily on tap)
+    items.add(_buildCallHistorySection());
 
-          return ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: minWidth,
-              maxWidth: maxWidth,
-            ),
-            child: IntrinsicWidth(
-              child: Container(
-                width: calculatedWidth,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isMe
-                      ? Colors.white.withOpacity(0.2)
-                      : _primaryGradient.colors[0].withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isMe
-                        ? Colors.white.withOpacity(0.4)
-                        : _primaryGradient.colors[0].withOpacity(0.3),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.reply,
-                          size: 16,
-                          color: isMe
-                              ? Colors.white70
-                              : _primaryGradient.colors[0],
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          senderName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isMe
-                                ? Colors.white70
-                                : _primaryGradient.colors[0],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      content,
+    String? lastDateLabel;
+    for (final doc in _cachedMessages) {
+      final data = doc.data() as Map<String, dynamic>;
+      final ts = data['timestamp'];
+      if (ts != null) {
+        final dt = (ts as Timestamp).toDate();
+        final label = _formatDateForGrouping(dt);
+        if (label != lastDateLabel) {
+          items.add(_dateSeparator(label));
+          lastDateLabel = label;
+        }
+      }
+      items.add(_buildMessageItem(doc));
+    }
+    return items;
+  }
+
+  Widget _buildCallHistorySection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              if (!_callHistoryLoaded) {
+                _loadCallHistory();
+              }
+              setState(() => _showCallHistory = !_showCallHistory);
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.history, color: _primaryGradient.colors[0], size: 20),
+                  const SizedBox(width: 10),
+                  Text('Call History (${_callHistory.length})',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: isMe ? Colors.white : _textColor,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                          fontWeight: FontWeight.w600,
+                          color: _textColor,
+                          fontSize: 14)),
+                  const Spacer(),
+                  Icon(
+                    _showCallHistory
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: _lightTextColor,
+                  ),
+                ],
               ),
             ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
+          ),
+          if (_showCallHistory)
+            _callHistoryLoaded
+                ? (_callHistory.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('No call history',
+                            style: TextStyle(
+                                color: _lightTextColor, fontSize: 13)),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _callHistory.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 1, color: Colors.grey.shade100),
+                        itemBuilder: (context, i) =>
+                            _buildCallHistoryItem(_callHistory[i]),
+                      ))
+                : const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCallHistoryItem(CallHistory call) {
+    final isVideo = call.callType == CallType.video;
+    final outgoing = call.callerId == widget.senderID;
+    final missed = call.status == CallStatus.missed ||
+        call.status == CallStatus.declined ||
+        call.status == CallStatus.cancelled;
+
+    Color iconColor;
+    IconData directionIcon;
+    if (missed) {
+      iconColor = Colors.red;
+      directionIcon = isVideo ? Icons.videocam_off : Icons.phone_missed;
+    } else if (outgoing) {
+      iconColor = Colors.blue;
+      directionIcon = isVideo ? Icons.videocam : Icons.call_made;
+    } else {
+      iconColor = Colors.green;
+      directionIcon = isVideo ? Icons.videocam : Icons.call_received;
+    }
+
+    String durationStr = '';
+    if (!missed && call.duration > 0) {
+      final m = call.duration ~/ 60;
+      final s = call.duration % 60;
+      durationStr = '${m}m ${s}s';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(directionIcon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  missed
+                      ? 'Missed ${isVideo ? 'video' : 'voice'} call'
+                      : outgoing
+                          ? 'Outgoing ${isVideo ? 'video' : 'voice'} call'
+                          : 'Incoming ${isVideo ? 'video' : 'voice'} call',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: _textColor),
+                ),
+                if (durationStr.isNotEmpty)
+                  Text(durationStr,
+                      style: TextStyle(fontSize: 11, color: _lightTextColor)),
+              ],
+            ),
+          ),
+          Text(
+            _formatCallDateTime(call.startTime),
+            style: TextStyle(fontSize: 11, color: _lightTextColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+// FIXED: Reply preview uses cache (no async fetch)
+  Widget _buildReplyPreview(String replyToID, bool isMe) {
+    // Look up from cache first
+    DocumentSnapshot? cached;
+    try {
+      cached = _cachedMessages.firstWhere((d) => d.id == replyToID);
+    } catch (_) {}
+
+    Map<String, dynamic>? replyData;
+    if (cached != null) {
+      replyData = cached.data() as Map<String, dynamic>?;
+    }
+
+    if (replyData == null) {
+      // Minimal placeholder – no network call
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isMe
+              ? Colors.white.withOpacity(0.2)
+              : _primaryGradient.colors[0].withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.reply, size: 14,
+                color: isMe ? Colors.white70 : _primaryGradient.colors[0]),
+            const SizedBox(width: 6),
+            Text('Replied message',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: isMe ? Colors.white70 : _lightTextColor)),
+          ],
+        ),
+      );
+    }
+
+    bool isReplyFromMe = replyData['senderid'] == widget.senderID;
+    bool isReplyFromAdmin = replyData['senderid'] == _adminUserId;
+    String senderName = isReplyFromAdmin
+        ? "Admin"
+        : (isReplyFromMe ? "You" : widget.userName);
+    String content = replyData['type'] == 'text'
+        ? (replyData['message'] ?? '')
+        : '${replyData['type']} message';
+
+    return Container(
+      constraints: BoxConstraints(
+        minWidth: 100,
+        maxWidth: MediaQuery.of(context).size.width * 0.6,
+      ),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isMe
+            ? Colors.white.withOpacity(0.2)
+            : _primaryGradient.colors[0].withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isMe
+              ? Colors.white.withOpacity(0.4)
+              : _primaryGradient.colors[0].withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.reply, size: 16,
+                  color: isMe ? Colors.white70 : _primaryGradient.colors[0]),
+              const SizedBox(width: 6),
+              Text(senderName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isMe ? Colors.white70 : _primaryGradient.colors[0],
+                  )),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(content,
+              style: TextStyle(
+                fontSize: 13,
+                color: isMe ? Colors.white : _textColor,
+                fontStyle: FontStyle.italic,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+        ],
+      ),
     );
   }
 
@@ -1179,7 +1567,44 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         ),
         elevation: 0,
         actions: [
-          // Call buttons removed as requested
+          IconButton(
+            icon: const Icon(Icons.phone, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CallScreen(
+                    currentUserId: widget.senderID,
+                    currentUserName: widget.userName,
+                    currentUserImage: _currentUserImage,
+                    otherUserId: _adminUserId,
+                    otherUserName: _adminUserName,
+                    otherUserImage: '',
+                    isOutgoingCall: true,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VideoCallScreen(
+                    currentUserId: widget.senderID,
+                    currentUserName: widget.userName,
+                    currentUserImage: _currentUserImage,
+                    otherUserId: _adminUserId,
+                    otherUserName: _adminUserName,
+                    otherUserImage: '',
+                    isOutgoingCall: true,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () {
@@ -1199,115 +1624,94 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         child: Column(
           children: [
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _messagesStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                        child: Text('Error: ${snapshot.error}',
-                            style: TextStyle(color: _textColor)));
-                  }
-
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      _isFirstLoad) {
-                    return Center(
-                      child: CircularProgressIndicator(color: _accentColor),
-                    );
-                  }
-
-                  bool hasNoMessages = !snapshot.hasData ||
-                      snapshot.data!.docs.isEmpty ||
-                      (snapshot.connectionState == ConnectionState.active &&
-                          snapshot.data!.docs.isEmpty);
-
-                  if (hasNoMessages &&
-                      _showSuggestedMessages &&
-                      !widget.isAdmin) {
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: _primaryGradient,
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.support_agent,
-                                      size: 72,
-                                      color: Colors.white.withOpacity(0.9)),
-                                  const SizedBox(height: 20),
-                                  Text('How can we help you?',
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 12),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 40),
-                                    child: Text(
-                                        'Start a conversation or choose from common questions below',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                            fontSize: 15,
-                                            color:
-                                                Colors.white.withOpacity(0.8))),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildSuggestedMessages(),
-                      ],
-                    );
-                  }
-
-                  if (_isFirstLoad) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      setState(() {
-                        _isFirstLoad = false;
-                      });
-                      // Scroll to bottom after messages are loaded
-                      _scrollToBottom();
-                      // Auto-focus keyboard after scroll completes
-                      Future.delayed(const Duration(milliseconds: 400), () {
-                        if (mounted) {
-                          _messageFocusNode.requestFocus();
-                        }
-                      });
-                    });
-                  }
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: _backgroundColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.only(top: 16, bottom: 12),
-                      itemCount:
-                          snapshot.hasData ? snapshot.data!.docs.length : 0,
-                      itemBuilder: (context, index) {
-                        var docs = snapshot.data!.docs;
-                        return _buildMessageItem(docs[docs.length - 1 - index]);
-                      },
-                    ),
-                  );
-                },
-              ),
+              child: _buildMessageList(),
             ),
             if (_replyToMessage != null) _buildReplyBar(),
             _buildInputBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    if (_streamHasError) {
+      return Center(
+          child: Text('Error loading messages',
+              style: TextStyle(color: _textColor)));
+    }
+
+    if (_streamLoading && _cachedMessages.isEmpty) {
+      return Center(child: CircularProgressIndicator(color: _accentColor));
+    }
+
+    if (_cachedMessages.isEmpty && _showSuggestedMessages && !widget.isAdmin) {
+      return Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(gradient: _primaryGradient),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.support_agent,
+                        size: 72,
+                        color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(height: 20),
+                    Text('How can we help you?',
+                        style: const TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                          'Start a conversation or choose from common questions below',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.white.withOpacity(0.8))),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _buildSuggestedMessages(),
+        ],
+      );
+    }
+
+    final messageWidgets = _buildMessagesFromCache();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _backgroundColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: ListView(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(top: 16, bottom: 12),
+        children: [
+          if (_isLoadingMore)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: _accentColor),
+                ),
+              ),
+            ),
+          ...messageWidgets,
+        ],
       ),
     );
   }
