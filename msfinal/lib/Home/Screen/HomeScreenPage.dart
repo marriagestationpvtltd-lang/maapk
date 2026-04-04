@@ -50,6 +50,11 @@ class CachedData {
   }
 }
 
+// Persistent cache keys for instant startup
+const String _kMatchedProfilesCacheKey = 'home_matched_profiles_cache';
+const String _kShortlistedCacheKey = 'home_shortlisted_cache';
+const String _kCountsCacheKey = 'home_counts_cache';
+
 class MatrimonyHomeScreen extends StatefulWidget {
   const MatrimonyHomeScreen({super.key});
 
@@ -100,13 +105,14 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   // Pull-to-refresh shimmer flag
   bool _isRefreshing = false;
 
+  // Silent background refresh flag (shown as thin progress bar at top)
+  bool _isSilentRefreshing = false;
 
   Future<void> _checkDocumentStatus() async {
     if (_isCheckingStatus) return;
 
     setState(() {
       _isCheckingStatus = true;
-      _isLoading = true;
     });
 
     try {
@@ -163,7 +169,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
           _isCheckingStatus = false;
         });
       }
@@ -222,7 +227,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
     try {
       setState(() {
-        _isLoading = true;
+        if (_matchedProfilesApi.isEmpty) _isLoading = true;
         _photoRequestsLoading = true;
         _errorMessage = '';
       });
@@ -262,6 +267,15 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             'raw': rawProfiles,
             'photo': photoProfiles,
           }, DateTime.now());
+
+          // Save to persistent cache for instant display on next launch
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_kMatchedProfilesCacheKey,
+                jsonEncode({'raw': rawProfiles}));
+          } catch (e) {
+            debugPrint('Error saving matched profiles to persistent cache: $e');
+          }
 
           if (!mounted) return;
           setState(() {
@@ -310,7 +324,9 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       final userId = userData['id']?.toString() ?? '';
       if (userId.isEmpty) return;
 
-      setState(() => _isLoadingShortlist = true);
+      setState(() {
+        if (_shortlistedProfiles.isEmpty) _isLoadingShortlist = true;
+      });
 
       final url = Uri.https('digitallami.com', '/Api2/likelist.php', {'user_id': userId});
       final response = await http.get(url);
@@ -322,6 +338,15 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
           // Cache the data
           _cache[cacheKey] = CachedData(profiles, DateTime.now());
+
+          // Save to persistent cache for instant display on next launch
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+                _kShortlistedCacheKey, jsonEncode(profiles));
+          } catch (e) {
+            debugPrint('Error saving shortlisted profiles to persistent cache: $e');
+          }
 
           if (!mounted) return;
           setState(() {
@@ -387,6 +412,14 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       };
 
       _cache[cacheKey] = CachedData(counts, DateTime.now());
+
+      // Save to persistent cache for instant display on next launch
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kCountsCacheKey, jsonEncode(counts));
+      } catch (e) {
+        debugPrint('Error saving counts to persistent cache: $e');
+      }
 
       if (!mounted) return;
       setState(() {
@@ -677,16 +710,118 @@ String usertye = '';
   @override
   void initState() {
     super.initState();
-    // Load only essential data on init
+    _loadPersistentCacheThenRefresh();
     loadMasterData();
-    fetchMatchedProfiles();
-    _fetchQuickActionCounts();
     _checkDocumentStatus();
-    _fetchShortlistedProfiles();
     _loadUnreadNotificationCount();
     OnlineStatusService().start();
-    // Removed auto-refresh timer for better performance
-    // User can manually refresh using pull-to-refresh
+  }
+
+  /// Loads cached data from SharedPreferences for instant display, then
+  /// silently refreshes from the network in the background.
+  Future<void> _loadPersistentCacheThenRefresh() async {
+    await _loadPersistentCache();
+    if (!mounted) return;
+    setState(() => _isSilentRefreshing = true);
+    try {
+      // Use eagerError: false so one failing call doesn't block the others
+      await Future.wait([
+        fetchMatchedProfiles(),
+        _fetchQuickActionCounts(),
+        _fetchShortlistedProfiles(),
+      ], eagerError: false);
+    } catch (e) {
+      debugPrint('Error during silent background refresh: $e');
+    } finally {
+      if (mounted) setState(() => _isSilentRefreshing = false);
+    }
+  }
+
+  /// Reads matched profiles, shortlisted profiles, and counts from
+  /// SharedPreferences and updates state immediately (no network call).
+  Future<void> _loadPersistentCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load matched profiles
+      final matchedJson = prefs.getString(_kMatchedProfilesCacheKey);
+      if (matchedJson != null) {
+        try {
+          final decoded = jsonDecode(matchedJson);
+          if (decoded is Map<String, dynamic>) {
+            final rawList = decoded['raw'];
+            final rawProfiles = rawList is List ? List<dynamic>.from(rawList) : <dynamic>[];
+            final photoProfiles = rawProfiles
+                .whereType<Map>()
+                .map((item) {
+                  try {
+                    return MatchedUser.fromJson(Map<String, dynamic>.from(item));
+                  } catch (_) {
+                    return null;
+                  }
+                })
+                .whereType<MatchedUser>()
+                .where((profile) {
+                  final status = profile.photoRequestStatus.toLowerCase();
+                  return status == 'accepted' || status == 'pending';
+                })
+                .toList()
+              ..sort((a, b) => _requestStatusPriority(a.photoRequestStatus)
+                  .compareTo(_requestStatusPriority(b.photoRequestStatus)));
+            if (mounted) {
+              setState(() {
+                _matchedProfilesApi = rawProfiles;
+                _photoRequestProfiles = photoProfiles;
+                _isLoading = false;
+                _photoRequestsLoading = false;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing matched profiles cache: $e');
+        }
+      }
+
+      // Load shortlisted profiles
+      final shortlistedJson = prefs.getString(_kShortlistedCacheKey);
+      if (shortlistedJson != null) {
+        try {
+          final decoded = jsonDecode(shortlistedJson);
+          if (decoded is List) {
+            final profiles = List<dynamic>.from(decoded);
+            if (mounted) {
+              setState(() {
+                _shortlistedProfiles = profiles;
+                _favoriteRequestCount = profiles.length;
+                _isLoadingShortlist = false;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing shortlisted profiles cache: $e');
+        }
+      }
+
+      // Load counts
+      final countsJson = prefs.getString(_kCountsCacheKey);
+      if (countsJson != null) {
+        try {
+          final decoded = jsonDecode(countsJson);
+          if (decoded is Map<String, dynamic>) {
+            if (mounted) {
+              setState(() {
+                _proposalRequestCount = (decoded['proposal'] as num?)?.toInt() ?? 0;
+                _messageRequestCount = (decoded['message'] as num?)?.toInt() ?? 0;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing counts cache: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading persistent cache: $e');
+    }
   }
 
   @override
@@ -703,7 +838,9 @@ String usertye = '';
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: _buildAppBar(),
-          body: RefreshIndicator(
+          body: Stack(
+            children: [
+              RefreshIndicator(
             color: AppColors.primary,
             onRefresh: _refreshData,
             child: ShimmerLoading(
@@ -839,6 +976,20 @@ String usertye = '';
               ),
             ),
           ),
+          ),
+              // Thin progress indicator at top during silent background refresh
+              if (_isSilentRefreshing)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.primary.withOpacity(0.12),
+                    minHeight: 2,
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -1384,7 +1535,7 @@ String usertye = '';
   }
 
   Widget _buildMatchedProfilesFromApi() {
-    if (_isLoading) {
+    if (_isLoading && _matchedProfilesApi.isEmpty) {
       return SizedBox(
         height: 260,
         child: Center(
@@ -1745,7 +1896,7 @@ String usertye = '';
   }
 
   Widget _buildShortlistedProfiles() {
-    if (_isLoadingShortlist) {
+    if (_isLoadingShortlist && _shortlistedProfiles.isEmpty) {
       return const SizedBox(
         height: 180,
         child: Center(
@@ -2206,7 +2357,7 @@ String usertye = '';
 
 
   Widget _buildOtherServices() {
-    if (_loading) {
+    if (_loading && _otherServices.isEmpty) {
       return const SizedBox(
         height: 200,
         child: Center(

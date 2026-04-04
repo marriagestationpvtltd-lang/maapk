@@ -304,8 +304,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _proceedWithNavigation() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-
     if (!mounted) return;
 
     await context.read<SignupModel>().loadUserData();
@@ -323,7 +321,6 @@ class _SplashScreenState extends State<SplashScreen> {
     // Decode stored signup response
     final userData = jsonDecode(userDataString);
     final userId = int.tryParse(userData["id"].toString());
-    final name = userData['firstName'];
 
     if (userId == null) {
       _goTo(const OnboardingScreen());
@@ -332,18 +329,40 @@ class _SplashScreenState extends State<SplashScreen> {
 
     _initFCM();
 
-    // HIT PAGENO API
+    // Use cached pageNo for instant navigation (skip API call on subsequent launches)
+    final cachedPageNo = prefs.getInt('cached_page_no');
+    if (cachedPageNo != null) {
+      if (!mounted) return;
+      _navigateToPage(cachedPageNo);
+      // Validate in background and re-navigate only if pageNo changed
+      PageService.getPageNo(userId).then((freshPageNo) {
+        if (freshPageNo != null) {
+          prefs.setInt('cached_page_no', freshPageNo);
+          if (freshPageNo != cachedPageNo && mounted) {
+            _navigateToPage(freshPageNo);
+          }
+        }
+      }).catchError((e) {
+        debugPrint('Background pageNo validation failed: $e');
+      });
+      return;
+    }
+
+    // No cached pageNo → call API (first launch or cache cleared after logout)
     final pageNo = await PageService.getPageNo(userId);
 
     if (!mounted) return;
 
     if (pageNo == null) {
-      // API failed → go home
       _goTo(const OnboardingScreen());
       return;
     }
 
-    // Navigate based on pageno value
+    await prefs.setInt('cached_page_no', pageNo);
+    _navigateToPage(pageNo);
+  }
+
+  void _navigateToPage(int pageNo) {
     switch (pageNo) {
       case 0:
         _goTo(const PersonalDetailsPage());
