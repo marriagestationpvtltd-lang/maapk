@@ -650,7 +650,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
                   color: Color(0xFF212121)),
             ),
             const SizedBox(height: 4),
-            const Text('Camera or Gallery',
+            const Text('Scan or Gallery',
                 style: TextStyle(fontSize: 13, color: Colors.grey)),
           ],
         ),
@@ -1630,32 +1630,15 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
                 },
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSourceOption(
-                      icon: Icons.camera_alt_rounded,
-                      label: 'Camera',
-                      subtitle: 'Take a new photo',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _takePhoto();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSourceOption(
-                      icon: Icons.photo_library_rounded,
-                      label: 'Gallery',
-                      subtitle: 'Choose existing',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _selectFromGallery();
-                      },
-                    ),
-                  ),
-                ],
+              // Gallery option
+              _buildSourceOption(
+                icon: Icons.photo_library_rounded,
+                label: 'Gallery',
+                subtitle: 'Choose existing',
+                onTap: () {
+                  Navigator.pop(context);
+                  _selectFromGallery();
+                },
               ),
               const SizedBox(height: 8),
             ],
@@ -1753,26 +1736,6 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     }
   }
 
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 90,
-      );
-      if (image != null) {
-        setState(() {
-          _selectedImage = image;
-          _scannedImagePath = null; // Clear any previously scanned image
-        });
-        // Auto-scan after image selection
-        await _scanDocumentId();
-      }
-    } catch (e) {
-      _showError('Failed to take photo: $e');
-    }
-  }
 
   Future<void> _selectFromGallery() async {
     try {
