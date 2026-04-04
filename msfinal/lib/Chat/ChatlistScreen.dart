@@ -728,7 +728,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           ),
         ),
         SizedBox(
-          height: 130,
+          height: 148,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -752,108 +752,114 @@ class _ChatListScreenState extends State<ChatListScreen>
     final displayName =
         '${req.firstName ?? ''} ${req.lastName ?? ''}'.trim();
 
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: const [
-          BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(imageUrl),
-                onBackgroundImageError: (_, __) {},
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName.isEmpty ? 'User' : displayName,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      req.city ?? '',
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.black54),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth =
+            (MediaQuery.sizeOf(context).width * 0.55).clamp(180.0, 240.0);
+        return Container(
+          width: cardWidth,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: const [
+              BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2)),
             ],
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Wants to chat with you',
-            style: TextStyle(fontSize: 11, color: Colors.black54),
-          ),
-          const Spacer(),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _handleAcceptChatRequest(req),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF90E18),
-                      borderRadius: BorderRadius.circular(8),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundImage: NetworkImage(imageUrl),
+                    onBackgroundImageError: (_, __) {},
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName.isEmpty ? 'User' : displayName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          req.city ?? '',
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.black54),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    child: const Center(
-                      child: Text(
-                        'Accept',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Wants to chat with you',
+                style: TextStyle(fontSize: 11, color: Colors.black54),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _handleAcceptChatRequest(req),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF90E18),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Accept',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _handleRejectChatRequest(req),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'Reject',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _handleRejectChatRequest(req),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Reject',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
