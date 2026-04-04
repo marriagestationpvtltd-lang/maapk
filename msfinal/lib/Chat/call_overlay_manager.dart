@@ -512,6 +512,8 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
     }
   }
 
+  static const int _kIncomingCallExpiryMs = 60000; // 60 seconds
+
   /// Reads any incoming-call data that was saved by the background isolate
   /// and navigates to the appropriate call screen.
   Future<void> _checkPendingIncomingCall() async {
@@ -525,7 +527,7 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
       final now = DateTime.now().millisecondsSinceEpoch;
 
       // Discard stale entries (> 60 s – after which the call would time out)
-      if (receivedAt == null || now - receivedAt > 60000) {
+      if (receivedAt == null || now - receivedAt > _kIncomingCallExpiryMs) {
         await prefs.remove('pending_incoming_call');
         return;
       }

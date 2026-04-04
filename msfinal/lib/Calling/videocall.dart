@@ -220,8 +220,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
 
   /// Reads any call-termination event that was saved by the background isolate
   /// and processes it to close the video call screen.
+  static const int _kCallEventExpiryMs = 300000; // 5 minutes
+
+  /// Reads any call-termination event that was saved by the background isolate
+  /// and processes it to close the video call screen.
   Future<void> _checkPendingCallEvent() async {
-    if (_callActive || _ending) return;
+    if (_ending) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final eventStr = prefs.getString('pending_call_event');
@@ -231,7 +235,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       final receivedAt = event['_receivedAt'] as int?;
       final now = DateTime.now().millisecondsSinceEpoch;
 
-      if (receivedAt == null || now - receivedAt > 300000) {
+      // Always remove stale / expired events to prevent re-processing
+      if (receivedAt == null || now - receivedAt > _kCallEventExpiryMs) {
         await prefs.remove('pending_call_event');
         return;
       }
@@ -243,7 +248,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
         return;
       }
 
+      // Remove the event before acting on it
       await prefs.remove('pending_call_event');
+
+      // Don't process rejection if call is already connected
+      if (_callActive) return;
 
       if ((eventType == 'call_response' || eventType == 'video_call_response') &&
           event['accepted'] == 'false') {
