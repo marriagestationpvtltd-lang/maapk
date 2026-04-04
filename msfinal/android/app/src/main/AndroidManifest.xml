@@ -46,7 +46,8 @@
         android:turnScreenOn="true"
         android:showWhenLocked="true"
         android:theme="@style/LaunchTheme"
-        android:launchMode="singleTop">
+        android:launchMode="singleTop"
+        tools:replace="android:theme">
 
         <!-- Main Activity -->
         <activity
