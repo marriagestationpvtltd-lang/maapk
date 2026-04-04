@@ -1808,27 +1808,64 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     fontSize: 20)),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 5),
-                  decoration: BoxDecoration(
-                    color: _adminOnline
-                        ? const Color(0xFF22C55E)
-                        : Colors.grey.shade400,
-                    shape: BoxShape.circle,
+            if (_adminOnline)
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-                Text(
-                  _adminOnline ? 'Online' : 'Offline',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.9)),
-                ),
-              ],
-            ),
+                  Text(
+                    'Online',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.9)),
+                  ),
+                ],
+              )
+            else if (!widget.isAdmin)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Replies within 10 minutes',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.9)),
+                  ),
+                  Text(
+                    'Office hours: Sat–Fri, 10:00 AM – 5:00 PM',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.75)),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Text(
+                    'Offline',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.9)),
+                  ),
+                ],
+              ),
           ],
         ),
         elevation: 0,
