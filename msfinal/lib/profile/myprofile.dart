@@ -1313,12 +1313,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     'na',
   ];
 
-  String _normalizeMaritalStatus(dynamic maritalStatus) {
+  String _normalizeMaritalStatusValue(dynamic maritalStatus) {
     return maritalStatus?.toString().trim().toLowerCase() ?? '';
   }
 
   bool _requiresMaritalStatusDocument(dynamic maritalStatus) {
-    final normalizedStatus = _normalizeMaritalStatus(maritalStatus);
+    final normalizedStatus = _normalizeMaritalStatusValue(maritalStatus);
     if (normalizedStatus.isEmpty) {
       return false;
     }
