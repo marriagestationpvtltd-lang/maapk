@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart'; // Add this import
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
 import '../pushnotification/pushservice.dart';
@@ -87,6 +88,7 @@ class _CallScreenState extends State<CallScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     _ringtonePlayer = AudioPlayer();
     _setupAudioPlayer();
     _listenForCallResponse();
@@ -665,6 +667,7 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _timeoutTimer?.cancel();
     _callTimer?.cancel();
     _responseSubscription?.cancel();

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'tokengenerator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../Chat/call_overlay_manager.dart';
@@ -50,6 +51,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     _callStartTime = DateTime.now().millisecondsSinceEpoch;
     _initEngine();
     _startCallTimer();
@@ -189,6 +191,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _callTimer?.cancel();
     _connectivitySubscription?.cancel();
     // Release Agora engine if not already released by _endCall

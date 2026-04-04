@@ -6,6 +6,7 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../Chat/ChatlistScreen.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -57,6 +58,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     _parseData();
     _localUid = Random().nextInt(999999);
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
@@ -518,6 +520,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _ringTimer?.cancel();
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
