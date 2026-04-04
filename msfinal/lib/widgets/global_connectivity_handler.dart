@@ -110,6 +110,16 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
     }
 
     final shouldRefresh = !_wasConnected;
+
+    // Only show the "Back online" banner if we were previously offline.
+    // On initial app launch _wasConnected is true so we skip the banner.
+    if (!shouldRefresh) {
+      setState(() {
+        _wasConnected = true;
+      });
+      return;
+    }
+
     _hideBannerTimer?.cancel();
 
     setState(() {
