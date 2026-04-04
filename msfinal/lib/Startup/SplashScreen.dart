@@ -619,8 +619,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   },
                   child: const Image(
                     image: AssetImage('assets/images/Mslogo.gif'),
-                    height: 160,
-                    width: 160,
+                    height: 220,
+                    width: 220,
                     fit: BoxFit.contain,
                   ),
                 ),
