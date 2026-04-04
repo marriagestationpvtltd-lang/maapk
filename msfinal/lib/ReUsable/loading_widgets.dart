@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
+import '../constant/app_text_styles.dart';
 
 // Loading Widget
 class LoadingWidget extends StatelessWidget {
@@ -32,8 +33,7 @@ class LoadingWidget extends StatelessWidget {
             AppSpacing.verticalMD,
             Text(
               message!,
-              style: const TextStyle(
-                fontSize: 14,
+              style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
@@ -102,19 +102,14 @@ class EmptyStateWidget extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+              style: AppTextStyles.heading3,
             ),
             if (subtitle != null) ...[
               AppSpacing.verticalSM,
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -126,8 +121,8 @@ class EmptyStateWidget extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
+                    horizontal: AppDimensions.spacingXL,
+                    vertical: AppDimensions.spacingMD,
                   ),
                 ),
                 child: Text(buttonText!),
@@ -174,19 +169,14 @@ class ErrorStateWidget extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+              style: AppTextStyles.heading3,
             ),
             if (subtitle != null) ...[
               AppSpacing.verticalSM,
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -202,8 +192,7 @@ class ErrorStateWidget extends StatelessWidget {
                 child: Text(
                   errorMessage!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: AppTextStyles.caption.copyWith(
                     color: AppColors.error,
                     fontFamily: 'monospace',
                   ),
@@ -219,8 +208,8 @@ class ErrorStateWidget extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
+                    horizontal: AppDimensions.spacingXL,
+                    vertical: AppDimensions.spacingMD,
                   ),
                 ),
               ),
@@ -270,9 +259,7 @@ class SuccessMessageWidget extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 14,
+              style: AppTextStyles.whiteBody.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -330,9 +317,7 @@ class WarningMessageWidget extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 14,
+              style: AppTextStyles.whiteBody.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),

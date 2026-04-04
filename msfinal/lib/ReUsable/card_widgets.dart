@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
+import '../constant/app_text_styles.dart';
 
 // Base Card Widget
 class AppCard extends StatelessWidget {
@@ -174,11 +175,7 @@ class ProfileCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         age != null ? '$name, $age' : name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: AppTextStyles.heading4,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -191,17 +188,14 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.work_outline,
-                        size: 14,
+                        size: AppDimensions.iconSizeXS,
                         color: AppColors.textSecondary,
                       ),
                       AppSpacing.horizontalXS,
                       Expanded(
                         child: Text(
                           profession!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: AppTextStyles.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -215,17 +209,14 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.location_on_outlined,
-                        size: 14,
+                        size: AppDimensions.iconSizeXS,
                         color: AppColors.textSecondary,
                       ),
                       AppSpacing.horizontalXS,
                       Expanded(
                         child: Text(
                           location!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: AppTextStyles.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -239,16 +230,13 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.height,
-                        size: 14,
+                        size: AppDimensions.iconSizeXS,
                         color: AppColors.textSecondary,
                       ),
                       AppSpacing.horizontalXS,
                       Text(
                         height!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTextStyles.bodySmall,
                       ),
                     ],
                   ),
@@ -262,10 +250,12 @@ class ProfileCard extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: onLike,
-                            icon: const Icon(Icons.favorite_border, size: 18),
+                            icon: const Icon(Icons.favorite_border, size: AppDimensions.iconSizeSM),
                             label: const Text('Like'),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppDimensions.spacingSM,
+                              ),
                             ),
                           ),
                         ),
@@ -275,10 +265,12 @@ class ProfileCard extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: onMessage,
-                            icon: const Icon(Icons.message, size: 18),
+                            icon: const Icon(Icons.message, size: AppDimensions.iconSizeSM),
                             label: const Text('Message'),
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppDimensions.spacingSM,
+                              ),
                             ),
                           ),
                         ),
@@ -309,20 +301,22 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spacingSM,
+        vertical: AppDimensions.spacingXS,
+      ),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMD,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.white),
-          const SizedBox(width: 4),
+          Icon(icon, size: AppDimensions.iconSizeXS, color: AppColors.white),
+          AppSpacing.horizontalXS,
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11,
+            style: AppTextStyles.caption.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.white,
             ),
@@ -357,15 +351,15 @@ class InfoCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppDimensions.spacingSM),
             decoration: BoxDecoration(
               color: (iconColor ?? AppColors.primary).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDimensions.borderRadiusMD,
             ),
             child: Icon(
               icon,
               color: iconColor ?? AppColors.primary,
-              size: 24,
+              size: AppDimensions.iconSizeMD,
             ),
           ),
           AppSpacing.horizontalMD,
@@ -375,19 +369,12 @@ class InfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppTextStyles.caption,
                 ),
                 AppSpacing.verticalXS,
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTextStyles.labelLarge,
                 ),
               ],
             ),
@@ -426,14 +413,13 @@ class StatCard extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 32,
+            size: AppDimensions.iconSizeLG,
             color: color ?? AppColors.primary,
           ),
           AppSpacing.verticalSM,
           Text(
             value,
-            style: TextStyle(
-              fontSize: 20,
+            style: AppTextStyles.heading3.copyWith(
               fontWeight: FontWeight.bold,
               color: color ?? AppColors.primary,
             ),
@@ -441,10 +427,7 @@ class StatCard extends StatelessWidget {
           AppSpacing.verticalXS,
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: AppTextStyles.caption,
             textAlign: TextAlign.center,
           ),
         ],

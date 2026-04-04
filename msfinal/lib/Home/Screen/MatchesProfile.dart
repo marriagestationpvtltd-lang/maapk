@@ -9,6 +9,9 @@
 // )
 
 import 'package:flutter/material.dart';
+import 'package:ms2026/constant/app_colors.dart';
+import 'package:ms2026/constant/app_dimensions.dart';
+import 'package:ms2026/constant/app_text_styles.dart';
 
 typedef SendRequestCallback = void Function(Map<String, dynamic> profile);
 
@@ -22,7 +25,7 @@ class MatchedProfilesList extends StatelessWidget {
     Key? key,
     required this.profiles,
     this.onSendRequest,
-    this.padding = const EdgeInsets.only(left: 12),
+    this.padding = const EdgeInsets.only(left: AppDimensions.spacingMD),
     this.cardWidth = 200,
   }) : super(key: key);
 
@@ -37,7 +40,7 @@ class MatchedProfilesList extends StatelessWidget {
         itemBuilder: (context, index) {
           final profile = profiles[index];
           return Container(
-            margin: EdgeInsets.only(right: 14),
+            margin: const EdgeInsets.only(right: AppDimensions.spacingMD),
             width: cardWidth,
             child: MatchedProfileCard(
               profile: profile,
@@ -76,12 +79,12 @@ class MatchedProfileCard extends StatelessWidget {
     final imageUrl = _getString(profile['profile_picture'] ?? profile['image']);
 
     return Container(
-      padding: EdgeInsets.all(5),
+      padding: const EdgeInsets.all(AppDimensions.spacingXS),
       height: 280,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.red),
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.white,
+        border: Border.all(color: AppColors.primary),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -118,9 +121,8 @@ class MatchedProfileCard extends StatelessWidget {
                   color: Colors.black.withOpacity(0.55),
                   child: Text(
                     name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.white,
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 1,
@@ -133,16 +135,13 @@ class MatchedProfileCard extends StatelessWidget {
 
           // Info section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingSM, vertical: AppDimensions.spacingSM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Age ${age.isEmpty ? '-' : age} yrs, ${height.isEmpty ? '-' : height} cm',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade700,
-                  ),
+                  style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -150,15 +149,12 @@ class MatchedProfileCard extends StatelessWidget {
 
                 Row(
                   children: [
-                    Icon(Icons.work_outline, size: 13, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
+                    Icon(Icons.work_outline, size: 13, color: AppColors.textSecondary),
+                    const SizedBox(width: AppDimensions.spacingXS),
                     Expanded(
                       child: Text(
                         profession.isEmpty ? '-' : profession,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade700,
-                        ),
+                        style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -170,15 +166,12 @@ class MatchedProfileCard extends StatelessWidget {
 
                 Row(
                   children: [
-                    Icon(Icons.location_on_outlined, size: 13, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
+                    Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
+                    const SizedBox(width: AppDimensions.spacingXS),
                     Expanded(
                       child: Text(
                         location.isEmpty ? '-' : location,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade700,
-                        ),
+                        style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -186,11 +179,11 @@ class MatchedProfileCard extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: AppDimensions.spacingSM),
 
                 // Send Request Button (now reacts to currentStatus)
                 SizedBox(
-                  height: 40,
+                  height: AppDimensions.buttonHeightSM,
                   child: _buildStatusButton(context),
                 ),
               ],
@@ -231,20 +224,18 @@ class MatchedProfileCard extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFEA4935), Color(0xFFEB3D82)],
-        ),
-        borderRadius: BorderRadius.circular(30),
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
       ),
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: InkWell(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
           onTap: enabled ? onSendRequest : null,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
             ),
             child: Center(
               child: Row(
@@ -258,16 +249,15 @@ class MatchedProfileCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                   ] else ...[
-                    Icon(Icons.send, size: 13, color: Color(0xFFEA4935)),
-                    const SizedBox(width: 6),
+                    Icon(Icons.send, size: 13, color: AppColors.primary),
+                    const SizedBox(width: AppDimensions.spacingXS),
                   ],
 
                   Text(
                     label,
-                    style: TextStyle(
-                      color: Color(0xFFEA4935),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
-                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -281,9 +271,9 @@ class MatchedProfileCard extends StatelessWidget {
 
   Widget _placeholder() {
     return Container(
-      color: Colors.grey.shade200,
+      color: AppColors.border,
       child: const Center(
-        child: Icon(Icons.person, size: 48, color: Colors.grey),
+        child: Icon(Icons.person, size: AppDimensions.iconSizeXXL, color: AppColors.textSecondary),
       ),
     );
   }

@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:ms2026/Auth/Screen/signupscreen2.dart';
 
 import '../../constant/app_colors.dart';
+import '../../constant/app_dimensions.dart';
+import '../../constant/app_text_styles.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../ReUsable/dropdownwidget.dart';
@@ -375,11 +377,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                 const SizedBox(height: 16),
                 const Text(
                   "Add Profile Picture",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTextStyles.heading4,
                 ),
                 const SizedBox(height: 12),
                 // Security Message
@@ -417,11 +415,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                       const Expanded(
                         child: Text(
                           "Your photos are 100% secure. Others cannot view without your permission. Only after your approval can others see it.",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
+                          style: AppTextStyles.caption.copyWith(height: 1.4),
                         ),
                       ),
                     ],
@@ -552,11 +546,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                       const SizedBox(width: 12),
                       const Text(
                         "Select Languages",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: AppTextStyles.heading3,
                       ),
                     ],
                   ),
@@ -586,11 +576,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             children: [
                               Text(
                                 lang,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.white,
-                                ),
+                                style: AppTextStyles.whiteBody.copyWith(fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(width: 6),
                               GestureDetector(
@@ -651,10 +637,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                         ? const Center(
                             child: Text(
                               "No languages available",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: AppColors.textSecondary,
-                              ),
+                              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
                             ),
                           )
                         : ListView.builder(
@@ -664,10 +647,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                               return ListTile(
                                 title: Text(
                                   item,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: AppColors.textPrimary,
-                                  ),
+                                  style: AppTextStyles.bodyLarge,
                                 ),
                                 trailing: const Icon(Icons.add, color: AppColors.primary),
                                 onTap: () {
@@ -834,20 +814,13 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             onTap: _showImageSourceOptions,
                             child: const Text(
                               "Add profile picture",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: AppTextStyles.primaryLabel,
                             ),
                           ),
                           const SizedBox(height: 4),
                           const Text(
                             "Clear photo increases profile views by 80%",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
+                            style: AppTextStyles.caption,
                           ),
                           const SizedBox(height: 12),
                           // Privacy Information
@@ -880,11 +853,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                 const Flexible(
                                   child: Text(
                                     "Your photo will not be visible to others without your permission until approved by admin",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                      height: 1.3,
-                                    ),
+                                    style: AppTextStyles.captionSmall,
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -1073,20 +1042,12 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                               children: [
                                 Text(
                                   'Phone Number',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
+                                  style: AppTextStyles.labelMedium,
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   '*',
-                                  style: TextStyle(
-                                    color: AppColors.error,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: AppTextStyles.labelMedium.copyWith(color: AppColors.error),
                                 ),
                               ],
                             ),
@@ -1159,17 +1120,13 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                       FilteringTextInputFormatter.digitsOnly,
                                       LengthLimitingTextInputFormatter(15),
                                     ],
-                                    style: const TextStyle(
-                                      fontSize: 15,
+                                    style: AppTextStyles.labelMedium.copyWith(
                                       fontWeight: FontWeight.w500,
-                                      color: AppColors.textPrimary,
                                     ),
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     hintText: 'Phone number',
-                                    hintStyle: TextStyle(
+                                    hintStyle: AppTextStyles.bodyMedium.copyWith(
                                       color: AppColors.textHint,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w400,
                                     ),
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.symmetric(
@@ -1207,8 +1164,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                 const SizedBox(width: 6),
                                 Text(
                                   _fieldErrors['phone']!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
+                                  style: AppTextStyles.caption.copyWith(
                                     color: AppColors.error,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1410,8 +1366,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             const SizedBox(width: 6),
                             Text(
                               _fieldErrors['dob']!,
-                              style: const TextStyle(
-                                fontSize: 12,
+                              style: AppTextStyles.caption.copyWith(
                                 color: AppColors.error,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1457,8 +1412,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             Expanded(
                               child: Text(
                                 'Converted: $selectedADYear-${(adMonths.indexOf(selectedADMonth) + 1).toString().padLeft(2, '0')}-$selectedADDay (AD)',
-                                style: const TextStyle(
-                                  fontSize: 12,
+                                style: AppTextStyles.caption.copyWith(
                                   color: AppColors.success,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1490,20 +1444,12 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             children: [
                               Text(
                                 'Languages',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
+                                style: AppTextStyles.labelMedium,
                               ),
                               SizedBox(width: 4),
                               Text(
                                 '*',
-                                style: TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: AppTextStyles.labelMedium.copyWith(color: AppColors.error),
                               ),
                             ],
                           ),
@@ -1548,8 +1494,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                         selectedLanguages.isEmpty
                                             ? 'Select languages you speak'
                                             : '${selectedLanguages.length} language${selectedLanguages.length > 1 ? 's' : ''} selected',
-                                        style: TextStyle(
-                                          fontSize: 15,
+                                        style: AppTextStyles.bodyLarge.copyWith(
                                           color: selectedLanguages.isEmpty
                                               ? AppColors.textHint
                                               : AppColors.textPrimary,
@@ -1589,8 +1534,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                         ),
                                         child: Text(
                                           lang,
-                                          style: const TextStyle(
-                                            fontSize: 13,
+                                          style: AppTextStyles.bodySmall.copyWith(
                                             fontWeight: FontWeight.w500,
                                             color: AppColors.white,
                                           ),
@@ -1617,8 +1561,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                 const SizedBox(width: 6),
                                 Text(
                                   _fieldErrors['languages']!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
+                                  style: AppTextStyles.caption.copyWith(
                                     color: AppColors.error,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1688,14 +1631,10 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Your information is secure and encrypted. We never share your data with third parties.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                                height: 1.4,
-                              ),
+                              style: AppTextStyles.bodySmall.copyWith(height: 1.4),
                             ),
                           ),
                         ],

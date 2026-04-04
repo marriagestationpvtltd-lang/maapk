@@ -1,6 +1,8 @@
 // Professional Reusable Button Widgets
 import 'package:flutter/material.dart';
 import '../constant/app_colors.dart';
+import '../constant/app_dimensions.dart';
+import '../constant/app_text_styles.dart';
 
 // Primary Button with gradient and elevation
 class PrimaryButton extends StatelessWidget {
@@ -27,10 +29,10 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width ?? double.infinity,
-      height: height ?? 52,
+      height: height ?? AppDimensions.buttonHeightMD,
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMD,
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.3),
@@ -43,12 +45,12 @@ class PrimaryButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           child: Center(
             child: isLoading
                 ? const SizedBox(
-                    height: 24,
-                    width: 24,
+                    height: AppDimensions.iconSizeMD,
+                    width: AppDimensions.iconSizeMD,
                     child: CircularProgressIndicator(
                       color: AppColors.white,
                       strokeWidth: 2,
@@ -58,16 +60,12 @@ class PrimaryButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, color: AppColors.white, size: 20),
-                        const SizedBox(width: 8),
+                        Icon(icon, color: AppColors.white, size: AppDimensions.iconSizeSM),
+                        AppSpacing.horizontalSM,
                       ],
                       Text(
                         text,
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: fontSize ?? 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.whiteLabel.copyWith(fontSize: fontSize),
                       ),
                     ],
                   ),
@@ -103,22 +101,22 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width ?? double.infinity,
-      height: height ?? 52,
+      height: height ?? AppDimensions.buttonHeightMD,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMD,
         border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           child: Center(
             child: isLoading
                 ? const SizedBox(
-                    height: 24,
-                    width: 24,
+                    height: AppDimensions.iconSizeMD,
+                    width: AppDimensions.iconSizeMD,
                     child: CircularProgressIndicator(
                       color: AppColors.primary,
                       strokeWidth: 2,
@@ -128,15 +126,14 @@ class SecondaryButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 8),
+                        Icon(icon, color: AppColors.primary, size: AppDimensions.iconSizeSM),
+                        AppSpacing.horizontalSM,
                       ],
                       Text(
                         text,
-                        style: TextStyle(
+                        style: AppTextStyles.labelLarge.copyWith(
                           color: AppColors.primary,
-                          fontSize: fontSize ?? 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: fontSize,
                         ),
                       ),
                     ],
@@ -186,10 +183,10 @@ class IconButtonPrimary extends StatelessWidget {
           onTap: onPressed,
           customBorder: const CircleBorder(),
           child: Padding(
-            padding: EdgeInsets.all(size != null ? size! / 3 : 12),
+            padding: EdgeInsets.all(size != null ? size! / 3 : AppDimensions.spacingMD),
             child: Icon(
               icon,
-              size: size ?? 24,
+              size: size ?? AppDimensions.iconSizeMD,
               color: color ?? AppColors.white,
             ),
           ),
@@ -217,32 +214,33 @@ class SmallButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spacingMD,
+        vertical: AppDimensions.spacingSM,
+      ),
       decoration: BoxDecoration(
         color: isPrimary ? AppColors.primary : AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDimensions.borderRadiusSM,
         border: isPrimary ? null : Border.all(color: AppColors.primary, width: 1.5),
       ),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDimensions.borderRadiusSM,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
               Icon(
                 icon,
-                size: 16,
+                size: AppDimensions.iconSizeXS,
                 color: isPrimary ? AppColors.white : AppColors.primary,
               ),
-              const SizedBox(width: 6),
+              AppSpacing.horizontalSM,
             ],
             Text(
               text,
-              style: TextStyle(
+              style: AppTextStyles.labelMedium.copyWith(
                 color: isPrimary ? AppColors.white : AppColors.primary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -275,33 +273,31 @@ class SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 52,
+      height: AppDimensions.buttonHeightMD,
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMD,
         border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDimensions.borderRadiusMD,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingMD),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (iconAsset != null)
-                  Image.asset(iconAsset!, height: 24, width: 24)
+                  Image.asset(iconAsset!, height: AppDimensions.iconSizeMD, width: AppDimensions.iconSizeMD)
                 else if (icon != null)
-                  Icon(icon, size: 24, color: textColor),
-                const SizedBox(width: 12),
+                  Icon(icon, size: AppDimensions.iconSizeMD, color: textColor),
+                AppSpacing.horizontalSM,
                 Text(
                   text,
-                  style: TextStyle(
+                  style: AppTextStyles.labelLarge.copyWith(
                     color: textColor ?? AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -334,15 +330,11 @@ class FABPrimary extends StatelessWidget {
       return FloatingActionButton.extended(
         onPressed: onPressed,
         backgroundColor: AppColors.primary,
-        elevation: 4,
+        elevation: AppDimensions.elevationMD,
         icon: Icon(icon, color: AppColors.white),
         label: Text(
           label!,
-          style: const TextStyle(
-            color: AppColors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.whiteLabel,
         ),
       );
     }
@@ -350,7 +342,7 @@ class FABPrimary extends StatelessWidget {
     return FloatingActionButton(
       onPressed: onPressed,
       backgroundColor: AppColors.primary,
-      elevation: 4,
+      elevation: AppDimensions.elevationMD,
       child: Icon(icon, color: AppColors.white),
     );
   }

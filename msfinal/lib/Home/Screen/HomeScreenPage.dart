@@ -17,6 +17,9 @@ import '../../Chat/ChatlistScreen.dart';
 import '../../liked/liked.dart';
 import '../../Models/masterdata.dart';
 import 'package:http/http.dart' as http;
+import 'package:ms2026/constant/app_colors.dart';
+import 'package:ms2026/constant/app_dimensions.dart';
+import 'package:ms2026/constant/app_text_styles.dart';
 
 import '../../Notification/notificationscreen.dart';
 import '../../Notification/notification_inbox_service.dart';
@@ -57,7 +60,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   static const String _apiBaseUrl = 'https://digitallami.com/Api2';
   static const String _placeholderProfileImage =
       'https://via.placeholder.com/150';
-  static const Color _brandRed = Color(0xFFF90E18);
+  static const Color _brandRed = AppColors.primary;
   int _currentIndex = 0;
 
   List<dynamic> _matchedProfilesApi = [];
@@ -151,7 +154,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
           content: Text(
             "Unable to check document status right now. Please try again later.",
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -669,10 +672,10 @@ String usertye = '';
     return Consumer<SignupModel>(
       builder: (context, model, child) {
         return Scaffold(
-          backgroundColor: const Color(0xFFF8F9FA),
+          backgroundColor: AppColors.background,
           appBar: _buildAppBar(),
           body: RefreshIndicator(
-            color: const Color(0xFFF90E18),
+            color: AppColors.primary,
             onRefresh: _refreshData,
             child: ShimmerLoading(
               isLoading: _isRefreshing,
@@ -681,45 +684,45 @@ String usertye = '';
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 12),
+                  AppSpacing.verticalSM,
                   if (pageno != 10)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _buildProfileCompletenessCard(),
                     ),
-                  const SizedBox(height: 16),
+                  AppSpacing.verticalMD,
                   const ImageBannerSlider(),
-                  const SizedBox(height: 20),
+                  AppSpacing.verticalMD,
                   _buildStatsBanner(),
-                  const SizedBox(height: 20),
+                  AppSpacing.verticalMD,
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildSectionHeader('Quick Actions', showSeeAll: false),
                   ),
-                  const SizedBox(height: 14),
+                  AppSpacing.verticalSM,
                   _buildQuickActions(),
-                  const SizedBox(height: 24),
+                  AppSpacing.verticalLG,
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildSectionHeader('Suggested Profiles', showSeeAll: false),
                   ),
-                  const SizedBox(height: 14),
+                  AppSpacing.verticalSM,
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
                       height: MediaQuery.of(context).size.height * 0.63,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppDimensions.borderRadiusXL,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: AppColors.black.withOpacity(0.06),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppDimensions.borderRadiusXL,
                         child: ProfileSwipeUI(
                           userId: userid,
                           matchApiUrl: 'https://digitallami.com/Api2/match.php',
@@ -730,7 +733,7 @@ String usertye = '';
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  AppSpacing.verticalLG,
                   VisibilityDetector(
                     key: const Key('premium-members-section'),
                     onVisibilityChanged: (info) {
@@ -749,14 +752,14 @@ String usertye = '';
                             child: _buildSectionHeader('Premium Members', showSeeAll: true),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        AppSpacing.verticalSM,
                         _buildPremiumMembers(),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  AppSpacing.verticalLG,
                   const ImageBannerSlider(),
-                  const SizedBox(height: 24),
+                  AppSpacing.verticalLG,
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: GestureDetector(
@@ -766,9 +769,9 @@ String usertye = '';
                       child: _buildSectionHeader('Matched Profiles', showSeeAll: true),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  AppSpacing.verticalSM,
                   _buildMatchedProfilesFromApi(),
-                  const SizedBox(height: 24),
+                  AppSpacing.verticalLG,
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: GestureDetector(
@@ -777,9 +780,9 @@ String usertye = '';
                       child: _buildSectionHeader('Shortlisted Profiles', showSeeAll: true),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  AppSpacing.verticalSM,
                   _buildShortlistedProfiles(),
-                  const SizedBox(height: 24),
+                  AppSpacing.verticalLG,
                   VisibilityDetector(
                     key: const Key('other-services-section'),
                     onVisibilityChanged: (info) {
@@ -794,7 +797,7 @@ String usertye = '';
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: _buildSectionHeader('Other Services', showSeeAll: false),
                         ),
-                        const SizedBox(height: 14),
+                        AppSpacing.verticalSM,
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: _buildOtherServices(),
@@ -802,7 +805,7 @@ String usertye = '';
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  AppSpacing.verticalXL,
                 ],
               ),
             ),
@@ -816,8 +819,8 @@ String usertye = '';
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: AppColors.white,
+      surfaceTintColor: AppColors.white,
       elevation: 0,
       shadowColor: Colors.transparent,
       scrolledUnderElevation: 0,
@@ -828,7 +831,7 @@ String usertye = '';
           height: 1,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFF90E18), Color(0xFFFF6B6B), Color(0xFFFFE0E0)],
+              colors: [AppColors.primary, Color(0xFFFF6B6B), Color(0xFFFFE0E0)],
               stops: [0.0, 0.4, 1.0],
             ),
           ),
@@ -841,13 +844,13 @@ String usertye = '';
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
-                colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+                colors: [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF90E18).withOpacity(0.3),
+                  color: AppColors.primary.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -855,7 +858,7 @@ String usertye = '';
             ),
             child: CircleAvatar(
               radius: 22,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.white,
               child: CircleAvatar(
                 radius: 20,
                 backgroundImage: NetworkImage('https://digitallami.com/Api2/$userimage'),
@@ -863,25 +866,23 @@ String usertye = '';
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          AppSpacing.horizontalSM,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${_getGreeting()}! 👋',
-                  style: TextStyle(
+                  style: AppTextStyles.captionSmall.copyWith(
                     fontSize: 11,
-                    color: Colors.grey.shade500,
-                    fontWeight: FontWeight.w500,
+                    color: AppColors.textHint,
                   ),
                 ),
                 Text(
                   name.isNotEmpty ? name : 'Welcome',
-                  style: const TextStyle(
+                  style: AppTextStyles.labelLarge.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
                     letterSpacing: -0.3,
                   ),
                   maxLines: 1,
@@ -892,40 +893,35 @@ String usertye = '';
                     if (_userId.isNotEmpty) ...[
                       Text(
                         'MS: $_userId',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFF90E18),
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.primaryLabel.copyWith(fontSize: 11),
                       ),
-                      const SizedBox(width: 6),
+                      AppSpacing.horizontalXS,
                       Container(
                         width: 3,
                         height: 3,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
+                          color: AppColors.textHint,
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      AppSpacing.horizontalXS,
                     ],
                     Container(
                       width: 6,
                       height: 6,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF4CAF50),
+                        color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    AppSpacing.horizontalXS,
                     Text(
                       usertye.isEmpty ? 'Member' : (usertye == 'free' ? 'Free Member' : 'Premium Member'),
-                      style: TextStyle(
+                      style: AppTextStyles.labelSmall.copyWith(
                         fontSize: 11,
                         color: usertye == 'free'
-                            ? Colors.grey.shade600
-                            : const Color(0xFFFFD700),
-                        fontWeight: FontWeight.w500,
+                            ? AppColors.textSecondary
+                            : AppColors.premium,
                       ),
                     ),
                   ],
@@ -941,10 +937,10 @@ String usertye = '';
             margin: const EdgeInsets.only(right: 4),
             child: TextButton(
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                backgroundColor: const Color(0xFFF90E18),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: AppDimensions.borderRadiusXL,
                 ),
                 minimumSize: const Size(0, 32),
               ),
@@ -953,13 +949,12 @@ String usertye = '';
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
+                  Icon(Icons.star_rounded, color: AppColors.white, size: 14),
+                  AppSpacing.horizontalXS,
                   Text(
                     'Upgrade',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -977,9 +972,9 @@ String usertye = '';
             }
           },
         ),
-        const SizedBox(width: 6),
+        AppSpacing.horizontalXS,
         _buildNotificationBell(),
-        const SizedBox(width: 16),
+        AppSpacing.horizontalMD,
       ],
     );
   }
@@ -989,12 +984,12 @@ String usertye = '';
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        color: const Color(0xFFF90E18).withOpacity(0.08),
+        color: AppColors.primary.withOpacity(0.08),
         shape: BoxShape.circle,
       ),
       child: IconButton(
         padding: EdgeInsets.zero,
-        icon: Icon(icon, color: const Color(0xFFF90E18), size: 20),
+        icon: Icon(icon, color: AppColors.primary, size: 20),
         onPressed: onPressed,
       ),
     );
@@ -1019,16 +1014,15 @@ String usertye = '';
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: const BoxDecoration(
-                color: Color(0xFFF90E18),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 _unreadNotificationCount > 99
                     ? '99+'
                     : '$_unreadNotificationCount',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
+                style: AppTextStyles.captionSmall.copyWith(
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -1047,14 +1041,14 @@ String usertye = '';
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFF90E18), Color(0xFFD81B60)],
+          colors: [AppColors.primary, Color(0xFFD81B60)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDimensions.borderRadiusXL,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF90E18).withOpacity(0.35),
+            color: AppColors.primary.withOpacity(0.35),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1068,70 +1062,68 @@ String usertye = '';
               children: [
                 const Text(
                   'Complete Your Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
+                  style: AppTextStyles.heading4.copyWith(
+                    color: AppColors.white,
                     fontWeight: FontWeight.w800,
+                    fontSize: 17,
                     letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Text(
+                AppSpacing.verticalXS,
+                Text(
                   'More complete = better matches',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.white.withOpacity(0.7),
                   ),
                 ),
-                const SizedBox(height: 14),
+                AppSpacing.verticalSM,
                 Row(
                   children: [
                     Expanded(
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: AppDimensions.borderRadiusMD,
                         child: LinearProgressIndicator(
                           value: progress,
-                          backgroundColor: Colors.white.withOpacity(0.25),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          backgroundColor: AppColors.white.withOpacity(0.25),
+                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.white),
                           minHeight: 8,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    AppSpacing.horizontalSM,
                     Text(
                       '$percent%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.white,
                         fontWeight: FontWeight.w800,
+                        fontSize: 15,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                AppSpacing.verticalSM,
                 GestureDetector(
                   onTap: () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => IDVerificationScreen())),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
+                      color: AppColors.white,
+                      borderRadius: AppDimensions.borderRadiusRound,
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Continue',
-                          style: TextStyle(
-                            color: Color(0xFFF90E18),
-                            fontSize: 13,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(width: 4),
+                        AppSpacing.horizontalXS,
                         Icon(Icons.arrow_forward_rounded,
-                            color: Color(0xFFF90E18), size: 14),
+                            color: AppColors.primary, size: 14),
                       ],
                     ),
                   ),
@@ -1139,28 +1131,28 @@ String usertye = '';
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          AppSpacing.horizontalMD,
           Column(
             children: [
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: AppColors.white.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
                   child: Icon(
                     Icons.favorite_rounded,
-                    color: Colors.white,
+                    color: AppColors.white,
                     size: 34,
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Icon(
+              AppSpacing.verticalSM,
+              Icon(
                 Icons.diamond_outlined,
-                color: Colors.white70,
+                color: AppColors.white.withOpacity(0.7),
                 size: 28,
               ),
             ],
@@ -1177,7 +1169,7 @@ String usertye = '';
     final int servicesCount = _otherServices.length;
 
     final stats = [
-      {'icon': Icons.favorite_rounded, 'value': '$matchCount', 'label': 'Matches', 'color': const Color(0xFFF90E18)},
+      {'icon': Icons.favorite_rounded, 'value': '$matchCount', 'label': 'Matches', 'color': AppColors.primary},
       {'icon': Icons.star_rounded, 'value': '$premiumCount', 'label': 'Premium', 'color': const Color(0xFFFFA000)},
       {'icon': Icons.person_rounded, 'value': '$profilePercent%', 'label': 'Profile', 'color': const Color(0xFF2196F3)},
       {'icon': Icons.handshake_rounded, 'value': '$servicesCount', 'label': 'Services', 'color': const Color(0xFF00897B)},
@@ -1187,11 +1179,11 @@ String usertye = '';
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.white,
+        borderRadius: AppDimensions.borderRadiusXL,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.black.withOpacity(0.06),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -1212,23 +1204,22 @@ String usertye = '';
                 ),
                 child: Icon(stat['icon'] as IconData, color: color, size: 22),
               ),
-              const SizedBox(height: 8),
+              AppSpacing.verticalSM,
               Text(
                 stat['value'] as String,
-                style: TextStyle(
+                style: AppTextStyles.labelLarge.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: color,
                   letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 2),
+              AppSpacing.verticalXS,
               Text(
                 stat['label'] as String,
-                style: TextStyle(
+                style: AppTextStyles.labelSmall.copyWith(
                   fontSize: 11,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -1256,7 +1247,7 @@ String usertye = '';
         'icon': Icons.send_rounded,
         'label': 'Proposals',
         'count': _proposalRequestCount,
-        'gradient': [const Color(0xFFF90E18), const Color(0xFFD00D15)],
+        'gradient': [AppColors.primary, AppColors.primaryDark],
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => ProposalsPage())),
       },
@@ -1298,7 +1289,7 @@ String usertye = '';
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppDimensions.borderRadiusLG,
                   boxShadow: [
                     BoxShadow(
                       color: gradient[0].withOpacity(0.28),
@@ -1315,14 +1306,14 @@ String usertye = '';
                       children: [
                         Icon(
                           action['icon'] as IconData,
-                          color: Colors.white,
+                          color: AppColors.white,
                           size: 26,
                         ),
-                        const SizedBox(height: 8),
+                        AppSpacing.verticalSM,
                         Text(
                           action['label'] as String,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: AppTextStyles.captionSmall.copyWith(
+                            color: AppColors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.2,
@@ -1338,15 +1329,15 @@ String usertye = '';
                         child: Container(
                           constraints: const BoxConstraints(minWidth: 24),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
+                            horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.white,
+                            borderRadius: AppDimensions.borderRadiusRound,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.12),
+                                color: AppColors.black.withOpacity(0.12),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1355,10 +1346,10 @@ String usertye = '';
                           child: Text(
                             '$count',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: AppTextStyles.captionSmall.copyWith(
                               color: gradient.last,
-                              fontSize: 11,
                               fontWeight: FontWeight.w800,
+                              fontSize: 11,
                             ),
                           ),
                         ),
@@ -1379,7 +1370,7 @@ String usertye = '';
         height: 260,
         child: Center(
           child: CircularProgressIndicator(
-            color: const Color(0xFFF90E18),
+            color: AppColors.primary,
             strokeWidth: 2,
           ),
         ),
@@ -1395,15 +1386,13 @@ String usertye = '';
             children: [
               Icon(Icons.error_outline_rounded,
                   color: Colors.red.shade300, size: 40),
-              const SizedBox(height: 8),
+              AppSpacing.verticalSM,
               Text('Failed to load profiles',
-                  style: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 14)),
-              const SizedBox(height: 8),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+              AppSpacing.verticalSM,
               TextButton(
                 onPressed: fetchMatchedProfiles,
-                child: const Text('Retry',
-                    style: TextStyle(color: Color(0xFFF90E18))),
+                child: const Text('Retry', style: AppTextStyles.primaryLabel),
               ),
             ],
           ),
@@ -1419,11 +1408,10 @@ String usertye = '';
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.favorite_border_rounded,
-                  size: 48, color: Colors.grey.shade300),
-              const SizedBox(height: 8),
+                  size: 48, color: AppColors.border),
+              AppSpacing.verticalSM,
               Text('No matched profiles found',
-                  style: TextStyle(
-                      color: Colors.grey.shade500, fontSize: 14)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
             ],
           ),
         ),
@@ -1457,13 +1445,13 @@ String usertye = '';
           final matchPercent = profile['matchPercent'];
           final isVerified = profile['isVerified'] == 1;
 
-          Color matchColor = Colors.green;
+          Color matchColor = AppColors.success;
           if (matchPercent != null) {
             matchColor = matchPercent >= 80
-                ? Colors.green
+                ? AppColors.success
                 : matchPercent >= 50
-                    ? Colors.orange
-                    : const Color(0xFFF90E18);
+                    ? AppColors.warning
+                    : AppColors.primary;
           }
 
           return GestureDetector(
@@ -1485,11 +1473,11 @@ String usertye = '';
               width: 190,
               margin: const EdgeInsets.only(right: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                color: AppColors.white,
+                borderRadius: AppDimensions.borderRadiusXL,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
+                    color: AppColors.black.withOpacity(0.07),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -1514,27 +1502,27 @@ String usertye = '';
                                     errorBuilder: (_, __, ___) =>
                                         Container(
                                           height: 155,
-                                          color: Colors.grey.shade100,
+                                          color: AppColors.background,
                                           child: const Center(
                                             child: Icon(Icons.person_rounded,
                                                 size: 60,
-                                                color: Colors.grey),
+                                                color: AppColors.textHint),
                                           ),
                                         ),
                                   )
                                 : Container(
                                     height: 155,
-                                    color: Colors.grey.shade100,
+                                    color: AppColors.background,
                                     child: const Center(
                                       child: Icon(Icons.person_rounded,
-                                          size: 60, color: Colors.grey),
+                                          size: 60, color: AppColors.textHint),
                                     ),
                                   ),
                             Container(
                               width: double.infinity,
                               height: 155,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.2),
+                                color: AppColors.black.withOpacity(0.2),
                               ),
                               child: BackdropFilter(
                                 filter: ui.ImageFilter.blur(
@@ -1568,8 +1556,8 @@ String usertye = '';
                               right: 10,
                               child: Text(
                                 'Ms $displayName',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.white,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   shadows: [
@@ -1593,7 +1581,7 @@ String usertye = '';
                             width: 26,
                             height: 26,
                             decoration: const BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.white,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.verified_rounded,
@@ -1606,16 +1594,15 @@ String usertye = '';
                           left: 8,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 3),
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: matchColor,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppDimensions.borderRadiusMD,
                             ),
                             child: Text(
                               '$matchPercent%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
+                              style: AppTextStyles.captionSmall.copyWith(
+                                color: AppColors.white,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -1625,7 +1612,7 @@ String usertye = '';
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1636,26 +1623,26 @@ String usertye = '';
                               if (age.isNotEmpty || height.isNotEmpty)
                                 Text(
                                   '${age.isNotEmpty ? '$age yrs' : ''}${age.isNotEmpty && height.isNotEmpty ? ', ' : ''}$height',
-                                  style: TextStyle(
+                                  style: AppTextStyles.captionSmall.copyWith(
                                     fontSize: 11,
-                                    color: Colors.grey.shade700,
+                                    color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               if (profession.isNotEmpty) ...[
-                                const SizedBox(height: 3),
+                                AppSpacing.verticalXS,
                                 Row(
                                   children: [
                                     Icon(Icons.work_outline_rounded,
                                         size: 11,
-                                        color: Colors.grey.shade500),
-                                    const SizedBox(width: 3),
+                                        color: AppColors.textHint),
+                                    AppSpacing.horizontalXS,
                                     Expanded(
                                       child: Text(
                                         profession,
-                                        style: TextStyle(
+                                        style: AppTextStyles.captionSmall.copyWith(
                                           fontSize: 11,
-                                          color: Colors.grey.shade600,
+                                          color: AppColors.textSecondary,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1665,19 +1652,19 @@ String usertye = '';
                                 ),
                               ],
                               if (location.isNotEmpty) ...[
-                                const SizedBox(height: 3),
+                                AppSpacing.verticalXS,
                                 Row(
                                   children: [
                                     Icon(Icons.location_on_outlined,
                                         size: 11,
-                                        color: Colors.grey.shade500),
-                                    const SizedBox(width: 3),
+                                        color: AppColors.textHint),
+                                    AppSpacing.horizontalXS,
                                     Expanded(
                                       child: Text(
                                         location,
-                                        style: TextStyle(
+                                        style: AppTextStyles.captionSmall.copyWith(
                                           fontSize: 11,
-                                          color: Colors.grey.shade600,
+                                          color: AppColors.textSecondary,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1695,9 +1682,9 @@ String usertye = '';
                               style: OutlinedButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 side: const BorderSide(
-                                    color: Color(0xFFF90E18), width: 1.5),
+                                    color: AppColors.primary, width: 1.5),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14)),
+                                    borderRadius: AppDimensions.borderRadiusMD),
                               ),
                               onPressed: () {
                                 final profileUserId = profile['userid'];
@@ -1721,11 +1708,7 @@ String usertye = '';
                               },
                               child: const Text(
                                 'Connect',
-                                style: TextStyle(
-                                  color: Color(0xFFF90E18),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: AppTextStyles.primaryLabel,
                               ),
                             ),
                           ),
@@ -1748,7 +1731,7 @@ String usertye = '';
         height: 180,
         child: Center(
           child: CircularProgressIndicator(
-            color: Color(0xFFF90E18),
+            color: AppColors.primary,
             strokeWidth: 2,
           ),
         ),
@@ -1763,11 +1746,10 @@ String usertye = '';
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.bookmark_border_rounded,
-                  size: 48, color: Colors.grey.shade300),
-              const SizedBox(height: 8),
+                  size: 48, color: AppColors.border),
+              AppSpacing.verticalSM,
               Text('No shortlisted profiles yet',
-                  style: TextStyle(
-                      color: Colors.grey.shade500, fontSize: 14)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
             ],
           ),
         ),
@@ -1817,18 +1799,18 @@ String usertye = '';
               width: 150,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.white,
+                borderRadius: AppDimensions.borderRadiusLG,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
+                    color: AppColors.black.withOpacity(0.07),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppDimensions.borderRadiusLG,
                 child: Stack(
                   children: [
                     // Full-height image
@@ -1839,17 +1821,17 @@ String usertye = '';
                             height: double.infinity,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              color: Colors.grey.shade100,
+                              color: AppColors.background,
                               child: const Center(
                                   child: Icon(Icons.person_rounded,
-                                      size: 50, color: Colors.grey)),
+                                      size: 50, color: AppColors.textHint)),
                             ),
                           )
                         : Container(
-                            color: Colors.grey.shade100,
+                            color: AppColors.background,
                             child: const Center(
                                 child: Icon(Icons.person_rounded,
-                                    size: 50, color: Colors.grey)),
+                                    size: 50, color: AppColors.textHint)),
                           ),
                     // Bottom gradient overlay
                     Positioned(
@@ -1860,7 +1842,7 @@ String usertye = '';
                         height: 90,
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.transparent, Colors.black],
+                            colors: [Colors.transparent, AppColors.black],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
@@ -1878,11 +1860,10 @@ String usertye = '';
                         children: [
                           Text(
                             displayName,
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: AppTextStyles.caption.copyWith(
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              shadows: [
+                              color: AppColors.white,
+                              shadows: const [
                                 Shadow(
                                     color: Colors.black87,
                                     blurRadius: 6,
@@ -1894,14 +1875,14 @@ String usertye = '';
                           if (city.isNotEmpty)
                             Row(
                               children: [
-                                const Icon(Icons.location_on,
-                                    size: 12, color: Colors.white70),
-                                const SizedBox(width: 2),
+                                Icon(Icons.location_on,
+                                    size: 12, color: AppColors.white.withOpacity(0.7)),
+                                AppSpacing.horizontalXS,
                                 Expanded(
                                   child: Text(
                                     city,
-                                    style: const TextStyle(
-                                        fontSize: 11, color: Colors.white70),
+                                    style: AppTextStyles.captionSmall.copyWith(
+                                        fontSize: 11, color: AppColors.white.withOpacity(0.7)),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -1919,7 +1900,7 @@ String usertye = '';
                           width: 22,
                           height: 22,
                           decoration: const BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.white,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.verified_rounded,
@@ -1945,10 +1926,10 @@ String usertye = '';
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.star_outline_rounded,
-                  size: 48, color: Colors.grey.shade300),
-              const SizedBox(height: 8),
+                  size: 48, color: AppColors.border),
+              AppSpacing.verticalSM,
               Text('No premium members yet',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
             ],
           ),
         ),
@@ -1990,11 +1971,11 @@ String usertye = '';
               width: 180,
               margin: const EdgeInsets.only(right: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                color: AppColors.white,
+                borderRadius: AppDimensions.borderRadiusXL,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: AppColors.black.withOpacity(0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -2017,10 +1998,10 @@ String usertye = '';
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 height: 160,
-                                color: Colors.grey.shade100,
+                                color: AppColors.background,
                                 child: const Center(
                                   child: Icon(Icons.person_rounded,
-                                      size: 60, color: Colors.grey),
+                                      size: 60, color: AppColors.textHint),
                                 ),
                               ),
                             ),
@@ -2028,13 +2009,13 @@ String usertye = '';
                               width: double.infinity,
                               height: 160,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.25),
+                                color: AppColors.black.withOpacity(0.25),
                               ),
                               child: BackdropFilter(
                                 filter: ui.ImageFilter.blur(
                                     sigmaX: 14, sigmaY: 14),
                                 child: Container(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: AppColors.black.withOpacity(0.05),
                                 ),
                               ),
                             ),
@@ -2067,21 +2048,20 @@ String usertye = '';
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
+                              colors: [AppColors.premium, Color(0xFFFFA000)],
                             ),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDimensions.borderRadiusMD,
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.star_rounded,
-                                  color: Colors.white, size: 10),
-                              SizedBox(width: 3),
+                                  color: AppColors.white, size: 10),
+                              AppSpacing.horizontalXS,
                               Text(
                                 'Premium',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
+                                style: AppTextStyles.captionSmall.copyWith(
+                                  color: AppColors.white,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -2097,7 +2077,7 @@ String usertye = '';
                             width: 28,
                             height: 28,
                             decoration: const BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.white,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.verified_rounded,
@@ -2108,7 +2088,7 @@ String usertye = '';
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2118,26 +2098,22 @@ String usertye = '';
                             children: [
                               Text(
                                 'MS $userIdd $lastName',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A1A2E),
-                                ),
+                                style: AppTextStyles.labelMedium,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 3),
+                              AppSpacing.verticalXS,
                               Row(
                                 children: [
                                   Icon(Icons.location_on_rounded,
-                                      size: 12, color: Colors.grey.shade500),
-                                  const SizedBox(width: 2),
+                                      size: 12, color: AppColors.textHint),
+                                  AppSpacing.horizontalXS,
                                   Expanded(
                                     child: Text(
                                       '$age yrs · $location',
-                                      style: TextStyle(
+                                      style: AppTextStyles.captionSmall.copyWith(
                                         fontSize: 11,
-                                        color: Colors.grey.shade600,
+                                        color: AppColors.textSecondary,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -2152,11 +2128,11 @@ String usertye = '';
                             height: 32,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF90E18),
+                                backgroundColor: AppColors.primary,
                                 elevation: 0,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: AppDimensions.borderRadiusLG,
                                 ),
                               ),
                               onPressed: () async {
@@ -2185,11 +2161,7 @@ String usertye = '';
                               },
                               child: const Text(
                                 'View Profile',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: AppTextStyles.whiteLabel,
                               ),
                             ),
                           ),
@@ -2219,7 +2191,7 @@ String usertye = '';
       return const SizedBox(
         height: 200,
         child: Center(
-          child: CircularProgressIndicator(color: Color(0xFFF90E18)),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -2232,11 +2204,10 @@ String usertye = '';
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.handshake_outlined,
-                  size: 40, color: Colors.grey.shade300),
-              const SizedBox(height: 8),
+                  size: 40, color: AppColors.border),
+              AppSpacing.verticalSM,
               Text('No services available',
-                  style: TextStyle(
-                      color: Colors.grey.shade500, fontSize: 14)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
             ],
           ),
         ),
@@ -2248,11 +2219,11 @@ String usertye = '';
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.white,
+            borderRadius: AppDimensions.borderRadiusXL,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.07),
+                color: AppColors.black.withOpacity(0.07),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -2276,10 +2247,10 @@ String usertye = '';
                       errorBuilder: (_, __, ___) => Container(
                         width: 120,
                         height: 175,
-                        color: Colors.grey.shade100,
+                        color: AppColors.background,
                         child: const Center(
                           child: Icon(Icons.person_rounded,
-                              size: 50, color: Colors.grey),
+                              size: 50, color: AppColors.textHint),
                         ),
                       ),
                     ),
@@ -2292,15 +2263,15 @@ String usertye = '';
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFF90E18), Color(0xFFD81B60)],
+                            colors: [AppColors.primary, Color(0xFFD81B60)],
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: AppDimensions.borderRadiusMD,
                         ),
                         child: Text(
                           service['category'],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: AppTextStyles.captionSmall.copyWith(
+                            color: AppColors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 11,
                           ),
@@ -2324,52 +2295,49 @@ String usertye = '';
                           Expanded(
                             child: Text(
                               service['name'],
-                              style: const TextStyle(
+                              style: AppTextStyles.heading4.copyWith(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF1A1A2E),
                                 letterSpacing: -0.3,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          AppSpacing.horizontalSM,
                           Container(
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF90E18).withOpacity(0.08),
+                              color: AppColors.primary.withOpacity(0.08),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.favorite_border_rounded,
-                                color: Color(0xFFF90E18), size: 16),
+                                color: AppColors.primary, size: 16),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      AppSpacing.verticalSM,
                       Row(
                         children: [
                           Icon(Icons.cake_outlined,
-                              size: 13, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
+                              size: 13, color: AppColors.textHint),
+                          AppSpacing.horizontalXS,
                           Text(
                             'Age ${service['age']}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          AppSpacing.horizontalSM,
                           Icon(Icons.location_on_outlined,
-                              size: 13, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
+                              size: 13, color: AppColors.textHint),
+                          AppSpacing.horizontalXS,
                           Expanded(
                             child: Text(
                               service['location'],
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -2377,42 +2345,37 @@ String usertye = '';
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      AppSpacing.verticalXS,
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF90E18).withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppColors.primary.withOpacity(0.06),
+                          borderRadius: AppDimensions.borderRadiusMD,
                         ),
                         child: Text(
                           'Exp: ${service['experience']}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFF90E18),
-                          ),
+                          style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      AppSpacing.verticalSM,
                       SizedBox(
                         width: double.infinity,
                         height: 40,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF90E18),
+                            backgroundColor: AppColors.primary,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: AppDimensions.borderRadiusXL,
                             ),
                           ),
                           icon: const Icon(Icons.chat_bubble_outline_rounded,
-                              color: Colors.white, size: 16),
+                              color: AppColors.white, size: 16),
                           label: const Text(
                             'Start Conversation',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.white,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -2504,7 +2467,7 @@ String usertye = '';
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case 'accepted':
-        return const Color(0xFF2E7D32);
+        return AppColors.success;
       case 'pending':
         return const Color(0xFFF9A825);
       default:
@@ -2549,11 +2512,11 @@ String usertye = '';
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: Colors.grey.shade300),
-            const SizedBox(height: 8),
+            Icon(icon, size: 48, color: AppColors.border),
+            AppSpacing.verticalSM,
             Text(
               message,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
             ),
           ],
         ),
@@ -2565,25 +2528,24 @@ String usertye = '';
     return Container(
       width: double.infinity,
       height: 160,
-      color: Colors.grey.shade100,
+      color: AppColors.background,
       child: const Center(
-        child: Icon(Icons.person_rounded, size: 60, color: Colors.grey),
+        child: Icon(Icons.person_rounded, size: 60, color: AppColors.textHint),
       ),
     );
   }
 
   Widget _buildRequestStatusChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppDimensions.borderRadiusMD,
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
+        style: AppTextStyles.captionSmall.copyWith(
+          color: AppColors.white,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -2749,22 +2711,17 @@ String usertye = '';
               height: 20,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFF90E18), Color(0xFFD81B60)],
+                  colors: [AppColors.primary, Color(0xFFD81B60)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppDimensions.borderRadiusXS,
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.horizontalSM,
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E),
-                letterSpacing: -0.2,
-              ),
+              style: AppTextStyles.labelLarge.copyWith(letterSpacing: -0.2),
             ),
           ],
         ),
@@ -2774,15 +2731,11 @@ String usertye = '';
             children: [
               Text(
                 'See All',
-                style: TextStyle(
-                  color: const Color(0xFFF90E18).withOpacity(0.85),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary.withOpacity(0.85)),
               ),
-              const SizedBox(width: 2),
+              AppSpacing.horizontalXS,
               const Icon(Icons.chevron_right_rounded,
-                  color: Color(0xFFF90E18), size: 16),
+                  color: AppColors.primary, size: 16),
             ],
           ),
       ],
@@ -2849,7 +2802,7 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
               onPageChanged: (i) => setState(() => _currentPage = i),
               itemBuilder: (context, index) {
                 return ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: AppDimensions.borderRadiusXL,
                   child: Image.asset(
                     bannerImages[index],
                     fit: BoxFit.cover,
@@ -2860,7 +2813,7 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
             ),
           ),
       
-          const SizedBox(height: 10),
+          AppSpacing.verticalSM,
       
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2873,9 +2826,9 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
                 width: _currentPage == index ? 18 : 5,
                 decoration: BoxDecoration(
                   color: _currentPage == index
-                      ? const Color(0xFFF90E18)
-                      : const Color(0xFFF90E18).withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(10),
+                      ? AppColors.primary
+                      : AppColors.primary.withOpacity(0.25),
+                  borderRadius: AppDimensions.borderRadiusMD,
                 ),
               ),
             ),

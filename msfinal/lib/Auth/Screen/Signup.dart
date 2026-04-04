@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constant/app_colors.dart';
+import '../../constant/app_dimensions.dart';
+import '../../constant/app_text_styles.dart';
 import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../SuignupModel/signup_model.dart';
@@ -316,13 +318,12 @@ class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> with Sing
                           color: AppColors.error,
                           size: 22,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppDimensions.spacingSM),
                         Expanded(
                           child: Text(
                             _errorMessage,
-                            style: const TextStyle(
+                            style: AppTextStyles.bodyMedium.copyWith(
                               color: AppColors.error,
-                              fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -364,22 +365,18 @@ class _IntroduceYourselfPageState extends State<IntroduceYourselfPage> with Sing
                           size: 24,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
+                      const SizedBox(width: AppDimensions.spacingSM),
+                      Expanded(
                         child: Text(
                           'Your information is secure and will only be visible to verified users.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
+                          style: AppTextStyles.bodySmall.copyWith(height: 1.4),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppDimensions.spacingLG),
               ],
             ),
           ),

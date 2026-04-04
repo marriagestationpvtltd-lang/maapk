@@ -7,6 +7,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../constant/app_colors.dart';
+import '../../constant/app_dimensions.dart';
+import '../../constant/app_text_styles.dart';
 
 import '../../Home/Screen/HomeScreenPage.dart';
 import '../../Startup/MainControllere.dart';
@@ -403,28 +405,23 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                       children: [
                         Text(
                           'Welcome Back,',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: AppTextStyles.displayMedium.copyWith(
                             fontWeight: FontWeight.w300,
-                            color: AppColors.textPrimary,
-                            fontSize: 28,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppDimensions.spacingSM),
                         Text(
                           'Perfect Match.',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                          style: AppTextStyles.displayLarge.copyWith(
                             color: AppColors.primary,
-                            fontSize: 32,
                             letterSpacing: 1,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppDimensions.spacingSM),
                         Text(
                           'Find your perfect match with our premium matchmaking service',
-                          style: TextStyle(
+                          style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.textSecondary,
-                            fontSize: 14,
                             height: 1.5,
                           ),
                         ),
@@ -462,7 +459,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
+                              style: AppTextStyles.bodyMedium.copyWith(
                                 color: AppColors.error,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -475,7 +472,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                   // Email Field with premium styling
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppDimensions.borderRadiusMD,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.shadowLight,
@@ -487,27 +484,21 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                     child: TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontSize: 16),
+                      style: AppTextStyles.bodyLarge,
                       decoration: InputDecoration(
                         labelText: 'Email Address',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                        floatingLabelStyle: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        labelStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                        floatingLabelStyle: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: const BorderSide(color: AppColors.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: const BorderSide(
                             color: AppColors.primary,
                             width: 2,
@@ -518,22 +509,22 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                         prefixIcon: const Icon(
                           Icons.email_outlined,
                           color: AppColors.textSecondary,
-                          size: 20,
+                          size: AppDimensions.iconSizeSM,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
+                          horizontal: AppDimensions.spacingMD,
+                          vertical: AppDimensions.spacingMD,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Password Field with premium styling
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppDimensions.borderRadiusMD,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.shadowLight,
@@ -545,27 +536,21 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                     child: TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(fontSize: 16),
+                      style: AppTextStyles.bodyLarge,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                        floatingLabelStyle: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        labelStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                        floatingLabelStyle: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: const BorderSide(color: AppColors.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           borderSide: const BorderSide(
                             color: AppColors.primary,
                             width: 2,
@@ -576,13 +561,13 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                         prefixIcon: const Icon(
                           Icons.lock_outline,
                           color: AppColors.textSecondary,
-                          size: 20,
+                          size: AppDimensions.iconSizeSM,
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                             color: AppColors.textSecondary,
-                            size: 20,
+                            size: AppDimensions.iconSizeSM,
                           ),
                           onPressed: () {
                             setState(() {
@@ -591,14 +576,14 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                           },
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
+                          horizontal: AppDimensions.spacingMD,
+                          vertical: AppDimensions.spacingMD,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppDimensions.spacingSM),
 
                   // Forget Password with premium styling
                   Align(
@@ -615,27 +600,21 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: AppDimensions.spacingSM,
+                          vertical: AppDimensions.spacingSM,
                         ),
                       ),
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
+                      child: Text('Forgot Password?', style: AppTextStyles.primaryLabel),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Login Button with premium gradient and animation
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: double.infinity,
-                    height: 56,
+                    height: AppDimensions.buttonHeightMD,
                     child: _isLoading
                         ? const Center(
                       child: CircularProgressIndicator(
@@ -645,7 +624,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                         : Container(
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppDimensions.borderRadiusMD,
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.primary.withOpacity(0.3),
@@ -657,17 +636,12 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                           onTap: _handleLogin,
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               'Sign In',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
+                              style: AppTextStyles.whiteLabel.copyWith(letterSpacing: 0.5),
                             ),
                           ),
                         ),
@@ -675,39 +649,32 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Divider with "OR" label
                   Row(
                     children: [
                       const Expanded(child: Divider(color: AppColors.border)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingSM),
+                        child: Text('OR', style: AppTextStyles.labelSmall),
                       ),
                       const Expanded(child: Divider(color: AppColors.border)),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Continue with Google button
                   SizedBox(
                     width: double.infinity,
-                    height: 54,
+                    height: AppDimensions.buttonHeightMD,
                     child: OutlinedButton(
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDimensions.borderRadiusMD,
                         ),
                         backgroundColor: AppColors.white,
                         foregroundColor: AppColors.textPrimary,
@@ -725,31 +692,22 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                               color: Color(0xFF4285F4),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Continue with Google',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          const SizedBox(width: AppDimensions.spacingSM),
+                          Text('Continue with Google', style: AppTextStyles.labelMedium),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Register Link with premium styling
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         "Don't have an account? ",
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 15,
-                        ),
+                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                       ),
                       GestureDetector(
                         onTap: () async {
@@ -764,12 +722,9 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                             );
                           }
                         },
-                        child: const Text(
+                        child: Text(
                           'Create Account',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          style: AppTextStyles.primaryLabel.copyWith(
                             decoration: TextDecoration.underline,
                             decorationColor: AppColors.primary,
                           ),
@@ -778,42 +733,38 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppDimensions.spacingMD),
 
                   // Premium Trust Badge
                   Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                        horizontal: AppDimensions.spacingMD,
+                        vertical: AppDimensions.spacingSM,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: AppDimensions.borderRadiusRound,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.shield_outlined,
                             color: AppColors.textSecondary,
-                            size: 16,
+                            size: AppDimensions.iconSizeXS,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: AppDimensions.spacingSM),
                           Text(
                             'Premium & Secure Matchmaking',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMD),
                 ],
               ),
             ),
