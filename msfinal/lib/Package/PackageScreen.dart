@@ -17,11 +17,9 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage>
     with SingleTickerProviderStateMixin {
-  final PageController _pageController = PageController(viewportFraction: 0.85);
   List<Package> packages = [];
   bool isLoading = true;
   String errorMessage = '';
-  int _currentPage = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -47,7 +45,6 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   @override
   void dispose() {
     _animationController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -147,39 +144,40 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverHeader(context),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                if (_activePackageName != null) _buildActivePackageBanner(),
-                const SizedBox(height: 24),
-                _buildSectionTitle(),
-                const SizedBox(height: 16),
-                _buildPackageCarousel(),
-                const SizedBox(height: 12),
-                if (!isLoading && errorMessage.isEmpty && packages.isNotEmpty)
-                  _buildPageIndicator(),
-                const SizedBox(height: 32),
-                _buildWhyPremiumSection(),
-                const SizedBox(height: 40),
-              ],
-            ),
-          ),
-        ],
+      appBar: _buildAppBar(context),
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHeaderBanner(),
+            if (_activePackageName != null) _buildActivePackageBanner(),
+            const SizedBox(height: 24),
+            _buildSectionTitle(),
+            const SizedBox(height: 16),
+            _buildPackageList(),
+            const SizedBox(height: 32),
+            _buildWhyPremiumSection(),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSliverHeader(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 200,
-      pinned: true,
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
       backgroundColor: AppColors.primary,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white, size: 22),
         onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: Text(
+        'Subscription Plans',
+        style: AppTextStyles.labelLarge.copyWith(
+          color: AppColors.white,
+          fontSize: 19,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       actions: [
         TextButton.icon(
@@ -208,60 +206,54 @@ class _SubscriptionPageState extends State<SubscriptionPage>
           ),
         ),
       ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.primaryGradient,
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 48),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.workspace_premium_rounded,
-                    color: AppColors.white,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Upgrade to Premium',
-                  style: AppTextStyles.whiteHeading.copyWith(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Unlock all features and find your perfect match',
-                  style: AppTextStyles.whiteBody.copyWith(
-                    fontSize: 15,
-                    color: AppColors.white.withOpacity(0.9),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    );
+  }
+
+  Widget _buildHeaderBanner() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.primaryGradient,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.workspace_premium_rounded,
+              color: AppColors.white,
+              size: 40,
             ),
           ),
-        ),
-        title: Text(
-          'Subscription Plans',
-          style: AppTextStyles.labelLarge.copyWith(
-            color: AppColors.white,
-            fontSize: 19,
-            fontWeight: FontWeight.w600,
+          const SizedBox(height: 12),
+          Text(
+            'Upgrade to Premium',
+            style: AppTextStyles.whiteHeading.copyWith(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
-        collapseMode: CollapseMode.parallax,
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Unlock all features and find your perfect match',
+              style: AppTextStyles.whiteBody.copyWith(
+                fontSize: 15,
+                color: AppColors.white.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
@@ -339,19 +331,19 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     );
   }
 
-  Widget _buildPackageCarousel() {
+  Widget _buildPackageList() {
     if (isLoading) {
-      return const SizedBox(
-        height: 460,
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (errorMessage.isNotEmpty) {
-      return SizedBox(
-        height: 300,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
         child: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textHint),
               const SizedBox(height: 16),
@@ -380,8 +372,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       );
     }
     if (packages.isEmpty) {
-      return SizedBox(
-        height: 200,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
             'No subscription packages available',
@@ -393,48 +385,21 @@ class _SubscriptionPageState extends State<SubscriptionPage>
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SizedBox(
-        height: 500,
-        child: PageView.builder(
-          controller: _pageController,
-          itemCount: packages.length,
-          onPageChanged: (index) => setState(() => _currentPage = index),
-          itemBuilder: (context, index) {
-            final package = packages[index];
-            final config = _tierConfigs[index % _tierConfigs.length];
-            final isSelected = _currentPage == index;
-            return AnimatedScale(
-              scale: isSelected ? 1.0 : 0.92,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              child: _PackagePlanCard(
-                package: package,
-                config: config,
-                isPopular: index == 1,
-              ),
-            );
-          },
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(packages.length, (index) {
+          final package = packages[index];
+          final config = _tierConfigs[index % _tierConfigs.length];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _PackagePlanCard(
+              package: package,
+              config: config,
+              isPopular: index == 1,
+            ),
+          );
+        }),
       ),
-    );
-  }
-
-  Widget _buildPageIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(packages.length, (index) {
-        final isActive = _currentPage == index;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : AppColors.border,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
     );
   }
 
@@ -636,7 +601,10 @@ class _PackagePlanCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
         children: [
           // Background decorative circles
           Positioned(
@@ -667,6 +635,7 @@ class _PackagePlanCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top row: tier icon + popular badge
@@ -833,6 +802,7 @@ class _PackagePlanCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
