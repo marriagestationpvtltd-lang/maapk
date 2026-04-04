@@ -116,7 +116,7 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       _isRetrying = false;
       _isBannerVisible = true;
       _wasConnected = true;
-      _bannerColor = Colors.black;
+      _bannerColor = AppColors.success;
       _bannerMessage = 'Back online';
     });
 
@@ -147,7 +147,14 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
     }
 
     if (hasInternet) {
-      _showOnlineBannerIfNeeded();
+      // User explicitly retried and internet is restored — dismiss the banner
+      // directly without showing an additional "Back online" overlay.
+      _hideBannerTimer?.cancel();
+      setState(() {
+        _isRetrying = false;
+        _isBannerVisible = false;
+        _wasConnected = true;
+      });
       return;
     }
 
