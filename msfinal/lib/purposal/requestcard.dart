@@ -10,6 +10,7 @@ import 'package:ms2026/Package/PackageScreen.dart';
 import 'package:ms2026/otherprofile/otherprofileview.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:ms2026/purposal/purposalservice.dart';
+import 'package:ms2026/utils/image_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Purposalmodel.dart';
@@ -920,7 +921,8 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
       final userData = jsonDecode(userDataString);
       final currentUserIdStr = widget.userid.toString();
       final currentUserName = "${userData['id'] ?? ''} ${userData['lastName'] ?? ''}".trim();
-      final currentUserImage = (userData['profilePicture']?.toString() ?? '');
+      final currentUserImage =
+          resolveApiImageUrl(userData['profile_picture']?.toString() ?? '');
 
       final isCurrentUserSender = currentUserIdStr == widget.data.senderId;
       final otherUserId = isCurrentUserSender
@@ -929,7 +931,8 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
 
       // Use the other user's name from widget.data (which already contains the other user's info)
       final otherUserName = "MS: ${widget.data.memberid.toString() ?? ''} ${widget.data.firstName ?? ''} ${widget.data.lastName ?? ''}".trim();
-      final otherUserImage = widget.data.profilePicture ?? '';
+      final otherUserImage =
+          resolveApiImageUrl(widget.data.profilePicture ?? '');
 
       List<String> userIds = [currentUserIdStr, otherUserId];
       userIds.sort();

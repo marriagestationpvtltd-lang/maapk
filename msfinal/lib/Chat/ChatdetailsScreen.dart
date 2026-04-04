@@ -27,6 +27,7 @@ import '../webrtc/webrtc.dart';
 import 'call_overlay_manager.dart';
 import 'widgets/typing_indicator.dart';
 import '../utils/time_utils.dart';
+import '../utils/image_utils.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatRoomId;
@@ -2531,7 +2532,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             },
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: NetworkImage(widget.receiverImage),
+              backgroundColor: Colors.grey[600],
+              backgroundImage: resolveApiImageUrl(widget.receiverImage).isNotEmpty
+                  ? NetworkImage(resolveApiImageUrl(widget.receiverImage))
+                  : null,
+              onBackgroundImageError: (_, __) {},
+              child: resolveApiImageUrl(widget.receiverImage).isEmpty
+                  ? const Icon(Icons.person, color: Colors.white, size: 22)
+                  : null,
             ),
           ),
           const SizedBox(width: 10),

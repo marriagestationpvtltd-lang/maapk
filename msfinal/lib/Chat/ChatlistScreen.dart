@@ -12,6 +12,7 @@ import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../online/onlineservice.dart';
 import '../utils/time_utils.dart';
+import '../utils/image_utils.dart';
 import '../purposal/Purposalmodel.dart';
 import '../purposal/purposalservice.dart';
 import '../Calling/call_history_screen.dart';
@@ -1166,11 +1167,11 @@ class _ChatListScreenState extends State<ChatListScreen>
                       chatRoomId: data['chatRoomId'] ?? chatRoom.id,
                       receiverId: otherParticipantId,
                       receiverName: otherPersonName,
-                      receiverImage: participantImages[otherParticipantId] ??
-                          'https://via.placeholder.com/150',
+                      receiverImage: resolveApiImageUrl(
+                          participantImages[otherParticipantId] ?? ''),
                       currentUserId: userId,
                       currentUserName: name,
-                      currentUserImage: userimage,
+                      currentUserImage: resolveApiImageUrl(userimage),
                     ),
                   ),
                 );
@@ -1218,10 +1219,19 @@ class _ChatListScreenState extends State<ChatListScreen>
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: NetworkImage(
-                          participantImages[otherParticipantId] ??
-                              "https://static.vecteezy.com/system/resources/previews/022/997/791/non_2x/contact-person-icon-transparent-blur-glass-effect-icon-free-vector.jpg",
-                        ),
+                        backgroundImage: resolveApiImageUrl(
+                                participantImages[otherParticipantId] ?? '')
+                            .isNotEmpty
+                            ? NetworkImage(resolveApiImageUrl(
+                                participantImages[otherParticipantId] ?? ''))
+                            : null,
+                        onBackgroundImageError: (_, __) {},
+                        child: resolveApiImageUrl(
+                                    participantImages[otherParticipantId] ?? '')
+                                .isEmpty
+                            ? Icon(Icons.person,
+                                size: 28, color: Colors.grey[400])
+                            : null,
                       ),
                       // Green online dot (top-right)
                       if (isOnline)
