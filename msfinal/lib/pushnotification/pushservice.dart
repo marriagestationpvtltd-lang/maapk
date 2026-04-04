@@ -5,6 +5,25 @@ import 'package:http/http.dart' as http;
 import '../Notification/notification_inbox_service.dart';
 import '../Calling/callmanager.dart';
 
+/// Notification Service
+///
+/// Handles sending push notifications with proper classification:
+///
+/// Type 1: Real-time Interactive (call, video_call)
+///   - Require immediate user action
+///   - Always show notification with sound/vibration
+///
+/// Type 2: Silent Data Messages (call_response, call_ended, etc.)
+///   - No user alert needed, only update app state
+///   - Backend should send data-only payload (no notification key)
+///
+/// Type 3: Context-Aware (chat_message)
+///   - Suppress when user is viewing that chat
+///   - Show notification otherwise
+///
+/// Type 4: Standard (request, profile_view, etc.)
+///   - Always show notification
+///
 class NotificationService {
   static final CallManager _callManager = CallManager();
 

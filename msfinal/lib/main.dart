@@ -44,24 +44,54 @@ const String generalChannelDescription = 'Channel for general app notifications'
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   final data = message.data;
+  final type = data['type']?.toString() ?? '';
 
   // Trigger call response for response notifications
   NotificationService.triggerCallResponse(data);
 
   // Trigger incoming call for new call notifications
-  if (data['type'] == 'call' || data['type'] == 'video_call') {
+  if (type == 'call' || type == 'video_call') {
     NotificationService.triggerIncomingCall(data);
   }
 
+  // Always record notification in inbox
   await NotificationInboxService.recordIncomingRemoteNotification(
     data: data,
     fallbackTitle: message.notification?.title,
     fallbackBody: message.notification?.body,
   );
 
+  // Silent notifications (Type 2): No user alert, only update app state
+  const silentTypes = {
+    'call_response',
+    'video_call_response',
+    'call_ended',
+    'video_call_ended',
+    'call_cancelled',
+    'video_call_cancelled',
+    'missed_call',
+    'missed_video_call',
+  };
+
+  if (silentTypes.contains(type)) {
+    // Silent notification - no visual alert needed
+    debugPrint('🔕 Silent notification received: $type');
+    return;
+  }
+
+  // Real-time interactive notifications (Type 1): Incoming calls
   if (defaultTargetPlatform == TargetPlatform.android &&
-      (data['type'] == 'call' || data['type'] == 'video_call')) {
+      (type == 'call' || type == 'video_call')) {
     await _displayWhatsAppCallNotification(data, message.notification);
+    return;
+  }
+
+  // Standard notifications (Type 3 & 4): Chat messages, requests, etc.
+  // Show notification for all other types when in background
+  if (type == 'chat_message' || type == 'chat' ||
+      type == 'request' || type == 'request_accepted' ||
+      type == 'request_rejected' || type == 'profile_view') {
+    await _displayStandardNotification(message);
   }
 }
 
@@ -162,6 +192,50 @@ Future<void> _displayWhatsAppCallNotification(
     notificationId,
     isVideoCall ? '📹 Video Call' : '📞 Voice Call',
     callerName,
+    details,
+    payload: json.encode(data),
+  );
+}
+
+// Display standard notification for messages, requests, etc.
+Future<void> _displayStandardNotification(RemoteMessage message) async {
+  final data = message.data;
+  final content = NotificationInboxService.buildNotificationContent(
+    type: data['type']?.toString() ?? 'notification',
+    actorName: data['senderName']?.toString() ??
+        data['viewerName']?.toString() ??
+        data['callerName']?.toString(),
+    requestType: data['requestType']?.toString() ?? data['request_type']?.toString(),
+    messagePreview: data['message']?.toString() ?? message.notification?.body,
+  );
+
+  const androidDetails = AndroidNotificationDetails(
+    generalChannelId,
+    generalChannelName,
+    channelDescription: generalChannelDescription,
+    importance: Importance.high,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+  );
+
+  const iosDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    presentBanner: true,
+    presentList: true,
+  );
+
+  const details = NotificationDetails(
+    android: androidDetails,
+    iOS: iosDetails,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    message.notification?.title ?? content['title'],
+    message.notification?.body ?? content['body'],
     details,
     payload: json.encode(data),
   );
@@ -579,13 +653,14 @@ void _navigateToCallPage(Map<String, dynamic> data) {
 
 Future<void> setupFirebaseMessaging() async {
   // Set up iOS foreground notification presentation.
-  // Disable auto-display so our onMessage handler has full control over
-  // when to show notifications (e.g. suppressing while user is on chat screen).
+  // For iOS, we enable selective presentation - show alerts for important notifications
+  // like calls, but our onMessage handler controls when to show other notifications
+  // (e.g. suppressing chat messages while user is on that chat screen).
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: false,
-      badge: false,
-      sound: false,
+      alert: true,  // Enable alerts for important notifications
+      badge: true,  // Update badge count
+      sound: true,  // Play sound for notifications
     );
   }
 
@@ -653,49 +728,59 @@ Future<void> setupFirebaseMessaging() async {
   // Set up foreground message handlers
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     final data = message.data;
+    final type = data['type']?.toString() ?? '';
     debugPrint('📱 Foreground message received: ${message.notification?.title}');
     debugPrint('📱 Message data: $data');
+    debugPrint('📱 Message type: $type');
 
-    // Trigger call response for response notifications
-    NotificationService.triggerCallResponse(data);
-
-    // Trigger incoming call for new call notifications
-    if (data['type'] == 'call' || data['type'] == 'video_call') {
-      NotificationService.triggerIncomingCall(data);
-      // When app is in foreground, the calling UI opens directly via CallOverlayWrapper.
-      // Do NOT show a notification banner — it would appear alongside the call screen.
-      await NotificationInboxService.recordIncomingRemoteNotification(
-        data: data,
-        fallbackTitle: message.notification?.title,
-        fallbackBody: message.notification?.body,
-      );
-      return;
-    }
-
-    // call_response, call_ended, and call_cancelled are handled programmatically by the call screen UI.
-    // No notification banner is needed; just record them for the inbox.
-    if (data['type'] == 'call_response' || data['type'] == 'call_ended' ||
-        data['type'] == 'video_call_response' || data['type'] == 'video_call_ended' ||
-        data['type'] == 'call_cancelled' || data['type'] == 'video_call_cancelled') {
-      await NotificationInboxService.recordIncomingRemoteNotification(
-        data: data,
-        fallbackTitle: message.notification?.title,
-        fallbackBody: message.notification?.body,
-      );
-      return;
-    }
-
+    // Always record notification in inbox first
     await NotificationInboxService.recordIncomingRemoteNotification(
       data: data,
       fallbackTitle: message.notification?.title,
       fallbackBody: message.notification?.body,
     );
 
-    // Suppress chat notifications when the recipient is actively viewing that chat
-    if (!shouldShowChatNotification(data)) {
+    // Trigger call response for response notifications
+    NotificationService.triggerCallResponse(data);
+
+    // Type 1: Real-time Interactive Notifications (Incoming Calls)
+    if (type == 'call' || type == 'video_call') {
+      NotificationService.triggerIncomingCall(data);
+      // When app is in foreground, the calling UI opens directly via CallOverlayWrapper.
+      // Do NOT show a notification banner — it would appear alongside the call screen.
+      debugPrint('📞 Incoming call notification - UI handled by CallOverlayWrapper');
       return;
     }
 
+    // Type 2: Silent Data Messages (No visual notification)
+    const silentTypes = {
+      'call_response',
+      'video_call_response',
+      'call_ended',
+      'video_call_ended',
+      'call_cancelled',
+      'video_call_cancelled',
+      'missed_call',
+      'missed_video_call',
+    };
+
+    if (silentTypes.contains(type)) {
+      // Silent notification - handled programmatically by call screen UI
+      // No notification banner needed, just recorded in inbox above
+      debugPrint('🔕 Silent notification - no banner shown: $type');
+      return;
+    }
+
+    // Type 3: Context-Aware Messages (Chat)
+    if (type == 'chat_message' || type == 'chat') {
+      // Suppress chat notifications when the recipient is actively viewing that chat
+      if (!shouldShowChatNotification(data)) {
+        debugPrint('💬 Chat notification suppressed - user viewing this chat');
+        return;
+      }
+    }
+
+    // Type 3 & 4: Show standard notification for chat messages, requests, profile views
     await _showStandardNotification(message);
   });
 
