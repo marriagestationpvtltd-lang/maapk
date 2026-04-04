@@ -1043,6 +1043,9 @@ class _PaymentPageState extends State<PaymentPage> {
           queryParams['pidx'];
 
       print('Payment URL parameters: $queryParams');
+      if (transactionId == null) {
+        print('⚠️ No transaction ID found in success URL — proceeding without it');
+      }
 
       setState(() {
         _paymentStatus = "Activating package...";
