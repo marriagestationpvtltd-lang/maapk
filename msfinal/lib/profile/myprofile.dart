@@ -674,12 +674,15 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
+                if (Navigator.canPop(context))
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  )
+                else
+                  SizedBox(width: 48),
                 Text(
                   'My Profile',
                   style: TextStyle(
