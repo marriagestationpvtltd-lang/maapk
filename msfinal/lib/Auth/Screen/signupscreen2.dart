@@ -51,10 +51,10 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
 
   // Dropdown options
   final List<String> _maritalStatusOptions = [
-    'Single',
-    'Married',
+    'Still Unmarried',
     'Widowed',
     'Divorced',
+    'Waiting Divorce',
   ];
 
   final List<String> _bloodGroupOptions = [
@@ -126,7 +126,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
         'bloodGroup': _selectedBloodGroup == null ? 'Please select blood group' : null,
         'complexion': _selectedComplexion == null ? 'Please select complexion' : null,
         'bodyType': _selectedBodyType == null ? 'Please select body type' : null,
-        'childStatus': (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed')
+        'childStatus': (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed' || _selectedMaritalStatus == 'Waiting Divorce')
             && _childStatus.isEmpty ? 'Please select children status' : null,
         'childLiveWith': (_childStatus == 'One' || _childStatus == 'Two +')
             && _childLiveWith.isEmpty ? 'Please select where children live' : null,
@@ -283,8 +283,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                       if (_hasValidationErrors) {
                         _fieldErrors['maritalStatus'] = null;
                       }
-                      // Reset child status if not divorced/widowed
-                      if (value != 'Divorced' && value != 'Widowed') {
+                      // Reset child status if not divorced/widowed/waiting divorce
+                      if (value != 'Divorced' && value != 'Widowed' && value != 'Waiting Divorce') {
                         _childStatus = '';
                         _childLiveWith = '';
                       }
@@ -292,8 +292,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
                   },
                 ),
 
-                // Children Status (only for Divorced/Widowed)
-                if (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed') ...[
+                // Children Status (only for Divorced/Widowed/Waiting Divorce)
+                if (_selectedMaritalStatus == 'Divorced' || _selectedMaritalStatus == 'Widowed' || _selectedMaritalStatus == 'Waiting Divorce') ...[
                   const SizedBox(height: 24),
 
                   Column(
