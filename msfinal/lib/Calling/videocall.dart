@@ -188,11 +188,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         if (mounted) {
           setState(() {
             _remoteAccepted = accepted;
-            _isCallRinging = false;
+            if (accepted) {
+              _isCallRinging = false;
+            }
           });
         }
 
         if (!accepted) {
+          unawaited(_stopRingtone());
           _endCall();
         } else {
           unawaited(_stopRingtone());

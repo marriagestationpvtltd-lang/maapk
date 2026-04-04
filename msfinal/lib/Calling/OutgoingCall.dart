@@ -144,7 +144,13 @@ class _CallScreenState extends State<CallScreen> {
           _armOutgoingTimeout(_kPostAcceptConnectionTimeout);
           _syncOverlayState();
         } else {
-          if (mounted) setState(() => _callDeclined = true);
+          if (mounted) {
+            setState(() {
+              _remoteAccepted = false;
+              _callDeclined = true;
+            });
+          }
+          unawaited(_stopRingtone());
           _endCall();
         }
       } else if (type == 'call_ended') {
