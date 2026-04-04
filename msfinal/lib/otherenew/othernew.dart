@@ -13,6 +13,7 @@ import '../Auth/Screen/signupscreen10.dart';
 import '../Chat/adminchat.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
+import '../constant/constant.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import 'modelfile.dart';
@@ -217,16 +218,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
 
-  static const List<String> _reportReasons = [
-    'नक्कली प्रोफाइल (Fake Profile)',
-    'अश्लील वा आपत्तिजनक सामग्री (Inappropriate/Obscene Content)',
-    'विवाहित भएर एकल भनेको (Married but claiming to be Single)',
-    'आर्थिक ठगी वा धोखाधडी (Financial Fraud or Deception)',
-    'गलत उमेर वा व्यक्तिगत जानकारी (False Age or Personal Details)',
-    'उत्पीडन वा दुर्व्यवहार (Harassment or Abuse)',
-    'अनुचित सम्पर्क व्यवहार (Inappropriate Contact Behavior)',
-  ];
-
   void _showReportDialog(BuildContext context) {
     String? selectedReason;
     showModalBottomSheet<void>(
@@ -283,7 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._reportReasons.map((reason) => RadioListTile<String>(
+                  ...AppConstants.reportReasons.map((reason) => RadioListTile<String>(
                         value: reason,
                         groupValue: selectedReason,
                         onChanged: (value) =>
@@ -343,7 +334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (userDataString == null) return;
       final userData = jsonDecode(userDataString);
       final currentUserId = userData['id'].toString();
-      const adminUserId = '1';
+      final adminUserId = AppConstants.adminUserId;
 
       final userProfile =
           Provider.of<UserProfile>(context, listen: false);
@@ -366,9 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'reportReason': reason,
       });
 
-      String getConversationId(String a, String b) =>
-          (a.compareTo(b) < 0) ? '${a}_$b' : '${b}_$a';
-      final conversationId = getConversationId(currentUserId, adminUserId);
+      final conversationId = AppConstants.conversationId(currentUserId, adminUserId);
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(conversationId)

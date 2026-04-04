@@ -26,6 +26,7 @@ import '../pushnotification/pushservice.dart';
 import '../webrtc/webrtc.dart';
 import 'call_overlay_manager.dart';
 import 'widgets/typing_indicator.dart';
+import '../constant/constant.dart';
 import '../utils/time_utils.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -2683,16 +2684,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
   }
 
-  static const List<String> _reportReasons = [
-    'नक्कली प्रोफाइल (Fake Profile)',
-    'अश्लील वा आपत्तिजनक सामग्री (Inappropriate/Obscene Content)',
-    'विवाहित भएर एकल भनेको (Married but claiming to be Single)',
-    'आर्थिक ठगी वा धोखाधडी (Financial Fraud or Deception)',
-    'गलत उमेर वा व्यक्तिगत जानकारी (False Age or Personal Details)',
-    'उत्पीडन वा दुर्व्यवहार (Harassment or Abuse)',
-    'अनुचित सम्पर्क व्यवहार (Inappropriate Contact Behavior)',
-  ];
-
   void _showReportDialog(BuildContext context) {
     String? selectedReason;
     showModalBottomSheet<void>(
@@ -2749,7 +2740,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._reportReasons.map((reason) => RadioListTile<String>(
+                  ...AppConstants.reportReasons.map((reason) => RadioListTile<String>(
                         value: reason,
                         groupValue: selectedReason,
                         onChanged: (value) =>
@@ -2804,7 +2795,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _submitReport(BuildContext context, String reason) async {
     try {
-      const adminUserId = '1';
+      final adminUserId = AppConstants.adminUserId;
       final reportMessage =
           'मैले यो प्रोफाइल रिपोर्ट गरेको छु।\n\nकारण: $reason\n\nरिपोर्ट गरिएको प्रोफाइल ID: ${widget.receiverId}';
 
@@ -2821,10 +2812,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'reportReason': reason,
       });
 
-      String getConversationId(String a, String b) =>
-          (a.compareTo(b) < 0) ? '${a}_$b' : '${b}_$a';
       final conversationId =
-          getConversationId(widget.currentUserId, adminUserId);
+          AppConstants.conversationId(widget.currentUserId, adminUserId);
       await _firestore.collection('conversations').doc(conversationId).set({
         'participants': [widget.currentUserId, adminUserId],
         'lastMessage': 'प्रोफाइल रिपोर्ट: $reason',
