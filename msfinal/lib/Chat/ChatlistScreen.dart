@@ -622,6 +622,9 @@ class _ChatListScreenState extends State<ChatListScreen>
       if (mounted) Navigator.pop(context);
 
       if (success) {
+        // Create chat room and send automatic "Ok let's talk" message
+        await _createChatRoomAndSendMessage(proposal);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Chat request accepted"),
@@ -700,6 +703,41 @@ class _ChatListScreenState extends State<ChatListScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  Future<void> _createChatRoomAndSendMessage(ProposalModel proposal) async {
+    try {
+      // Get sender's information (the person who sent the request)
+      final senderId = proposal.senderId ?? '';
+      final senderName = '${proposal.firstName ?? ''} ${proposal.lastName ?? ''}'.trim();
+      final senderImage = proposal.profilePicture ?? '';
+
+      // Create or get chat room
+      final firebaseService = FirebaseService();
+      final chatRoomId = await firebaseService.getOrCreateChatRoom(
+        user1Id: userId,
+        user2Id: senderId,
+        user1Name: name,
+        user2Name: senderName,
+        user1Image: resolveApiImageUrl(userimage),
+        user2Image: resolveApiImageUrl(senderImage),
+      );
+
+      // Send automatic "Ok let's talk" message
+      // The receiver (current user) sends the message to the sender
+      await firebaseService.sendMessage(
+        chatRoomId: chatRoomId,
+        senderId: userId,
+        receiverId: senderId,
+        message: "Ok let's talk",
+        messageType: 'text',
+      );
+
+      print('Chat room created and message sent successfully');
+    } catch (e) {
+      print('Error creating chat room or sending message: $e');
+      // Don't show error to user as the request was already accepted successfully
     }
   }
 
