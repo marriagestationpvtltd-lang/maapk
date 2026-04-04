@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../otherenew/othernew.dart';
+import '../otherprofile/otherprofileview.dart';
 import '../Chat/ChatdetailsScreen.dart';
 import '../pushnotification/pushservice.dart';
 import '../ReUsable/loading_widgets.dart';
@@ -716,7 +717,7 @@ class _MatrimonyNotificationPageState
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  ProfileScreen(userId: userId),
+                                                  UserProfilePage(userId: userId),
                                             ),
                                           );
                                         }
