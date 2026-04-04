@@ -13,6 +13,7 @@ import '../Auth/Screen/Edit/edit5.dart';
 import '../Auth/Screen/Edit/edit6.dart';
 import '../Auth/Screen/Edit/edit7.dart';
 import '../Auth/Screen/Edit/edit8.dart';
+import '../Auth/Screen/signupscreen10.dart';
 import '../Auth/SuignupModel/signup_model.dart';
 import '../DeleteAccount/deleteAccointScreen.dart';
 import '../Package/PackageScreen.dart';
@@ -35,6 +36,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   int _profilePictureTimestamp = DateTime.now().millisecondsSinceEpoch;
   String? _activePackageName;
   String? _activePackageExpiry;
+  String _docStatus = 'not_uploaded';
 
   @override
   void initState() {
@@ -67,6 +69,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             isLoading = false;
           });
           _fetchActivePackage(userId.toString());
+          _fetchDocumentStatus(userId.toString());
 
           // Sync fresh name and profile picture back to SharedPreferences so
           // other screens (e.g. Settings, Home) always show up-to-date info.
@@ -133,6 +136,35 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _fetchDocumentStatus(String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://digitallami.com/Api2/check_document_status.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': int.tryParse(userId)}),
+      );
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result['success'] == true && mounted) {
+          final status = result['status'] ?? 'not_uploaded';
+          final maritalStatusName =
+              profileData?['personalDetail']?['maritalStatusName']?.toString() ?? '';
+          final requiresDoc = _docRequiredStatuses.contains(maritalStatusName);
+          setState(() {
+            _docStatus = status;
+            // If marital status requires a document, only mark as verified
+            // when that document has been approved by the admin.
+            if (requiresDoc) {
+              isProfileVerified = status == 'approved';
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Document status fetch failed: $e');
     }
   }
 
@@ -644,6 +676,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               lifestyle: lifestyle,
               partner: partner,
             ),
+            _buildDocumentStatusSection(personalDetail),
             _buildMemberTypeSection(),
             _buildPackageDetailsSection(),
             _buildProfileInfo(personalDetail),
@@ -1266,6 +1299,126 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   int _countMissing(List<dynamic> values) {
     return values.where(_isMissing).length;
+  }
+
+  static const List<String> _docRequiredStatuses = [
+    'Widowed',
+    'Divorced',
+    'Waiting Divorce',
+  ];
+
+  Widget _buildDocumentStatusSection(Map<String, dynamic> personalDetail) {
+    final maritalStatus = personalDetail['maritalStatusName']?.toString() ?? '';
+    if (!_docRequiredStatuses.contains(maritalStatus)) {
+      return const SizedBox.shrink();
+    }
+
+    Color bgColor;
+    Color iconColor;
+    IconData icon;
+    String title;
+    String subtitle;
+    Widget? action;
+
+    switch (_docStatus) {
+      case 'approved':
+        bgColor = const Color(0xFFE8F5E9);
+        iconColor = const Color(0xFF2E7D32);
+        icon = Icons.verified_rounded;
+        title = 'Document Verified';
+        subtitle = 'Your marital status document has been approved. Your profile is verified.';
+        action = null;
+        break;
+      case 'pending':
+        bgColor = const Color(0xFFFFFDE7);
+        iconColor = const Color(0xFFF57F17);
+        icon = Icons.hourglass_top_rounded;
+        title = 'Document Under Review';
+        subtitle = 'Your document has been submitted and is awaiting admin approval.';
+        action = null;
+        break;
+      case 'rejected':
+        bgColor = const Color(0xFFFFEBEE);
+        iconColor = const Color(0xFFD32F2F);
+        icon = Icons.cancel_rounded;
+        title = 'Document Rejected';
+        subtitle = 'Your document was rejected. Please upload a valid document to get verified.';
+        action = TextButton.icon(
+          onPressed: () => _openEditPage(const IDVerificationScreen()),
+          icon: const Icon(Icons.upload_file_rounded, size: 18),
+          label: const Text('Re-upload Document'),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFD32F2F)),
+        );
+        break;
+      default: // not_uploaded
+        bgColor = const Color(0xFFFCE4EC);
+        iconColor = const Color(0xFFD32F2F);
+        icon = Icons.upload_file_rounded;
+        title = 'Document Required';
+        subtitle = 'Since your marital status is "$maritalStatus", you must upload a supporting document (e.g. death certificate / divorce decree / court order) to get your profile verified.';
+        action = ElevatedButton.icon(
+          onPressed: () => _openEditPage(const IDVerificationScreen()),
+          icon: const Icon(Icons.upload_rounded, size: 18, color: Colors.white),
+          label: const Text('Upload Document', style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFD32F2F),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          ),
+        );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: iconColor.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: iconColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+                if (action != null) ...[
+                  const SizedBox(height: 10),
+                  action,
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCompletionSection({
