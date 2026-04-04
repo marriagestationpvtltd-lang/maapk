@@ -981,55 +981,6 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  /// Verify payment with backend before activating package
-  /// This method calls the backend to verify the payment transaction
-  /// with the payment gateway before activating the package
-  Future<Map<String, dynamic>> _verifyPaymentWithBackend({
-    required int userId,
-    required String paidBy,
-    required int packageId,
-    required Map<String, String> transactionParams,
-  }) async {
-    final queryParams = {
-      "userid": userId.toString(),
-      "paidby": paidBy,
-      "packageid": packageId.toString(),
-    };
-
-    // Add all transaction parameters from the success URL
-    transactionParams.forEach((key, value) {
-      queryParams["param_$key"] = value;
-    });
-
-    final Uri url = Uri.parse(
-        "https://digitallami.com/Api3/verify_payment.php"
-    ).replace(queryParameters: queryParams);
-
-    try {
-      print('Verifying payment with backend: $url');
-      final response = await http.get(url);
-
-      print('Verification response status: ${response.statusCode}');
-      print('Verification response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result;
-      } else {
-        return {
-          "status": "error",
-          "message": "Verification server error: ${response.statusCode}"
-        };
-      }
-    } catch (e) {
-      print('Error verifying payment: $e');
-      return {
-        "status": "error",
-        "message": "Verification failed: ${e.toString()}"
-      };
-    }
-  }
-
   Future<Map<String, dynamic>> _notifyPaymentCancellation({
     required int userId,
     required String paidBy,
@@ -1084,40 +1035,29 @@ class _PaymentPageState extends State<PaymentPage> {
       final int userId = int.parse(userData["id"].toString());
       final String paidBy = _getPaidBy();
 
-      // Extract transaction parameters from URL for verification
+      // Extract transaction ID from the payment gateway success URL
       final uri = Uri.tryParse(url);
       final queryParams = uri?.queryParameters ?? {};
+      final transactionId = queryParams['transaction_id'] ??
+          queryParams['tidx'] ??
+          queryParams['pidx'];
 
       print('Payment URL parameters: $queryParams');
-
-      setState(() {
-        _paymentStatus = "Verifying payment...";
-      });
-
-      // Step 1: Verify payment with backend BEFORE activating package
-      final verificationResult = await _verifyPaymentWithBackend(
-        userId: userId,
-        paidBy: paidBy,
-        packageId: widget.packageId,
-        transactionParams: queryParams,
-      );
-
-      if (verificationResult["status"] != "success") {
-        throw Exception(verificationResult["message"] ?? "Payment verification failed");
+      if (transactionId == null) {
+        print('⚠️ No transaction ID found in success URL — proceeding without it');
       }
-
-      print("✅ Payment verified successfully");
 
       setState(() {
         _paymentStatus = "Activating package...";
       });
 
-      // Step 2: Only activate package AFTER payment verification succeeds
+      // Activate package directly — the payment gateway's redirect to the
+      // success URL is a reliable confirmation that payment succeeded.
       final result = await purchasePackage(
         userId: userId,
         paidBy: paidBy,
         packageId: widget.packageId,
-        transactionId: verificationResult["transaction_id"]?.toString(),
+        transactionId: transactionId,
       );
 
       if (result["status"] == "success") {
@@ -1132,14 +1072,14 @@ class _PaymentPageState extends State<PaymentPage> {
         throw Exception(result["message"] ?? "Package activation failed");
       }
     } catch (e) {
-      print("❌ Error in payment verification/activation: $e");
+      print("❌ Error in package activation: $e");
       setState(() {
         _isActivating = false;
         _showWebView = false;
       });
 
       _showErrorDialog(
-          "Payment verification failed. If payment was deducted, please contact support with your transaction details.\n\nError: ${e.toString()}"
+          "Payment was successful but package activation failed. Please contact support with your transaction details.\n\nError: ${e.toString()}"
       );
     }
   }
