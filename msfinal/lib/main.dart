@@ -36,6 +36,9 @@ FlutterLocalNotificationsPlugin();
 const String callChannelId = 'calls_channel';
 const String callChannelName = 'Calls';
 const String callChannelDescription = 'Channel for WhatsApp-like call notifications';
+const String messagesChannelId = 'messages_channel';
+const String messagesChannelName = 'Messages';
+const String messagesChannelDescription = 'Channel for chat messages';
 const String generalChannelId = 'general_notifications';
 const String generalChannelName = 'General Notifications';
 const String generalChannelDescription = 'Channel for general app notifications';
@@ -200,8 +203,9 @@ Future<void> _displayWhatsAppCallNotification(
 // Display standard notification for messages, requests, etc.
 Future<void> _displayStandardNotification(RemoteMessage message) async {
   final data = message.data;
+  final type = data['type']?.toString() ?? '';
   final content = NotificationInboxService.buildNotificationContent(
-    type: data['type']?.toString() ?? 'notification',
+    type: type,
     actorName: data['senderName']?.toString() ??
         data['viewerName']?.toString() ??
         data['callerName']?.toString(),
@@ -209,12 +213,18 @@ Future<void> _displayStandardNotification(RemoteMessage message) async {
     messagePreview: data['message']?.toString() ?? message.notification?.body,
   );
 
-  const androidDetails = AndroidNotificationDetails(
-    generalChannelId,
-    generalChannelName,
-    channelDescription: generalChannelDescription,
-    importance: Importance.high,
-    priority: Priority.high,
+  // Use different channel based on notification type
+  final isMessage = type == 'chat_message' || type == 'chat';
+  final channelId = isMessage ? messagesChannelId : generalChannelId;
+  final channelName = isMessage ? messagesChannelName : generalChannelName;
+  final channelDescription = isMessage ? messagesChannelDescription : generalChannelDescription;
+
+  final androidDetails = AndroidNotificationDetails(
+    channelId,
+    channelName,
+    channelDescription: channelDescription,
+    importance: isMessage ? Importance.high : Importance.defaultImportance,
+    priority: isMessage ? Priority.high : Priority.defaultPriority,
     playSound: true,
     enableVibration: true,
   );
@@ -227,7 +237,7 @@ Future<void> _displayStandardNotification(RemoteMessage message) async {
     presentList: true,
   );
 
-  const details = NotificationDetails(
+  final details = NotificationDetails(
     android: androidDetails,
     iOS: iosDetails,
   );
@@ -244,7 +254,7 @@ Future<void> _displayStandardNotification(RemoteMessage message) async {
 // Create notification channels and configure actions
 Future<void> initLocalNotifications() async {
   // Create Android notification channel for calls
-  final androidChannel = AndroidNotificationChannel(
+  final callChannel = AndroidNotificationChannel(
     callChannelId,
     callChannelName,
     description: callChannelDescription,
@@ -257,20 +267,33 @@ Future<void> initLocalNotifications() async {
     vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
   );
 
+  // Create Android notification channel for messages
+  final messagesChannel = AndroidNotificationChannel(
+    messagesChannelId,
+    messagesChannelName,
+    description: messagesChannelDescription,
+    importance: Importance.high,
+    playSound: true,
+    enableVibration: true,
+    showBadge: true,
+  );
+
+  // Create Android notification channel for general notifications
   final generalChannel = AndroidNotificationChannel(
     generalChannelId,
     generalChannelName,
     description: generalChannelDescription,
-    importance: Importance.high,
+    importance: Importance.defaultImportance,
     playSound: true,
+    showBadge: true,
   );
 
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(androidChannel);
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(generalChannel);
+  final androidPlugin = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+  await androidPlugin?.createNotificationChannel(callChannel);
+  await androidPlugin?.createNotificationChannel(messagesChannel);
+  await androidPlugin?.createNotificationChannel(generalChannel);
 
   const android = AndroidInitializationSettings('@mipmap/ic_launcher');
   const ios = DarwinInitializationSettings(
