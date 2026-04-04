@@ -499,7 +499,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  late String myidd;
+  String myidd = '';
   String usertye = '';
   String userimage = '';
   var pageno;
