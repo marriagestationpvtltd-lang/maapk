@@ -997,7 +997,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showRateAppDialog() {
-    int _selectedStars = 5;
+    int selectedStars = 5;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1022,12 +1022,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   final star = i + 1;
                   return GestureDetector(
                     onTap: () =>
-                        setDialogState(() => _selectedStars = star),
+                        setDialogState(() => selectedStars = star),
                     child: Padding(
                       padding:
                           const EdgeInsets.symmetric(horizontal: 4),
                       child: Icon(
-                        star <= _selectedStars
+                        star <= selectedStars
                             ? Icons.star
                             : Icons.star_border,
                         color: Colors.amber,
@@ -1052,9 +1052,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: TextButton(
                 onPressed: () {
+                  final stars = selectedStars;
                   Navigator.pop(ctx);
                   _showSnackBar(
-                      'Thank you for rating us $_selectedStars stars! ⭐');
+                      'Thank you for rating us $stars stars! ⭐');
                 },
                 child: const Text('Submit',
                     style: TextStyle(color: Colors.white)),
