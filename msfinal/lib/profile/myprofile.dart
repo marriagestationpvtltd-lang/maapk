@@ -144,7 +144,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       final response = await http.post(
         Uri.parse('https://digitallami.com/Api2/check_document_status.php'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': int.tryParse(userId)}),
+        body: jsonEncode({'user_id': int.parse(userId)}),
       );
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
