@@ -268,7 +268,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         }
       }
     } else if (docStatus == 'not_uploaded' && userType == 'free') {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => IDVerificationScreen()));
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => IDVerificationScreen()));
     } else if (userType == 'free' && docStatus == 'approved') {
       _showUpgradeChatDialog(context);
     } else if (userType == 'paid' && docStatus != 'approved') {
@@ -299,7 +299,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     } else if (docStatus == 'rejected') {
       _showDocumentRejectedDialog(context);
     } else {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => IDVerificationScreen()),
       );
@@ -386,9 +386,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => IDVerificationScreen()),
               );
