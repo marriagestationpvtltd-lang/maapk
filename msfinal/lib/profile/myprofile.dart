@@ -30,14 +30,7 @@ class MatrimonyProfilePage extends StatefulWidget {
 }
 
 class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
-  static const SystemUiOverlayStyle _onlineStatusBarStyle =
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemStatusBarContrastEnforced: false,
-      );
-  static const SystemUiOverlayStyle _offlineStatusBarStyle =
+  static const SystemUiOverlayStyle _statusBarStyle =
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
@@ -60,7 +53,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(_onlineStatusBarStyle);
+    SystemChrome.setSystemUIOverlayStyle(_statusBarStyle);
     fetchProfileData();
   }
 
@@ -650,7 +643,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     _lastConnectivityState = isConnected;
 
     SystemChrome.setSystemUIOverlayStyle(
-      isConnected ? _onlineStatusBarStyle : _offlineStatusBarStyle,
+      _statusBarStyle,
     );
 
     if (previousState == false && isConnected) {
@@ -695,7 +688,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   Widget _buildOnlineScaffold({required Widget child}) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: _onlineStatusBarStyle,
+      value: _statusBarStyle,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
