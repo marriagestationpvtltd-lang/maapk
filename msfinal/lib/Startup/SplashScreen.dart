@@ -46,6 +46,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   bool _isCheckingVersion = true;
   String? _errorMessage;
 
+  // Completes when the entrance animation finishes.
+  // Guaranteed to be set in initState before any async callback can use it.
+  late Future<void> _animationCompleted;
+
   // Current app versions - Update these with your actual current versions
   final String currentAndroidVersion = '24.0.0'; // Your current Android version
   final String currentIOSVersion = '1.0.0';     // Your current iOS version
@@ -69,7 +73,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _setupAnimations();
-    _entranceController.forward();
+    // TickerCanceled is expected when the widget disposes while the animation
+    // is still running (e.g. user leaves the app); swallow it intentionally.
+    _animationCompleted = _entranceController.forward().orCancel
+        .catchError((Object e) {
+          if (e is! TickerCanceled) debugPrint('Splash animation error: $e');
+        });
     _checkAppVersion();
   }
 
@@ -397,6 +406,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _proceedWithNavigation() async {
     if (!mounted) return;
 
+    // Wait for the entrance animation to finish so we never navigate
+    // mid-animation and the user always sees the full splash.
+    await _animationCompleted;
+
+    if (!mounted) return;
+
     await context.read<SignupModel>().loadUserData();
 
     final prefs = await SharedPreferences.getInstance();
@@ -619,8 +634,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   },
                   child: const Image(
                     image: AssetImage('assets/images/Mslogo.gif'),
-                    height: 220,
-                    width: 220,
+                    height: 250,
+                    width: 250,
                     fit: BoxFit.contain,
                   ),
                 ),
