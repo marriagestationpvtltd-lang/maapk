@@ -116,6 +116,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Timer? _typingDebounce;
   bool _isReceiverTyping = false;
   StreamSubscription? _typingSubscription;
+  StreamSubscription? _audioPlayerStateSubscription;
+  StreamSubscription? _audioPlayerPositionSubscription;
+  StreamSubscription? _audioPlayerDurationSubscription;
 
   // Scroll-to-reply + highlight
   final Map<String, GlobalKey> _messageKeys = {};
@@ -175,7 +178,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     WidgetsBinding.instance.addObserver(this);
 
     // Audio player listeners
-    _audioPlayer.onPlayerStateChanged.listen((state) {
+    _audioPlayerStateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() {
           _isPlaying = state == PlayerState.playing;
@@ -186,10 +189,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         });
       }
     });
-    _audioPlayer.onPositionChanged.listen((pos) {
+    _audioPlayerPositionSubscription = _audioPlayer.onPositionChanged.listen((pos) {
       if (mounted) setState(() => _playbackPosition = pos);
     });
-    _audioPlayer.onDurationChanged.listen((dur) {
+    _audioPlayerDurationSubscription = _audioPlayer.onDurationChanged.listen((dur) {
       if (mounted) setState(() => _playbackDuration = dur);
     });
 
@@ -326,6 +329,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (mounted) setState(() => _highlightedMessageId = null);
     });
   }
+  @override
   void dispose() {
     // Clear chat active state when screen closes
     ScreenStateManager().onChatScreenClosed();
@@ -334,6 +338,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _editController.dispose();
     _scrollController.dispose();
     _messageFocusNode.dispose();
+    _audioPlayerStateSubscription?.cancel();
+    _audioPlayerPositionSubscription?.cancel();
+    _audioPlayerDurationSubscription?.cancel();
     _audioPlayer.dispose();
     _swipeAnimationController?.dispose();
     _typingDebounce?.cancel();
@@ -1693,6 +1700,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           .limit(_messagesPerPage)
           .get();
 
+      if (!mounted) return;
+
       if (moreMessages.docs.isEmpty) {
         setState(() {
           _hasMoreMessages = false;
@@ -1731,6 +1740,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
     } catch (e) {
       print('Error loading more messages: $e');
+      if (!mounted) return;
       setState(() => _isLoadingMore = false);
     }
   }

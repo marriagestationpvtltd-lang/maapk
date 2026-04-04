@@ -65,6 +65,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   StreamSubscription? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription? _ringtonePlayerStateSubscription;
+  StreamSubscription? _ringtonePlayerCompleteSubscription;
+  StreamSubscription? _ringtonePlayerLogSubscription;
   String? _connectionStatus;
 
   // Audio player for ringtone
@@ -103,8 +106,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   // ================= SETUP AUDIO PLAYER =================
   void _setupAudioPlayer() {
     // Listen for player state changes
-    _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
+    _ringtonePlayerStateSubscription = _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
       debugPrint('Player state changed: $state');
+      if (!mounted) return;
       if (state == PlayerState.playing) {
         setState(() => _isPlayingRingtone = true);
       } else {
@@ -113,12 +117,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     });
 
     // Listen for playback completion
-    _ringtonePlayer.onPlayerComplete.listen((_) {
+    _ringtonePlayerCompleteSubscription = _ringtonePlayer.onPlayerComplete.listen((_) {
       debugPrint('Ringtone playback completed');
     });
 
     // Log listener
-    _ringtonePlayer.onLog.listen((log) {
+    _ringtonePlayerLogSubscription = _ringtonePlayer.onLog.listen((log) {
       if (log == null) {
         debugPrint('Audio player error: ${log}');
       }
@@ -302,16 +306,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
-            setState(() => _joined = true);
+            if (mounted) setState(() => _joined = true);
             _syncOverlayState();
             unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
-            setState(() {
-              _remoteUid = uid;
-              _isCallRinging = false;
-              _callActive = true;
-            });
+            if (mounted) {
+              setState(() {
+                _remoteUid = uid;
+                _isCallRinging = false;
+                _callActive = true;
+              });
+            }
             _stopRingtone();
             _startCallTimer();
             _syncOverlayState();
@@ -319,7 +325,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           },
           onUserOffline: (_, __, ___) => _endCall(),
           onUserMuteVideo: (_, uid, muted) {
-            if (uid == _remoteUid) {
+            if (uid == _remoteUid && mounted) {
               setState(() => _remoteCameraOff = muted);
             }
           },
@@ -367,7 +373,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   // ================= CALL TIMER =================
   void _startCallTimer() {
     _timeoutTimer?.cancel();
-    setState(() => _callActive = true);
+    if (mounted) setState(() => _callActive = true);
     _syncOverlayState();
 
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -884,6 +890,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _responseSubscription?.cancel();
     _connectivitySubscription?.cancel();
     _controlsHideTimer?.cancel();
+    _ringtonePlayerStateSubscription?.cancel();
+    _ringtonePlayerCompleteSubscription?.cancel();
+    _ringtonePlayerLogSubscription?.cancel();
     _ringtonePlayer.dispose(); // Dispose audio player
     unawaited(_stopForegroundService());
     super.dispose();

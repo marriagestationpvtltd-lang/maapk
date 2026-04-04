@@ -63,6 +63,8 @@ class _CallScreenState extends State<CallScreen> {
   // Audio player for ringtone
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
+  StreamSubscription? _ringtonePlayerStateSubscription;
+  StreamSubscription? _ringtonePlayerCompleteSubscription;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _connectionStatus;
@@ -87,7 +89,7 @@ class _CallScreenState extends State<CallScreen> {
 // ================= SETUP AUDIO PLAYER =================
   void _setupAudioPlayer() {
     // Listen for player state changes
-    _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
+    _ringtonePlayerStateSubscription = _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
       if (!mounted) return;
 
       setState(() {
@@ -97,7 +99,7 @@ class _CallScreenState extends State<CallScreen> {
 
 
     // Handle errors (new way in audioplayers ^5.4.2)
-    _ringtonePlayer.onPlayerComplete.listen((_) {
+    _ringtonePlayerCompleteSubscription = _ringtonePlayer.onPlayerComplete.listen((_) {
       // When ringtone completes (won't happen with loop, but good to have)
       debugPrint('Ringtone playback completed');
     });
@@ -120,7 +122,7 @@ class _CallScreenState extends State<CallScreen> {
       if (type == 'call_response') {
         final accepted = data['accepted'] == 'true';
         if (!accepted) {
-          setState(() => _callDeclined = true);
+          if (mounted) setState(() => _callDeclined = true);
           _endCall();
         }
       } else if (type == 'call_ended') {
@@ -294,16 +296,18 @@ class _CallScreenState extends State<CallScreen> {
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
-            setState(() => _joined = true);
+            if (mounted) setState(() => _joined = true);
             _syncOverlayState();
             unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
-            setState(() {
-              _remoteUid = uid;
-              _isCallRinging = false; // Stop ringing state
-              _callActive = true;
-            });
+            if (mounted) {
+              setState(() {
+                _remoteUid = uid;
+                _isCallRinging = false; // Stop ringing state
+                _callActive = true;
+              });
+            }
             _stopRingtone(); // Stop ringtone when user joins
             _startCallTimer(); // Start call duration timer
             _syncOverlayState();
@@ -602,6 +606,8 @@ class _CallScreenState extends State<CallScreen> {
     _callTimer?.cancel();
     _responseSubscription?.cancel();
     _connectivitySubscription?.cancel();
+    _ringtonePlayerStateSubscription?.cancel();
+    _ringtonePlayerCompleteSubscription?.cancel();
     _ringtonePlayer.dispose();
     unawaited(_stopForegroundService());
     super.dispose();

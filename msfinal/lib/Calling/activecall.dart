@@ -118,7 +118,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
       _engine.registerEventHandler(RtcEngineEventHandler(
         onJoinChannelSuccess: (conn, elapsed) {
           print('✅ Active call joined');
-          setState(() => _joined = true);
+          if (mounted) setState(() => _joined = true);
           _syncOverlayState();
           unawaited(_startForegroundService());
         },

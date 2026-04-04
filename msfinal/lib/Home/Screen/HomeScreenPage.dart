@@ -134,6 +134,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         final result = jsonDecode(response.body);
 
         if (result['success'] == true) {
+          if (!mounted) return;
           setState(() {
             docstatus = result['status'] ?? 'not_uploaded';
             //  _rejectReason = result['reject_reason'] ?? '';
@@ -160,10 +161,12 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-        _isCheckingStatus = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isCheckingStatus = false;
+        });
+      }
     }
   }
 
@@ -207,6 +210,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     if (_cache.containsKey(cacheKey) &&
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
       final cachedData = _cache[cacheKey]!.data as Map<String, dynamic>;
+      if (!mounted) return;
       setState(() {
         _matchedProfilesApi = cachedData['raw'] as List<dynamic>;
         _photoRequestProfiles = cachedData['photo'] as List<MatchedUser>;
@@ -259,6 +263,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             'photo': photoProfiles,
           }, DateTime.now());
 
+          if (!mounted) return;
           setState(() {
             _matchedProfilesApi = rawProfiles;
             _photoRequestProfiles = photoProfiles;
@@ -272,6 +277,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         throw Exception('Failed to load data: ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -287,6 +293,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     final cacheKey = 'shortlisted_profiles';
     if (_cache.containsKey(cacheKey) &&
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      if (!mounted) return;
       setState(() {
         _shortlistedProfiles = _cache[cacheKey]!.data as List<dynamic>;
         _favoriteRequestCount = _shortlistedProfiles.length;
@@ -316,18 +323,22 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
           // Cache the data
           _cache[cacheKey] = CachedData(profiles, DateTime.now());
 
+          if (!mounted) return;
           setState(() {
             _shortlistedProfiles = profiles;
             _favoriteRequestCount = profiles.length;
             _isLoadingShortlist = false;
           });
         } else {
+          if (!mounted) return;
           setState(() => _isLoadingShortlist = false);
         }
       } else {
+        if (!mounted) return;
         setState(() => _isLoadingShortlist = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoadingShortlist = false);
       debugPrint('Error fetching shortlisted profiles: $e');
     }
@@ -340,6 +351,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         _cache.containsKey(cacheKey) &&
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
       final cachedData = _cache[cacheKey]!.data as Map<String, int>;
+      if (!mounted) return;
       setState(() {
         _proposalRequestCount = cachedData['proposal'] ?? 0;
         _messageRequestCount = cachedData['message'] ?? 0;
@@ -391,6 +403,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     final cacheKey = 'premium_members';
     if (_cache.containsKey(cacheKey) &&
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      if (!mounted) return;
       setState(() {
         _premiumMembers = _cache[cacheKey]!.data as List<Map<String, dynamic>>;
         _isLoading = false;
@@ -401,7 +414,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
-    final userData = jsonDecode(userDataString!);
+    if (userDataString == null) return;
+    final userData = jsonDecode(userDataString);
     final userid = userData["id"];
 
     try {
@@ -435,18 +449,21 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
           // Cache the data
           _cache[cacheKey] = CachedData(membersList, DateTime.now());
 
+          if (!mounted) return;
           setState(() {
             _premiumMembers = membersList;
             _isLoading = false;
             _premiumMembersLoaded = true;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             _isLoading = false;
             _premiumMembersLoaded = true;
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
           _premiumMembersLoaded = true;
@@ -454,6 +471,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         debugPrint('Error fetching premium members: ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _premiumMembersLoaded = true;
@@ -493,6 +511,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     final cacheKey = 'other_services';
     if (_cache.containsKey(cacheKey) &&
         !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      if (!mounted) return;
       setState(() {
         _otherServices = _cache[cacheKey]!.data as List<Map<String, dynamic>>;
         _loading = false;
@@ -532,18 +551,21 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
           // Cache the data
           _cache[cacheKey] = CachedData(servicesList, DateTime.now());
 
+          if (!mounted) return;
           setState(() {
             _otherServices = servicesList;
             _loading = false;
             _otherServicesLoaded = true;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             _loading = false;
             _otherServicesLoaded = true;
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _loading = false;
           _otherServicesLoaded = true;
@@ -551,6 +573,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         debugPrint('Error fetching services: ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _otherServicesLoaded = true;
@@ -568,6 +591,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
       if (userDataString == null) {
+        if (!mounted) return;
         setState(() {
           _chatRequestProfiles = [];
           _chatRequestsLoading = false;
@@ -583,6 +607,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         ProposalService.fetchProposals(currentUserId, 'accepted'),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _chatRequestProfiles = _mergeChatRequests(
           currentUserId: currentUserId,
@@ -593,6 +618,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       });
     } catch (e) {
       debugPrint('Error fetching chat request profiles: $e');
+      if (!mounted) return;
       setState(() {
         _chatRequestProfiles = [];
         _chatRequestsLoading = false;
@@ -622,7 +648,8 @@ String usertye = '';
   void loadMasterData() async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
-    final userData = jsonDecode(userDataString!);
+    if (userDataString == null) return;
+    final userData = jsonDecode(userDataString);
     final userId = int.tryParse(userData["id"].toString());
     try {
 
@@ -632,6 +659,7 @@ String usertye = '';
       print("Usertype: ${user.usertype}");
       print("Page No: ${user.pageno}");
       print("Profile: ${user.profilePicture}");
+      if (!mounted) return;
       setState(() {
         usertye = user.usertype;
         userimage = user.profilePicture;
