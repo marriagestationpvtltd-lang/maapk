@@ -281,36 +281,39 @@ class EnhancedDropdown<T> extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                value: value,
-                onTap: () => FocusScope.of(context).unfocus(),
-                hint: Text(
-                  hint ?? 'Select $label',
-                  style: const TextStyle(
-                    color: AppColors.textHint,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
+            child: ExcludeFocus(
+              excluding: true,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<T>(
+                  value: value,
+                  onTap: () => FocusScope.of(context).unfocus(),
+                  hint: Text(
+                    hint ?? 'Select $label',
+                    style: const TextStyle(
+                      color: AppColors.textHint,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                    size: 24,
+                  ),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  items: items.map((T item) {
+                    return DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(itemLabel(item)),
+                    );
+                  }).toList(),
+                  onChanged: onChanged,
                 ),
-                isExpanded: true,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
-                  size: 24,
-                ),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-                items: items.map((T item) {
-                  return DropdownMenuItem<T>(
-                    value: item,
-                    child: Text(itemLabel(item)),
-                  );
-                }).toList(),
-                onChanged: onChanged,
               ),
             ),
           ),

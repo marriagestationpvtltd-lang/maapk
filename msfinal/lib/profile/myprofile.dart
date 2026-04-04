@@ -376,24 +376,27 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     'Profile Picture Visibility',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  DropdownButtonFormField<String>(
-                    value: selectedPrivacy,
-                    items: [
-                      'All Users',
-                      'Premium Users Only',
-                      'Verified Users Only',
-                      'Private'
-                    ].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        selectedPrivacy = value ?? 'Private';
-                      });
-                    },
+                  ExcludeFocus(
+                    excluding: true,
+                    child: DropdownButtonFormField<String>(
+                      value: selectedPrivacy,
+                      items: [
+                        'All Users',
+                        'Premium Users Only',
+                        'Verified Users Only',
+                        'Private'
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          selectedPrivacy = value ?? 'Private';
+                        });
+                      },
+                    ),
                   ),
                 ],
               ),

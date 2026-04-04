@@ -339,7 +339,6 @@ class _BottomSheetContentState<T>
              if (_showSearch) ...[
                TextField(
                  controller: searchController,
-                 autofocus: true,
                  textInputAction: TextInputAction.search,
                  decoration: InputDecoration(
                    hintText: "Search...",

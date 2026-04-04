@@ -914,25 +914,28 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
           width: 1.6,
         ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-          hint: Text(
-            hint,
-            style: const TextStyle(fontSize: 16, color: Colors.black54),
+      child: ExcludeFocus(
+        excluding: true,
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+            hint: Text(
+              hint,
+              style: const TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+            items: items.map((String item) {
+              return DropdownMenuItem<String>(
+                value: item,
+                child: Text(
+                  item,
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
           ),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
         ),
       ),
     );
