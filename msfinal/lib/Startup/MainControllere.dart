@@ -22,7 +22,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
   static const int _chatTabIndex = 2;
 
   late int _selectedIndex;
-  int _chatRefreshToken = 0;
+  int _chatRefreshKey = 0;
   String? _senderId;
   String? _senderName;
   String? _currentUserImage;
@@ -57,7 +57,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
       MatrimonyHomeScreen(),  // index 0
       FavoritePeoplePage(),   // index 1
       _senderId != null
-          ? ChatListScreen(refreshToken: _chatRefreshToken)
+          ? ChatListScreen(refreshKey: _chatRefreshKey)
           : const Center(child: Text('Loading chat...')), // index 2
       MatrimonyProfilePage(), // index 3
     ];
@@ -87,7 +87,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
           onItemSelected: (index) {
             setState(() {
               if (_selectedIndex != _chatTabIndex && index == _chatTabIndex) {
-                _chatRefreshToken++;
+                _chatRefreshKey++;
               }
               _selectedIndex = index;
             });

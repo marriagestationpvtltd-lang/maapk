@@ -20,9 +20,9 @@ import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
 
 class ChatListScreen extends StatefulWidget {
-  final int refreshToken;
+  final int refreshKey;
 
-  const ChatListScreen({super.key, this.refreshToken = 0});
+  const ChatListScreen({super.key, this.refreshKey = 0});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -90,7 +90,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   @override
   void didUpdateWidget(covariant ChatListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.refreshToken != oldWidget.refreshToken) {
+    if (widget.refreshKey != oldWidget.refreshKey) {
       if (userId.isNotEmpty) {
         _loadPendingChatRequests(userId);
       } else {
