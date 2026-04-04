@@ -211,28 +211,30 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   }
 
   Widget _buildLoadingScreen() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-            SizedBox(height: 20),
-            Text(
-              'Checking your verification status...',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500),
-            ),
-          ],
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+              SizedBox(height: 20),
+              Text(
+                'Checking your verification status...',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -254,9 +256,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   // ─── UPLOAD SCREEN ────────────────────────────────────────────────────────
 
   Widget _buildUploadScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
+    return Column(
         children: [
           _buildHeroHeader(
             title: 'Verify Your Identity',
@@ -301,8 +301,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildHeroHeader({
@@ -541,65 +540,84 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   }
 
   Widget _buildDocumentNumberField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _documentNumberController,
-        onChanged: (_) => setState(() {}),
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          hintText: 'Enter document number',
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(10),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.numbers_rounded,
-                color: AppColors.primary, size: 18),
-          ),
-          suffixIcon: (_selectedImage != null || _scannedImagePath != null)
-              ? _isScanning
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                        ),
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.document_scanner_rounded,
-                          color: AppColors.primary),
-                      tooltip: 'Scan document ID',
-                      onPressed: _scanDocumentId,
-                    )
-              : null,
-          border: OutlineInputBorder(
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: TextField(
+            controller: _documentNumberController,
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              hintText: 'Enter document number',
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+              prefixIcon: Container(
+                margin: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.numbers_rounded,
+                    color: AppColors.primary, size: 18),
+              ),
+              suffixIcon: (_selectedImage != null || _scannedImagePath != null)
+                  ? _isScanning
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.document_scanner_rounded,
+                              color: AppColors.primary),
+                          tooltip: 'Scan document ID',
+                          onPressed: _scanDocumentId,
+                        )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        // Quick scan button
+        OutlinedButton.icon(
+          onPressed: _quickScanFromCamera,
+          icon: const Icon(Icons.camera_alt_rounded, size: 18),
+          label: const Text('स्क्यान गर्नुहोस् (Scan from Camera)'),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+            foregroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ],
     );
   }
 
@@ -978,9 +996,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   // ─── PENDING SCREEN ───────────────────────────────────────────────────────
 
   Widget _buildPendingScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
+    return Column(
         children: [
           _buildStatusHeroHeader(
             title: 'Under Review',
@@ -1010,8 +1026,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildStatusHeroHeader({
@@ -1321,9 +1336,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   // ─── APPROVED SCREEN ──────────────────────────────────────────────────────
 
   Widget _buildApprovedScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
+    return Column(
         children: [
           _buildStatusHeroHeader(
             title: 'Verified! 🎉',
@@ -1366,8 +1379,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildApprovedCard() {
@@ -1442,9 +1454,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   // ─── REJECTED SCREEN ──────────────────────────────────────────────────────
 
   Widget _buildRejectedScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
+    return Column(
         children: [
           _buildStatusHeroHeader(
             title: 'Document Rejected',
@@ -1502,8 +1512,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildRejectionReasonCard() {
@@ -1799,6 +1808,57 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         _selectedImage = null;
         _scannedImagePath = null;
       });
+
+  /// Quick scan from camera - opens camera and scans document ID immediately
+  Future<void> _quickScanFromCamera() async {
+    try {
+      // Take a photo from camera
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 90,
+      );
+
+      if (image == null) return;
+
+      setState(() => _isScanning = true);
+
+      try {
+        final File imageFile = File(image.path);
+        final String? extractedText = await _ocrService.extractDocumentId(imageFile);
+
+        setState(() => _isScanning = false);
+
+        if (extractedText != null && extractedText.isNotEmpty) {
+          // Auto-fill and save the image
+          setState(() {
+            _selectedImage = image;
+            _scannedImagePath = null;
+            _documentNumberController.text = extractedText;
+          });
+          _showSuccess('दस्तावेज नम्बर स्क्यान भयो! (Document scanned successfully!)');
+        } else {
+          // Still save the image even if OCR failed
+          setState(() {
+            _selectedImage = image;
+            _scannedImagePath = null;
+          });
+          _showError('Could not extract text. Please enter the number manually.');
+        }
+      } catch (e) {
+        setState(() => _isScanning = false);
+        // Still save the image
+        setState(() {
+          _selectedImage = image;
+          _scannedImagePath = null;
+        });
+        _showError('Scan failed. Please enter the number manually.');
+      }
+    } catch (e) {
+      _showError('Failed to open camera: $e');
+    }
+  }
 
   Future<void> _scanDocumentId() async {
     if (_selectedImage == null && _scannedImagePath == null) {
