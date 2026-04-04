@@ -114,6 +114,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   bool _showCallHistory = false;
   StreamSubscription? _callHistorySubscription;
 
+  // Messages stream subscription (replaces StreamBuilder to prevent rebuild-on-setState)
+  StreamSubscription? _messagesSubscription;
+
   // Typing indicator
   Timer? _typingDebounce;
   bool _isReceiverTyping = false;
@@ -210,6 +213,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     // Add scroll listener for lazy loading
     _scrollController.addListener(_onScroll);
 
+    // Start listening to messages (dedicated subscription to avoid merge running on every setState)
+    _listenToMessages();
+
     // Start listening to receiver's typing status
     _listenToTypingStatus();
   }
@@ -221,6 +227,98 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         _hasMoreMessages) {
       _loadMoreMessages();
     }
+  }
+
+  /// Subscribe to the messages stream. Only runs merge logic when Firestore
+  /// emits new data – not on every unrelated setState call.
+  void _listenToMessages() {
+    _messagesSubscription = _firestore
+        .collection('chatRooms')
+        .doc(widget.chatRoomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(_messagesPerPage)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      final messages = snapshot.docs;
+
+      if (_isFirstLoad) {
+        final lastDoc = messages.isNotEmpty ? messages.last : null;
+        final newMessages = messages
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList()
+            .reversed
+            .toList();
+
+        setState(() {
+          if (lastDoc != null) _lastDocument = lastDoc;
+          _isFirstLoad = false;
+          _cachedMessages = newMessages;
+        });
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
+        });
+      } else {
+        // Build a set of message IDs currently in the stream window.
+        final streamMsgIds = <String>{};
+        for (final doc in messages) {
+          final data = doc.data() as Map<String, dynamic>;
+          final id = data['messageId'] as String?;
+          if (id != null) streamMsgIds.add(id);
+        }
+
+        // Keep messages that are NOT in the stream (older paginated messages).
+        final olderMessages = _cachedMessages.where((m) {
+          final id = m['messageId'] as String?;
+          return id != null && !streamMsgIds.contains(id);
+        }).toList();
+
+        // Latest window from Firestore (reversed to ascending).
+        final streamMessages = messages
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList()
+            .reversed
+            .toList();
+
+        final newCache = [...olderMessages, ...streamMessages];
+
+        // Sort entire list chronologically (oldest first).
+        newCache.sort((a, b) {
+          final tsA = a['timestamp'];
+          final tsB = b['timestamp'];
+          if (tsA == null || tsB == null) return 0;
+          final dateA = tsA is Timestamp
+              ? tsA.toDate()
+              : tsA is DateTime
+                  ? tsA
+                  : DateTime.now();
+          final dateB = tsB is Timestamp
+              ? tsB.toDate()
+              : tsB is DateTime
+                  ? tsB
+                  : DateTime.now();
+          return dateA.compareTo(dateB);
+        });
+
+        final shouldScroll = _forceScrollToBottom || _isNearBottom();
+
+        setState(() {
+          _cachedMessages = newCache;
+          if (_forceScrollToBottom) _forceScrollToBottom = false;
+        });
+
+        if (shouldScroll) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+        }
+      }
+    }, onError: (e) {
+      debugPrint('Error listening to messages: $e');
+    });
   }
 
   void _loadCallHistory() {
@@ -357,6 +455,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _typingDebounce?.cancel();
     _typingSubscription?.cancel();
     _callHistorySubscription?.cancel();
+    _messagesSubscription?.cancel();
     _clearTyping(); // Remove our typing entry on exit
     super.dispose();
   }
@@ -1637,118 +1736,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Widget _bottomSection() => _bottomInputBar();
 
   Widget _buildMessagesList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .limit(_messagesPerPage)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('Error: ${snapshot.error}'),
-          );
-        }
+    // Show skeleton on very first load before the stream delivers any data.
+    if (_isFirstLoad) {
+      return _buildSkeletonLoader();
+    }
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          if (_isFirstLoad) {
-            return _buildSkeletonLoader();
-          } else {
-            return _buildMessagesFromCache();
-          }
-        }
-
-        final messages = snapshot.data!.docs;
-
-        // On first load, set the pagination cursor and scroll to bottom
-        if (_isFirstLoad) {
-          if (messages.isNotEmpty) {
-            _lastDocument = messages.last;
-          }
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
-          _isFirstLoad = false;
-
-          _cachedMessages = messages
-              .map((doc) => doc.data() as Map<String, dynamic>)
-              .toList()
-              .reversed
-              .toList();
-        } else {
-          // Merge stream messages with existing cache, preserving paginated (older) messages.
-          // Key = messageId for O(1) lookup.
-          final streamMsgIds = <String>{};
-          for (final doc in messages) {
-            final data = doc.data() as Map<String, dynamic>;
-            final id = data['messageId'] as String?;
-            if (id != null) streamMsgIds.add(id);
-          }
-
-          // Keep messages that are NOT in the stream (older paginated messages)
-          final olderMessages = _cachedMessages.where((m) {
-            final id = m['messageId'] as String?;
-            return id != null && !streamMsgIds.contains(id);
-          }).toList();
-
-          // Build updated stream messages (newest 20)
-          final streamMessages = messages
-              .map((doc) => doc.data() as Map<String, dynamic>)
-              .toList()
-              .reversed
-              .toList();
-
-          // Combine: older paginated first, then stream messages
-          _cachedMessages = [...olderMessages, ...streamMessages];
-
-          // Sort entire list by timestamp to ensure correct order
-          _cachedMessages.sort((a, b) {
-            final tsA = a['timestamp'];
-            final tsB = b['timestamp'];
-            if (tsA == null || tsB == null) return 0;
-            final dateA = tsA is Timestamp
-                ? tsA.toDate()
-                : tsA is DateTime
-                    ? tsA
-                    : DateTime.now();
-            final dateB = tsB is Timestamp
-                ? tsB.toDate()
-                : tsB is DateTime
-                    ? tsB
-                    : DateTime.now();
-            return dateA.compareTo(dateB);
-          });
-
-          // Auto-scroll only if near bottom or own message was just sent
-          if (_forceScrollToBottom || _isNearBottom()) {
-            _forceScrollToBottom = false;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToBottom();
-            });
-          }
-        }
-
-        if (_cachedMessages.isEmpty && _callHistory.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.chat, size: 60, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  'Start a conversation!',
-                  style: TextStyle(color: Colors.grey[500]),
-                ),
-              ],
+    if (_cachedMessages.isEmpty && _callHistory.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat, size: 60, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              'Start a conversation!',
+              style: TextStyle(color: Colors.grey[500]),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        return _buildMessagesFromCache();
-      },
-    );
+    return _buildMessagesFromCache();
   }
 
   Future<void> _loadMoreMessages() async {

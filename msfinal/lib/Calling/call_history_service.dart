@@ -189,6 +189,8 @@ class CallHistoryService {
   // Write an inline call event message into the chat message stream (WhatsApp-style).
   // Pass [chatRoomId] for regular user-to-user chat.
   // Pass [isAdminChat]=true + [adminChatSenderId] + [adminChatReceiverId] for admin chat.
+  // Pass [messageDocId] to use a stable document ID (e.g. channel name) so that both
+  // the caller and recipient sides can write without creating duplicate messages.
   static Future<void> logCallMessageInChat({
     required String callerId,
     required String callType, // 'audio' or 'video'
@@ -198,6 +200,7 @@ class CallHistoryService {
     bool isAdminChat = false,
     String? adminChatSenderId,
     String? adminChatReceiverId,
+    String? messageDocId,
   }) async {
     try {
       if (isAdminChat) {
@@ -215,11 +218,12 @@ class CallHistoryService {
           'replyto': '',
         });
       } else if (chatRoomId != null && chatRoomId.isNotEmpty) {
+        final docId = messageDocId ?? _firestore.collection('chatRooms').doc().id;
         final msgRef = _firestore
             .collection('chatRooms')
             .doc(chatRoomId)
             .collection('messages')
-            .doc();
+            .doc(docId);
         await msgRef.set({
           'messageId': msgRef.id,
           'senderId': callerId,

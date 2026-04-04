@@ -371,6 +371,7 @@ class NotificationService {
     required String callerUid,
     required String agoraAppId,
     required String agoraCertificate,
+    String? chatRoomId,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -387,6 +388,7 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
         'click_action': 'FLUTTER_NOTIFICATION_CLICK',
         'sound': 'default',
+        if (chatRoomId != null && chatRoomId.isNotEmpty) 'chatRoomId': chatRoomId,
       },
     );
   }
@@ -479,6 +481,7 @@ class NotificationService {
     required String callerUid,
     required String agoraAppId,
     required String agoraCertificate,
+    String? chatRoomId,
   }) async {
     return await sendNotification(
       userId: recipientUserId,
@@ -496,6 +499,7 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
         'click_action': 'FLUTTER_NOTIFICATION_CLICK',
         'sound': 'default',
+        if (chatRoomId != null && chatRoomId.isNotEmpty) 'chatRoomId': chatRoomId,
       },
     );
   }

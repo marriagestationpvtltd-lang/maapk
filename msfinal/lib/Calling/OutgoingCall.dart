@@ -275,6 +275,7 @@ class _CallScreenState extends State<CallScreen> {
           callerUid: _localUid.toString(),
           agoraAppId: AgoraTokenService.appId,
           agoraCertificate: 'SERVER_ONLY',
+          chatRoomId: widget.chatRoomId,
         );
 
         // Log call to history
@@ -419,6 +420,7 @@ class _CallScreenState extends State<CallScreen> {
         isAdminChat: widget.isAdminChat,
         adminChatSenderId: widget.isAdminChat ? widget.currentUserId : null,
         adminChatReceiverId: widget.isAdminChat ? widget.adminChatReceiverId : null,
+        messageDocId: _channel.isNotEmpty ? 'call_$_channel' : null,
       ));
     }
 
