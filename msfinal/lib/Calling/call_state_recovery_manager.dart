@@ -143,7 +143,6 @@ class CallStateRecoveryManager {
           recipientName: otherUserName,
         );
       }
-      }
     } else {
       // Call ended or invalid state - just clean up
       print('[CallStateRecovery] Call in ended state, cleaning up');

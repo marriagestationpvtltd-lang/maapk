@@ -64,19 +64,29 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
   Widget build(BuildContext context) {
     final screens = _buildScreens();
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: AppNavbar(
-        selectedIndex: _selectedIndex,
-        currentUserImage: _currentUserImage,
-        onItemSelected: (index) {
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvoked: (bool didPop) {
+        if (!didPop && _selectedIndex != 0) {
           setState(() {
-            _selectedIndex = index;
+            _selectedIndex = 0;
           });
-        },
+        }
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: screens,
+        ),
+        bottomNavigationBar: AppNavbar(
+          selectedIndex: _selectedIndex,
+          currentUserImage: _currentUserImage,
+          onItemSelected: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+        ),
       ),
     );
   }
