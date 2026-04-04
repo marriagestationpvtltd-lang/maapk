@@ -67,6 +67,29 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             isLoading = false;
           });
           _fetchActivePackage(userId.toString());
+
+          // Sync fresh name and profile picture back to SharedPreferences so
+          // other screens (e.g. Settings, Home) always show up-to-date info.
+          final personalDetail = data['data']?['personalDetail'];
+          if (personalDetail != null) {
+            final currentUserData =
+                jsonDecode(prefs.getString('user_data') ?? '{}') as Map<String, dynamic>;
+            final String? firstName = personalDetail['firstName']?.toString();
+            final String? lastName = personalDetail['lastName']?.toString();
+            final String? profilePic = personalDetail['profile_picture']?.toString();
+            if (firstName != null) {
+              currentUserData['firstName'] = firstName;
+              await prefs.setString('user_firstName', firstName);
+            }
+            if (lastName != null) {
+              currentUserData['lastName'] = lastName;
+              await prefs.setString('user_lastName', lastName);
+            }
+            if (profilePic != null) {
+              currentUserData['profile_picture'] = profilePic;
+            }
+            await prefs.setString('user_data', jsonEncode(currentUserData));
+          }
         } else {
           setState(() {
             isLoading = false;
