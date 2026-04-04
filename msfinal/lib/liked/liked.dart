@@ -30,6 +30,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
   static const String _defaultProfileImage =
       'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e';
   static const double _badgeLabelMaxWidth = 150;
+  static const double _favoriteCardRadius = 30;
 
   List<dynamic> favoritePeople = [];
   bool isLoading = true;
@@ -1021,7 +1022,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(_favoriteCardRadius),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -1036,7 +1037,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
+                  top: Radius.circular(_favoriteCardRadius),
                 ),
                 child: SizedBox(
                   height: 250,
