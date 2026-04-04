@@ -150,6 +150,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   static const Color _backgroundColor = Color(0xFFF8FAFC);
   static const Color _textColor = Color(0xFF1F2937);
   static const Color _lightTextColor = Color(0xFF6B7280);
+  static const Color _inputFieldBackground = Color(0xFFF3F4F6);
+  static const Color _sendButtonDisabled = Color(0xFFD1D5DB);
 
   @override
   void initState() {
@@ -169,7 +171,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       ),
     );
 
-    _markMessagesAsRead();
+    // Defer heavy init work off the first frame so the screen opens instantly
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markMessagesAsRead();
+      _checkBlockStatus();
+      _loadCallHistory();
+    });
 
     // Set chat as active when screen opens
     ScreenStateManager().onChatScreenOpened(
@@ -199,13 +206,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _audioPlayerDurationSubscription = _audioPlayer.onDurationChanged.listen((dur) {
       if (mounted) setState(() => _playbackDuration = dur);
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Scroll and keyboard focus will be handled after messages are loaded
-    });
-
-    _checkBlockStatus(); // Add this line
-    _loadCallHistory(); // Load call history
 
     // Add scroll listener for lazy loading
     _scrollController.addListener(_onScroll);
@@ -1510,44 +1510,48 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         : _messageController.text.trim().isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.only(left: 10, right: 10, bottom: 16, top: 8),
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, -1),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (isReplying) _buildReplyPreview(),
           if (isEditing) _buildEditPreview(),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                  constraints: const BoxConstraints(minHeight: 48),
+                  constraints: const BoxConstraints(minHeight: 46),
                   decoration: BoxDecoration(
-                    gradient: _secondaryGradient,
+                    color: _inputFieldBackground,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: _accentColor.withOpacity(0.18),
+                      color: Colors.grey.shade300,
                       width: 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      const SizedBox(width: 16),
                       Expanded(
                         child: TextField(
                           controller: isEditing
@@ -1558,12 +1562,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           maxLines: 5,
                           style: const TextStyle(
                             fontSize: 15,
-                            color: Colors.black87,
+                            color: _textColor,
+                            height: 1.4,
                           ),
                           decoration: InputDecoration(
                             hintText: isEditing
                                 ? "Edit your message..."
-                                : "Type a message",
+                                : "Type a message...",
                             hintStyle: TextStyle(
                               color: Colors.grey.shade500,
                               fontSize: 15,
@@ -1573,7 +1578,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                             focusedBorder: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 0,
-                              vertical: 10,
+                              vertical: 12,
                             ),
                           ),
                           onChanged: (value) {
@@ -1590,20 +1595,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           onSubmitted: (_) => isEditing ? _editMessage() : _sendMessage(),
                         ),
                       ),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  gradient: _primaryGradient,
+                  gradient: hasText ? _primaryGradient : null,
+                  color: hasText ? null : _sendButtonDisabled,
                   shape: BoxShape.circle,
+                  boxShadow: hasText
+                      ? [
+                          BoxShadow(
+                            color: _accentColor.withOpacity(0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : [],
                 ),
                 child: IconButton(
                   onPressed: hasText ? (isEditing ? _editMessage : _sendMessage) : null,
-                  icon: const Icon(
-                    Icons.send,
+                  icon: Icon(
+                    isEditing ? Icons.check : Icons.send_rounded,
                     color: Colors.white,
                     size: 22,
                   ),
@@ -1652,11 +1669,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           }
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
-            Future.delayed(const Duration(milliseconds: 400), () {
-              if (mounted) {
-                _messageFocusNode.requestFocus();
-              }
-            });
           });
           _isFirstLoad = false;
 
@@ -2362,33 +2374,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "${widget.receiverName}",
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 17),
-                ),
-                if (_isReceiverTyping)
-                  Row(
-                    children: [
-                      TypingIndicatorWidget(dotColor: Colors.white, dotSize: 6),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'typing...',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  )
-                else
-                  const Text(
-                    "online",
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(userId: widget.receiverId),
                   ),
-              ],
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "${widget.receiverName}",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 17),
+                  ),
+                  if (_isReceiverTyping)
+                    Row(
+                      children: [
+                        TypingIndicatorWidget(dotColor: Colors.white, dotSize: 6),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'typing...',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    )
+                  else
+                    const Text(
+                      "online",
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                ],
+              ),
             ),
           ),
           GestureDetector(
