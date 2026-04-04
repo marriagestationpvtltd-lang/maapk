@@ -8,7 +8,9 @@ import '../../../ReUsable/dropdownwidget.dart';
 
 
 class CommunityDetailsPageEdit extends StatefulWidget {
-  const CommunityDetailsPageEdit({super.key});
+  const CommunityDetailsPageEdit({super.key, this.initialData});
+
+  final Map<String, dynamic>? initialData;
 
   @override
   State<CommunityDetailsPageEdit> createState() => _CommunityDetailsPageEditState();
@@ -105,6 +107,50 @@ class _CommunityDetailsPageEditState extends State<CommunityDetailsPageEdit> {
     'Jaisi': 4,
     'Other': 5,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+      _populateFromInitialData(widget.initialData!);
+    }
+  }
+
+  void _populateFromInitialData(Map<String, dynamic> data) {
+    final religionName = data['religionName']?.toString();
+    final communityName = data['communityName']?.toString();
+    final subCommunityName = data['subCommunityName']?.toString();
+    final motherTongue = data['motherTongue']?.toString();
+
+    if (religionName != null && religionName.isNotEmpty) {
+      final match = _religionOptions.firstWhere(
+        (o) => o.toLowerCase() == religionName.toLowerCase(),
+        orElse: () => religionName,
+      );
+      _selectedReligion = match;
+    }
+    if (communityName != null && communityName.isNotEmpty) {
+      final match = _communityOptions.firstWhere(
+        (o) => o.toLowerCase() == communityName.toLowerCase(),
+        orElse: () => communityName,
+      );
+      _selectedCommunity = match;
+    }
+    if (subCommunityName != null && subCommunityName.isNotEmpty) {
+      final match = _subcommunityOptions.firstWhere(
+        (o) => o.toLowerCase() == subCommunityName.toLowerCase(),
+        orElse: () => subCommunityName,
+      );
+      _selectedSubcommunity = match;
+    }
+    if (motherTongue != null && motherTongue.isNotEmpty) {
+      final match = _castLanguageOptions.firstWhere(
+        (o) => o.toLowerCase() == motherTongue.toLowerCase(),
+        orElse: () => motherTongue,
+      );
+      _selectedCastLanguage = match;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
