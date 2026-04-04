@@ -53,20 +53,23 @@ class AppNavbar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: List.generate(items.length, (index) {
-              final isActive = selectedIndex == index;
-              final item = items[index];
-              return Expanded(
-                child: _buildNavItem(
-                  item: item,
-                  index: index,
-                  isActive: isActive,
-                ),
-              );
-            }),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              children: List.generate(items.length, (index) {
+                final isActive = selectedIndex == index;
+                final item = items[index];
+                return Expanded(
+                  child: _buildNavItem(
+                    item: item,
+                    index: index,
+                    isActive: isActive,
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -82,46 +85,32 @@ class AppNavbar extends StatelessWidget {
       onTap: () => onItemSelected(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        height: 56,
+        height: 64,
         child: Center(
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
-            padding: EdgeInsets.symmetric(
-              horizontal: isActive ? 14 : 10,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: isActive ? _activeColor.withOpacity(0.10) : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   isActive ? item.activeIcon : item.icon,
                   color: isActive ? _activeColor : _inactiveColor,
-                  size: 22,
+                  size: 28,
                 ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  child: isActive
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(width: 5),
-                            Text(
-                              item.label,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: _activeColor,
-                              ),
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                    color: isActive ? _activeColor : _inactiveColor,
+                  ),
                 ),
               ],
             ),
