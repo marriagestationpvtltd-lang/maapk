@@ -225,11 +225,12 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         _isLoadingMore = false;
       });
 
-      // Restore scroll so content doesn't jump
+      // Restore scroll position so newly inserted older messages don't cause a visual jump.
+      // We jump to the previous pixel offset so the user stays at the same apparent position.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(prevOffset +
-              (_scrollController.position.maxScrollExtent - prevOffset) * 0.01);
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent >= prevOffset) {
+          _scrollController.jumpTo(prevOffset);
         }
       });
     } catch (e) {
@@ -798,8 +799,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
   Widget _buildCallHistoryItem(CallHistory call) {
     final isVideo = call.callType == CallType.video;
-    final outgoing = call.callerId == widget.senderID ||
-        call.callerId != _adminUserId;
+    final outgoing = call.callerId == widget.senderID;
     final missed = call.status == CallStatus.missed ||
         call.status == CallStatus.declined ||
         call.status == CallStatus.cancelled;
