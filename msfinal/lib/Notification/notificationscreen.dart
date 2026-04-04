@@ -717,7 +717,7 @@ class _MatrimonyNotificationPageState
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  UserProfilePage(userId: userId),
+                                                  ProfileScreen(userId: userId),
                                             ),
                                           );
                                         }
