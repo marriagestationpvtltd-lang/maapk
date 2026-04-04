@@ -41,7 +41,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _versionData;
   bool _isCheckingVersion = true;
   String? _errorMessage;
@@ -50,10 +50,101 @@ class _SplashScreenState extends State<SplashScreen> {
   final String currentAndroidVersion = '24.0.0'; // Your current Android version
   final String currentIOSVersion = '1.0.0';     // Your current iOS version
 
+  // Animation controllers
+  late AnimationController _entranceController;
+  late AnimationController _pulseController;
+  late AnimationController _dotsController;
+
+  // Entrance animations
+  late Animation<double> _logoScale;
+  late Animation<double> _logoOpacity;
+  late Animation<double> _textOpacity;
+  late Animation<Offset> _textSlide;
+  late Animation<double> _taglineOpacity;
+
+  // Pulse (breathing) scale while loading
+  late Animation<double> _pulseScale;
+
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+    _entranceController.forward();
     _checkAppVersion();
+  }
+
+  void _setupAnimations() {
+    // Main entrance: 1100 ms
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    // Slow pulse while loading: 1600 ms repeat
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+
+    // 3-dot bounce loop: 900 ms repeat
+    _dotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+
+    // Logo zooms in from 0.3 → 1.0 with elastic spring (0 – 65%)
+    _logoScale = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.65, curve: Curves.elasticOut),
+      ),
+    );
+
+    // Logo fades in quickly (0 – 35%)
+    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.35, curve: Curves.easeIn),
+      ),
+    );
+
+    // Subtle breathing pulse while loading (1.0 → 1.04)
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // App-name slides up + fades in (50 – 82%)
+    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.50, 0.82, curve: Curves.easeOut),
+      ),
+    );
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.45),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.50, 0.82, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // Tagline fades in last (68 – 100%)
+    _taglineOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.68, 1.0, curve: Curves.easeOut),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _pulseController.dispose();
+    _dotsController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkAppVersion() async {
@@ -476,184 +567,160 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
+  // ─── 3 bouncing brand-red dots ───────────────────────────────────────────────
+  Widget _buildLoadingDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        final delay = index * 0.28;
+        return AnimatedBuilder(
+          animation: _dotsController,
+          builder: (context, child) {
+            final raw = (_dotsController.value - delay).clamp(0.0, 1.0);
+            final t = raw < 0.5 ? raw * 2.0 : (1.0 - raw) * 2.0;
+            final bounce = Curves.easeInOut.transform(t);
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              width: 8,
+              height: 8,
+              transform: Matrix4.translationValues(0, -9 * bounce, 0),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.3 + 0.7 * bounce),
+                shape: BoxShape.circle,
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.white,
-              AppColors.primary.withOpacity(0.05),
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo Container with shadow and better animation
-              TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOutBack,
-                builder: (context, double scale, child) {
-                  return Transform.scale(
-                    scale: scale,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.2),
-                            blurRadius: 30,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                      ),
-                      child: const Image(
-                        image: AssetImage('assets/images/Mslogo.gif'),
-                        height: 140,
-                        width: 140,
-                        fit: BoxFit.contain,
+      body: Stack(
+        children: [
+          // ── Centred logo + text ──────────────────────────────────────────────
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logo: elastic zoom-in + subtle pulse while loading
+                AnimatedBuilder(
+                  animation: Listenable.merge([_entranceController, _pulseController]),
+                  builder: (context, child) {
+                    final scale = _logoScale.value *
+                        (_isCheckingVersion ? _pulseScale.value : 1.0);
+                    return Opacity(
+                      opacity: _logoOpacity.value,
+                      child: Transform.scale(scale: scale, child: child),
+                    );
+                  },
+                  child: const Image(
+                    image: AssetImage('assets/images/Mslogo.gif'),
+                    height: 160,
+                    width: 160,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // App name: slide-up + fade
+                FadeTransition(
+                  opacity: _textOpacity,
+                  child: SlideTransition(
+                    position: _textSlide,
+                    child: ShaderMask(
+                      shaderCallback: (bounds) =>
+                          AppColors.primaryGradient.createShader(bounds),
+                      child: const Text(
+                        'Marriage Station',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.white,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
-                  );
-                },
-              ),
-              AppSpacing.verticalXL,
-              // App Name
-              ShaderMask(
-                shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
-                child: const Text(
-                  'Marriage Station',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                    letterSpacing: 0.5,
                   ),
                 ),
-              ),
-              AppSpacing.verticalSM,
-              // Tagline
-              const Text(
-                'Nepal\'s #1 Matrimony Platform',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              AppSpacing.verticalXL,
-              AppSpacing.verticalMD,
-              // Loading/Error State
-              if (_isCheckingVersion)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadowLight,
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 32,
-                        width: 32,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                        ),
-                      ),
-                      AppSpacing.verticalSM,
-                      const Text(
-                        'Loading...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else if (_errorMessage != null)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.error.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: AppColors.error,
-                        size: 48,
-                      ),
-                      AppSpacing.verticalMD,
-                      Text(
-                        _errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      AppSpacing.verticalMD,
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _isCheckingVersion = true;
-                            _errorMessage = null;
-                          });
-                          _checkAppVersion();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.refresh, color: AppColors.white),
-                        label: const Text(
-                          'Retry',
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+
+                const SizedBox(height: 8),
+
+                // Tagline: fade in last
+                FadeTransition(
+                  opacity: _taglineOpacity,
+                  child: const Text(
+                    "Nepal's #1 Matrimony Platform",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
+
+          // ── Bottom: dots while loading, error card when failed ─────────────
+          Positioned(
+            bottom: 56,
+            left: 0,
+            right: 0,
+            child: _isCheckingVersion
+                ? _buildLoadingDots()
+                : _errorMessage != null
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.wifi_off_rounded,
+                                color: AppColors.error.withOpacity(0.7), size: 36),
+                            const SizedBox(height: 12),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _isCheckingVersion = true;
+                                  _errorMessage = null;
+                                });
+                                _checkAppVersion();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 28, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              icon: const Icon(Icons.refresh,
+                                  color: AppColors.white),
+                              label: const Text(
+                                'Retry',
+                                style: TextStyle(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
