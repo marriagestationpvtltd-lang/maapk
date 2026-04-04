@@ -25,7 +25,7 @@ class ProfileTabs extends StatelessWidget {
       DefaultTabController(
 
 
-      length: 0,
+      length: 1,
       child: Container(
 
         constraints: BoxConstraints(
