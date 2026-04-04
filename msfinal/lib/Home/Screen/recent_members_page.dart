@@ -195,10 +195,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
 
   @override
   Widget build(BuildContext context) {
-    setStatusBar(
-      statusBarColor: AppColors.white,
-      statusBarIconBrightness: Brightness.dark,
-    );
+    setStatusBar(AppColors.white, Brightness.dark);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -211,7 +208,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
         ),
         title: Text(
           'हालसालै रजिस्टर भएका',
-          style: AppTextStyles.headingMedium,
+          style: AppTextStyles.heading3,
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: AppColors.white,
