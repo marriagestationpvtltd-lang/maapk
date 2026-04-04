@@ -918,7 +918,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: canSubmit ? _validateAndSubmit : null,
+        onPressed: _isUploading ? null : _validateAndSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           disabledBackgroundColor: AppColors.primary.withOpacity(0.5),

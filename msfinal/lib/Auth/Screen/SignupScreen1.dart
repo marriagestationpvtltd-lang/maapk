@@ -194,9 +194,8 @@ class _YourDetailsPageState extends State<YourDetailsPage>
       if (model.languages.isEmpty) {
         model.setLanguages(selectedLanguages.join(', '));
       }
-      // Auto-focus the first text field so the keyboard opens immediately
-      // when the page is presented, providing a seamless entry experience.
-      _firstNameFocus.requestFocus();
+      // Removed auto-focus to prevent keyboard from opening automatically
+      // User can tap on field to open keyboard when ready
     });
   }
 
