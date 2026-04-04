@@ -19,6 +19,8 @@ class MainControllerScreen extends StatefulWidget {
 }
 
 class _MainControllerScreenState extends State<MainControllerScreen> {
+  static const int _chatTabIndex = 2;
+
   late int _selectedIndex;
   int _chatRefreshToken = 0;
   String? _senderId;
@@ -84,7 +86,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
           currentUserImage: _currentUserImage,
           onItemSelected: (index) {
             setState(() {
-              if (index == 2) {
+              if (index == _chatTabIndex) {
                 _chatRefreshToken++;
               }
               _selectedIndex = index;

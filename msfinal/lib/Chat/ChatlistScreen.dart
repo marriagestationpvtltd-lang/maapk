@@ -90,9 +90,13 @@ class _ChatListScreenState extends State<ChatListScreen>
   @override
   void didUpdateWidget(covariant ChatListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.refreshToken != oldWidget.refreshToken && userId.isNotEmpty) {
-      _loadPendingChatRequests(userId);
-      _startAdminChatListener(userId);
+    if (widget.refreshToken != oldWidget.refreshToken) {
+      if (userId.isNotEmpty) {
+        _loadPendingChatRequests(userId);
+        _startAdminChatListener(userId);
+      } else {
+        _loadUserData();
+      }
     }
   }
 
