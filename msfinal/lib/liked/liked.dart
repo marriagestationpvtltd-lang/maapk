@@ -860,7 +860,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
               ),
             ),
           ),
-        ),
+        ],
       ),
       body: Stack(
         children: [
