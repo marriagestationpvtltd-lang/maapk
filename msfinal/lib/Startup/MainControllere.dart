@@ -86,7 +86,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
           currentUserImage: _currentUserImage,
           onItemSelected: (index) {
             setState(() {
-              if (index == _chatTabIndex) {
+              if (_selectedIndex != _chatTabIndex && index == _chatTabIndex) {
                 _chatRefreshToken++;
               }
               _selectedIndex = index;

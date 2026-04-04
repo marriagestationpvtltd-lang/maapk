@@ -93,7 +93,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (widget.refreshToken != oldWidget.refreshToken) {
       if (userId.isNotEmpty) {
         _loadPendingChatRequests(userId);
-        _startAdminChatListener(userId);
       } else {
         _loadUserData();
       }
