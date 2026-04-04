@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ms2026/Home/Screen/premiummember.dart';
 import 'package:ms2026/Home/Screen/profilecard.dart';
+import 'package:ms2026/Home/Screen/recent_members_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -54,6 +55,7 @@ class CachedData {
 const String _kMatchedProfilesCacheKey = 'home_matched_profiles_cache';
 const String _kShortlistedCacheKey = 'home_shortlisted_cache';
 const String _kCountsCacheKey = 'home_counts_cache';
+const String _kRecentMembersCacheKey = 'home_recent_members_cache';
 
 class MatrimonyHomeScreen extends StatefulWidget {
   const MatrimonyHomeScreen({super.key});
@@ -85,6 +87,11 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
   List<dynamic> _shortlistedProfiles = [];
   bool _isLoadingShortlist = false;
+
+  // Recent members state
+  List<Map<String, dynamic>> _recentMembers = [];
+  bool _recentMembersLoaded = false;
+  bool _isLoadingRecentMembers = false;
 
   int userid = 0;
   String _userId = '';
@@ -202,6 +209,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         _fetchPremiumMembers(),
         _fetchOtherServices(),
         _fetchShortlistedProfiles(),
+        _fetchRecentMembers(),
         _loadUnreadNotificationCount(),
       ]);
     } finally {
@@ -510,6 +518,111 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         _premiumMembersLoaded = true;
       });
       debugPrint('Exception: $e');
+    }
+  }
+
+
+  Future<void> _fetchRecentMembers() async {
+    // Check cache first
+    final cacheKey = 'recent_members';
+    if (_cache.containsKey(cacheKey) &&
+        !_cache[cacheKey]!.isExpired(const Duration(minutes: 2))) {
+      if (!mounted) return;
+      setState(() {
+        _recentMembers = _cache[cacheKey]!.data as List<Map<String, dynamic>>;
+        _isLoadingRecentMembers = false;
+        _recentMembersLoaded = true;
+      });
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    if (userDataString == null) return;
+    final userData = jsonDecode(userDataString);
+    final userid = userData["id"];
+    final userCreatedDate = userData["created_at"] ?? "";
+
+    try {
+      // Use search_opposite_gender API with sort by recent registration
+      final url = Uri.parse('https://digitallami.com/Api2/search_opposite_gender.php?user_id=$userid&sort_by=recent&limit=10');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+
+        if (data['success'] == true && data['data'] != null) {
+          final List members = data['data'];
+
+          // Filter members registered after current user
+          final membersList = members.where((member) {
+            final memberCreatedDate = member['created_at'] ?? '';
+            if (memberCreatedDate.isEmpty || userCreatedDate.isEmpty) return true;
+
+            try {
+              final memberDate = DateTime.parse(memberCreatedDate);
+              final userDate = DateTime.parse(userCreatedDate);
+              return memberDate.isAfter(userDate);
+            } catch (e) {
+              return true; // Include if date parsing fails
+            }
+          }).map<Map<String, dynamic>>((member) {
+            // Construct full profile picture URL
+            final rawImage = member['profile_picture'] ?? '';
+            final imageUrl = rawImage.startsWith('http')
+                ? rawImage
+                : 'https://digitallami.com/Api2/$rawImage';
+
+            return {
+              'userId': member['userid'] ?? member['id'],
+              'memberid': member['memberid'] ?? 'N/A',
+              'firstName': member['firstName'] ?? '',
+              'lastName': member['lastName'] ?? '',
+              'age': member['age'] ?? '',
+              'city': member['city'] ?? '',
+              'country': member['country'] ?? '',
+              'heightName': member['height_name'] ?? '',
+              'designation': member['designation'] ?? '',
+              'image': imageUrl,
+              'isVerified': member['isVerified'] ?? '0',
+              'id': member['id'],
+              'privacy': member['privacy']?.toString().toLowerCase() ?? '',
+              'photo_request': member['photo_request']?.toString().toLowerCase() ?? '',
+              'created_at': member['created_at'] ?? '',
+            };
+          }).toList();
+
+          // Cache the data
+          _cache[cacheKey] = CachedData(membersList, DateTime.now());
+
+          if (!mounted) return;
+          setState(() {
+            _recentMembers = membersList;
+            _isLoadingRecentMembers = false;
+            _recentMembersLoaded = true;
+          });
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _isLoadingRecentMembers = false;
+            _recentMembersLoaded = true;
+          });
+        }
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingRecentMembers = false;
+          _recentMembersLoaded = true;
+        });
+        debugPrint('Error fetching recent members: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRecentMembers = false;
+        _recentMembersLoaded = true;
+      });
+      debugPrint('Exception fetching recent members: $e');
     }
   }
 
@@ -858,6 +971,35 @@ String usertye = '';
                     ),
                   AppSpacing.verticalMD,
                   const ImageBannerSlider(),
+                  AppSpacing.verticalMD,
+                  // Recent Members Section
+                  VisibilityDetector(
+                    key: const Key('recent-members-section'),
+                    onVisibilityChanged: (info) {
+                      // Load data when section becomes visible (>10% visible)
+                      if (info.visibleFraction > 0.1 && !_recentMembersLoaded) {
+                        _fetchRecentMembers();
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        RecentMembersPage(userId: userid))),
+                            child: _buildSectionHeader('हालसालै रजिस्टर भएका',
+                                showSeeAll: true),
+                          ),
+                        ),
+                        AppSpacing.verticalSM,
+                        _buildRecentMembers(),
+                      ],
+                    ),
+                  ),
                   AppSpacing.verticalMD,
                   _buildStatsBanner(),
                   AppSpacing.verticalMD,
@@ -2399,6 +2541,251 @@ String usertye = '';
                                 style: AppTextStyles.whiteLabel,
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRecentMembers() {
+    if (_recentMembers.isEmpty) {
+      return SizedBox(
+        height: 240,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person_add_alt_1_rounded,
+                  size: 48, color: AppColors.border),
+              AppSpacing.verticalSM,
+              Text('No recent members yet',
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 270,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _recentMembers.length,
+        padding: const EdgeInsets.only(left: 16, right: 8),
+        itemBuilder: (context, index) {
+          final profile = _recentMembers[index];
+          final lastName = profile['lastName'] ?? '';
+          final firstName = profile['firstName'] ?? '';
+          final memberid = profile['memberid'] ?? 'MS';
+          final userIdd = profile['userId'] ?? profile['id'];
+          final age = profile['age'] ?? '';
+          final location = profile['city'] ?? '';
+          final country = profile['country'] ?? '';
+          final heightName = profile['heightName'] ?? '';
+          final designation = profile['designation'] ?? '';
+          final imageUrl = profile['image'] ?? '';
+          final isVerified = profile['isVerified']?.toString() == '1';
+          final privacy = profile['privacy']?.toString().toLowerCase() ?? '';
+          final photoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+
+          // Determine if we should show clear image
+          final shouldShowClearImage = privacy == 'free' || photoRequest == 'accepted';
+
+          return GestureDetector(
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+              final userDataString = prefs.getString('user_data');
+              if (userDataString == null) return;
+              final userData = jsonDecode(userDataString);
+              final myUserId = int.tryParse(userData['id'].toString());
+              if (docstatus == 'approved') {
+                Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ProfileLoader(
+                        userId: userIdd.toString(), myId: myUserId.toString())));
+              } else {
+                Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => IDVerificationScreen()));
+              }
+            },
+            child: Container(
+              width: 190,
+              margin: const EdgeInsets.only(right: 14),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: AppDimensions.borderRadiusXL,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20)),
+                        child: shouldShowClearImage
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 180,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  height: 180,
+                                  color: AppColors.background,
+                                  child: const Center(
+                                    child: Icon(Icons.person_rounded,
+                                        size: 60, color: AppColors.textHint),
+                                  ),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      height: 180,
+                                      color: AppColors.background,
+                                      child: const Center(
+                                        child: Icon(Icons.person_rounded,
+                                            size: 60, color: AppColors.textHint),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: double.infinity,
+                                    height: 180,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.black.withOpacity(0.25),
+                                    ),
+                                    child: BackdropFilter(
+                                      filter: ui.ImageFilter.blur(
+                                          sigmaX: 14, sigmaY: 14),
+                                      child: Container(
+                                        color: AppColors.black.withOpacity(0.05),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      // New member badge
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                            ),
+                            borderRadius: AppDimensions.borderRadiusMD,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.fiber_new_rounded,
+                                  color: AppColors.white, size: 10),
+                              AppSpacing.horizontalXS,
+                              Text(
+                                'New',
+                                style: AppTextStyles.captionSmall.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (isVerified)
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: const BoxDecoration(
+                              color: AppColors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.verified_rounded,
+                                color: Color(0xFF2196F3), size: 18),
+                          ),
+                        ),
+                    ],
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            memberid != 'N/A' && memberid.isNotEmpty
+                                ? '$memberid $lastName'
+                                : 'MS $userIdd $lastName',
+                            style: AppTextStyles.labelMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          AppSpacing.verticalXS,
+                          Text(
+                            '$age yrs · ${heightName.isNotEmpty ? heightName.replaceAll(RegExp(r'\s*cm.*'), ' cm') : ''}',
+                            style: AppTextStyles.captionSmall.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (designation.isNotEmpty) ...[
+                            AppSpacing.verticalXS,
+                            Text(
+                              designation,
+                              style: AppTextStyles.captionSmall.copyWith(
+                                fontSize: 10,
+                                color: AppColors.textHint,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          AppSpacing.verticalXS,
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_rounded,
+                                  size: 11, color: AppColors.textHint),
+                              AppSpacing.horizontalXS,
+                              Expanded(
+                                child: Text(
+                                  '$location${country.isNotEmpty ? ', $country' : ''}',
+                                  style: AppTextStyles.captionSmall.copyWith(
+                                    fontSize: 10,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
