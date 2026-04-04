@@ -115,7 +115,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   int _lastBuiltVersion = -1;
   String? _lastBuiltHighlightId;
   bool _lastBuiltIsLoadingMore = false;
-  String? _lastBuiltPlayingId;
 
   // Lazy loading variables
   bool _isLoadingMore = false;
@@ -2050,19 +2049,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
   Widget _buildMessagesFromCache() {
     // Reuse cached widget list when nothing relevant has changed.
-    // Bypass cache while audio is actively playing (progress updates every frame).
+    // Bypass cache while audio is actively playing so progress updates render correctly.
     final canUseCache = _cachedMessageWidgets != null &&
+        _playingMessageId == null &&
         _lastBuiltVersion == _messagesCacheVersion &&
         _lastBuiltHighlightId == _highlightedMessageId &&
-        _lastBuiltIsLoadingMore == _isLoadingMore &&
-        _lastBuiltPlayingId == _playingMessageId;
+        _lastBuiltIsLoadingMore == _isLoadingMore;
 
     if (canUseCache) {
-      return ListView.builder(
+      return ListView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-        itemCount: _cachedMessageWidgets!.length,
-        itemBuilder: (context, index) => _cachedMessageWidgets![index],
+        children: _cachedMessageWidgets!,
       );
     }
 
@@ -2179,7 +2177,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _lastBuiltVersion = _messagesCacheVersion;
     _lastBuiltHighlightId = _highlightedMessageId;
     _lastBuiltIsLoadingMore = _isLoadingMore;
-    _lastBuiltPlayingId = _playingMessageId;
 
     return ListView.builder(
       reverse: false, // Keep as false for natural order
