@@ -338,6 +338,7 @@ class _CallScreenState extends State<CallScreen> {
             NotificationService.sendMissedCallNotification(
               callerId: widget.otherUserId,
               callerName: widget.currentUserName,
+              senderId: widget.currentUserId,
             );
           }
           _endCall();
@@ -384,6 +385,7 @@ class _CallScreenState extends State<CallScreen> {
         recipientUserId: widget.otherUserId,
         callerName: widget.currentUserName,
         channelName: _channel,
+        callerId: widget.currentUserId,
       );
     }
 

@@ -195,7 +195,13 @@ class _MatrimonyNotificationPageState
   }
 
   List<Map<String, dynamic>> _mergeNotifications(List<Map<String, dynamic>> items) {
-    final sorted = [...items];
+    // Exclude call-started and call-ended notifications — they are handled
+    // by the calling UI and should not appear in the notification inbox.
+    const _excludedTypes = {'call', 'video_call', 'call_ended', 'video_call_ended'};
+
+    final sorted = items
+        .where((item) => !_excludedTypes.contains(item['type']?.toString()))
+        .toList();
     sorted.sort((a, b) {
       final aDate = NotificationInboxService.parseDate(a['created_at']);
       final bDate = NotificationInboxService.parseDate(b['created_at']);

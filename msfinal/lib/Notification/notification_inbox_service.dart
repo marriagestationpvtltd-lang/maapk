@@ -207,6 +207,13 @@ class NotificationInboxService {
       return;
     }
 
+    // Call-started and call-ended notifications are handled by the calling UI
+    // and should not appear in the notification inbox.
+    const _skipTypes = {'call', 'video_call', 'call_ended', 'video_call_ended'};
+    if (_skipTypes.contains(type)) {
+      return;
+    }
+
     final requestType = normalizeRequestType(
       data['requestType']?.toString() ?? data['request_type']?.toString(),
     );
