@@ -1696,8 +1696,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             final tsA = a['timestamp'];
             final tsB = b['timestamp'];
             if (tsA == null || tsB == null) return 0;
-            final dateA = tsA is Timestamp ? tsA.toDate() : tsA as DateTime;
-            final dateB = tsB is Timestamp ? tsB.toDate() : tsB as DateTime;
+            final dateA = tsA is Timestamp
+                ? tsA.toDate()
+                : tsA is DateTime
+                    ? tsA
+                    : DateTime.now();
+            final dateB = tsB is Timestamp
+                ? tsB.toDate()
+                : tsB is DateTime
+                    ? tsB
+                    : DateTime.now();
             return dateA.compareTo(dateB);
           });
 
@@ -1883,7 +1891,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
       final rawTs = data['timestamp'];
       if (rawTs == null) continue;
-      final timestamp = rawTs is Timestamp ? rawTs.toDate() : rawTs as DateTime;
+      final timestamp = rawTs is Timestamp
+          ? rawTs.toDate()
+          : rawTs is DateTime
+              ? rawTs
+              : null;
+      if (timestamp == null) continue;
       final dateKey = _formatDateForGrouping(timestamp);
 
       groupedMessages.putIfAbsent(dateKey, () => []);
@@ -1902,8 +1915,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         final rawA = a['timestamp'];
         final rawB = b['timestamp'];
         if (rawA == null || rawB == null) return 0;
-        final timeA = rawA is Timestamp ? rawA.toDate() : rawA as DateTime;
-        final timeB = rawB is Timestamp ? rawB.toDate() : rawB as DateTime;
+        final timeA = rawA is Timestamp
+            ? rawA.toDate()
+            : rawA is DateTime
+                ? rawA
+                : DateTime.now();
+        final timeB = rawB is Timestamp
+            ? rawB.toDate()
+            : rawB is DateTime
+                ? rawB
+                : DateTime.now();
         return timeA.compareTo(timeB);
       });
 
