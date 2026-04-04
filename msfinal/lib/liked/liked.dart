@@ -576,7 +576,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
     }).length;
   }
 
-  String _formatDisplayName(String fullName, String age) {
+  String _getDisplayNameWithFallback(String fullName, String age) {
     final trimmedName = fullName.trim();
     if (trimmedName.isEmpty && age.isEmpty) return 'Unknown User';
     if (trimmedName.isEmpty) return 'Unknown User, $age';
@@ -1008,7 +1008,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
         : _defaultProfileImage;
     final age = person['age']?.toString() ?? '';
     final photoRequestStatus = _getPhotoRequestStatus(person);
-    final displayName = _formatDisplayName(fullName, age);
+    final displayName = _getDisplayNameWithFallback(fullName, age);
 
     // FIXED: Use 'userid' instead of 'id'
     final receiverIdStr = person['userid']?.toString() ?? '0';
@@ -1367,9 +1367,10 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: AppTextStyles.labelSmall.copyWith(
+            style: AppTextStyles.labelMedium.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
+              fontSize: 13,
             ),
           ),
         ],
@@ -1459,7 +1460,6 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
         child: TextButton.icon(
           onPressed: onPressed,
           style: TextButton.styleFrom(
-            backgroundColor: Colors.transparent,
             foregroundColor: foregroundColor ?? Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
