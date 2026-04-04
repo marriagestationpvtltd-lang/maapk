@@ -1276,13 +1276,14 @@ String usertye = '';
           final gradient = action['gradient'] as List<Color>;
           final onTap = action['onTap'] as VoidCallback;
           final int? count = action['count'] as int?;
+          final bool hasCount = count != null && count > 0;
 
           return Expanded(
             child: GestureDetector(
               onTap: onTap,
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: gradient,
@@ -1292,68 +1293,86 @@ String usertye = '';
                   borderRadius: AppDimensions.borderRadiusLG,
                   boxShadow: [
                     BoxShadow(
-                      color: gradient[0].withOpacity(0.28),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: gradient[0].withOpacity(0.32),
+                      blurRadius: 14,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
+                    Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Icon(
-                          action['icon'] as IconData,
-                          color: AppColors.white,
-                          size: 26,
-                        ),
-                        AppSpacing.verticalSM,
-                        Text(
-                          action['label'] as String,
-                          style: AppTextStyles.captionSmall.copyWith(
-                            color: AppColors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                    if (count != null)
-                      Positioned(
-                        top: -6,
-                        right: -2,
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 24),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                        Container(
+                          width: 46,
+                          height: 46,
                           decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: AppDimensions.borderRadiusRound,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.black.withOpacity(0.12),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            color: AppColors.white.withOpacity(0.18),
+                            shape: BoxShape.circle,
                           ),
-                          child: Text(
-                            '$count',
-                            textAlign: TextAlign.center,
-                            style: AppTextStyles.captionSmall.copyWith(
-                              color: gradient.last,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
+                          child: Icon(
+                            action['icon'] as IconData,
+                            color: AppColors.white,
+                            size: 26,
+                          ),
+                        ),
+                        if (hasCount)
+                          Positioned(
+                            top: -4,
+                            right: -6,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 20,
+                                minHeight: 20,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: AppDimensions.borderRadiusRound,
+                                border: Border.all(
+                                  color: gradient[0],
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.black.withOpacity(0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                count > 99 ? '99+' : '$count',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: gradient.last,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 10,
+                                  height: 1.2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      action['label'] as String,
+                      style: AppTextStyles.captionSmall.copyWith(
+                        color: AppColors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
                       ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
