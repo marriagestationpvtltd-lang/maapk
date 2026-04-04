@@ -899,13 +899,37 @@ class _PaymentPageState extends State<PaymentPage> {
     return false;
   }
 
-  void _handlePaymentCancel() {
+  Future<void> _handlePaymentCancel() async {
     if (!mounted) return;
     setState(() {
       _isCancelled = true;
       _showWebView = false;
       _isProcessing = false;
     });
+
+    // Notify backend about payment cancellation
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+
+      if (userDataString != null) {
+        final userData = jsonDecode(userDataString);
+        final int userId = int.parse(userData["id"].toString());
+        final String paidBy = _getPaidBy();
+
+        // Call backend API to log cancelled payment
+        await _notifyPaymentCancellation(
+          userId: userId,
+          paidBy: paidBy,
+          packageId: widget.packageId,
+        );
+      }
+    } catch (e) {
+      print('Error logging payment cancellation: $e');
+      // Don't block the UI even if logging fails
+    }
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Payment cancelled. Your package has not been activated.'),
@@ -928,6 +952,39 @@ class _PaymentPageState extends State<PaymentPage> {
       "userid": userId.toString(),
       "paidby": paidBy,
       "packageid": packageId.toString(),
+    });
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "status": "error",
+          "message": "Server error: ${response.statusCode}"
+        };
+      }
+    } catch (e) {
+      return {
+        "status": "error",
+        "message": e.toString()
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> _notifyPaymentCancellation({
+    required int userId,
+    required String paidBy,
+    required int packageId,
+  }) async {
+    final Uri url = Uri.parse(
+        "https://digitallami.com/Api3/cancel_payment.php"
+    ).replace(queryParameters: {
+      "userid": userId.toString(),
+      "paidby": paidBy,
+      "packageid": packageId.toString(),
+      "status": "cancelled",
     });
 
     try {
