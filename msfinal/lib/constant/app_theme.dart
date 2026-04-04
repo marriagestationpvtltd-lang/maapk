@@ -25,10 +25,12 @@ class AppTheme {
         centerTitle: true,
         backgroundColor: AppColors.white,
         foregroundColor: AppColors.textPrimary,
+        toolbarHeight: 64.0,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
         ),
         titleTextStyle: GoogleFonts.poppins(
           fontSize: 20,
