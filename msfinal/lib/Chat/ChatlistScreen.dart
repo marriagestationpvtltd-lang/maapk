@@ -1156,6 +1156,8 @@ class _ChatListScreenState extends State<ChatListScreen>
               _onlineStatuses[otherParticipantId] ?? false;
           final DateTime? participantLastSeen =
               _lastSeenTimes[otherParticipantId];
+          final String resolvedOtherImage = resolveApiImageUrl(
+              participantImages[otherParticipantId] ?? '');
 
           return InkWell(
             onTap: () {
@@ -1167,8 +1169,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       chatRoomId: data['chatRoomId'] ?? chatRoom.id,
                       receiverId: otherParticipantId,
                       receiverName: otherPersonName,
-                      receiverImage: resolveApiImageUrl(
-                          participantImages[otherParticipantId] ?? ''),
+                      receiverImage: resolvedOtherImage,
                       currentUserId: userId,
                       currentUserName: name,
                       currentUserImage: resolveApiImageUrl(userimage),
@@ -1219,16 +1220,11 @@ class _ChatListScreenState extends State<ChatListScreen>
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: resolveApiImageUrl(
-                                participantImages[otherParticipantId] ?? '')
-                            .isNotEmpty
-                            ? NetworkImage(resolveApiImageUrl(
-                                participantImages[otherParticipantId] ?? ''))
+                        backgroundImage: resolvedOtherImage.isNotEmpty
+                            ? NetworkImage(resolvedOtherImage)
                             : null,
                         onBackgroundImageError: (_, __) {},
-                        child: resolveApiImageUrl(
-                                    participantImages[otherParticipantId] ?? '')
-                                .isEmpty
+                        child: resolvedOtherImage.isEmpty
                             ? Icon(Icons.person,
                                 size: 28, color: Colors.grey[400])
                             : null,
