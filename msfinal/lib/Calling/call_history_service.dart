@@ -234,7 +234,7 @@ class CallHistoryService {
         });
       }
     } catch (e) {
-      print('Error logging call message in chat: $e');
+      print('Error logging call message in chat (chatRoomId: $chatRoomId, isAdminChat: $isAdminChat): $e');
     }
   }
 
