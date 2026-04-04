@@ -57,7 +57,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   // Online status for chat participants
   final Map<String, bool> _onlineStatuses = {};
-  StreamSubscription<QuerySnapshot>? _onlineStatusSubscription;
+  _CompositeSubscription? _onlineStatusSubscription;
 
   // Admin online status
   bool _adminOnline = false;
@@ -318,33 +318,52 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   /// Listen to Firestore for online status of all chat participants.
+  /// Handles batching for participants exceeding Firestore's 30-item whereIn limit.
   void _startOnlineStatusListeners(List<String> participantIds) {
     if (participantIds.isEmpty) return;
     _onlineStatusSubscription?.cancel();
-    // Firestore supports up to 30 values in whereIn; split if needed.
-    final ids = participantIds.take(30).toList();
-    _onlineStatusSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .where(FieldPath.documentId, whereIn: ids)
-        .snapshots()
-        .listen((snapshot) {
-      if (!mounted) return;
-      final updated = <String, bool>{};
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final bool online = data['isOnline'] == true;
-        final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-        final DateTime? lastSeen = lastSeenTs?.toDate();
-        final bool recentlySeen = lastSeen != null &&
-            DateTime.now().difference(lastSeen).inMinutes < 5;
-        updated[doc.id] = online || recentlySeen;
-      }
-      setState(() {
-        _onlineStatuses
-          ..clear()
-          ..addAll(updated);
+
+    // Split into batches of 30 (Firestore whereIn limit).
+    const int batchSize = 30;
+    final batches = <List<String>>[];
+    for (int i = 0; i < participantIds.length; i += batchSize) {
+      batches.add(participantIds.sublist(
+          i, (i + batchSize).clamp(0, participantIds.length)));
+    }
+
+    // Merge results from all batches using a StreamGroup-like approach with
+    // manual merge into _onlineStatuses.
+    final merged = <String, bool>{};
+    int pendingBatches = batches.length;
+    final subscriptions = <StreamSubscription<QuerySnapshot>>[];
+
+    for (final batch in batches) {
+      final sub = FirebaseFirestore.instance
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: batch)
+          .snapshots()
+          .listen((snapshot) {
+        if (!mounted) return;
+        for (final doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final bool online = data['isOnline'] == true;
+          final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+          final DateTime? lastSeen = lastSeenTs?.toDate();
+          final bool recentlySeen = lastSeen != null &&
+              DateTime.now().difference(lastSeen).inMinutes < 5;
+          merged[doc.id] = online || recentlySeen;
+        }
+        setState(() {
+          _onlineStatuses
+            ..clear()
+            ..addAll(merged);
+        });
       });
-    });
+      subscriptions.add(sub);
+    }
+
+    // Replace the single subscription with a composite cancel.
+    _onlineStatusSubscription = _CompositeSubscription(subscriptions);
   }
 
   String _formatTime(DateTime? time) {
@@ -1255,8 +1274,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                         const SizedBox(height: 3),
                         if (isOnline)
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               Icon(Icons.circle,
                                   size: 8, color: Color(0xFF22C55E)),
                               SizedBox(width: 4),
@@ -1426,4 +1445,18 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
+}
+
+/// Helper to group multiple [StreamSubscription]s and cancel them all at once.
+class _CompositeSubscription {
+  final List<StreamSubscription> _subscriptions;
+
+  _CompositeSubscription(this._subscriptions);
+
+  void cancel() {
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+  }
 }
