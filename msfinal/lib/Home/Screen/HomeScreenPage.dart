@@ -104,7 +104,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   Future<void> _checkDocumentStatus() async {
     if (_isCheckingStatus) return;
 
-    if (!mounted) return;
     setState(() {
       _isCheckingStatus = true;
       _isLoading = true;
@@ -222,7 +221,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     }
 
     try {
-      if (!mounted) return;
       setState(() {
         _isLoading = true;
         _photoRequestsLoading = true;
@@ -312,7 +310,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       final userId = userData['id']?.toString() ?? '';
       if (userId.isEmpty) return;
 
-      if (!mounted) return;
       setState(() => _isLoadingShortlist = true);
 
       final url = Uri.https('digitallami.com', '/Api2/likelist.php', {'user_id': userId});
@@ -587,7 +584,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
   Future<void> _fetchChatRequestProfiles() async {
     try {
-      if (!mounted) return;
       setState(() {
         _chatRequestsLoading = true;
       });

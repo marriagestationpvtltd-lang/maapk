@@ -1682,7 +1682,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _loadMoreMessages() async {
     if (_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
 
-    if (!mounted) return;
     setState(() => _isLoadingMore = true);
 
     // Save current scroll position before loading
