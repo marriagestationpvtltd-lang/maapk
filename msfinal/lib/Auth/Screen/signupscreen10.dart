@@ -10,6 +10,7 @@ import '../../Startup/MainControllere.dart';
 import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 import '../../service/ocr_service.dart';
+import '../../service/document_scanner_service.dart';
 
 class IDVerificationScreen extends StatefulWidget {
   const IDVerificationScreen({super.key});
@@ -26,10 +27,12 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
 
   final ImagePicker _picker = ImagePicker();
   final OCRService _ocrService = OCRService();
+  final DocumentScannerService _documentScanner = DocumentScannerService();
   String? _selectedDocumentType;
   final TextEditingController _documentNumberController =
       TextEditingController();
   XFile? _selectedImage;
+  String? _scannedImagePath; // Path from document scanner
 
   String _documentStatus = 'not_uploaded';
   String _rejectReason = '';
@@ -172,8 +175,10 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;
       request.fields['documentidnumber'] = _documentNumberController.text;
-      final imageFile =
-          await http.MultipartFile.fromPath('photo', _selectedImage!.path);
+
+      // Use scanned image path if available, otherwise use selected image
+      final String imagePath = _scannedImagePath ?? _selectedImage!.path;
+      final imageFile = await http.MultipartFile.fromPath('photo', imagePath);
       request.files.add(imageFile);
 
       final response = await request.send();
@@ -565,7 +570,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             child: const Icon(Icons.numbers_rounded,
                 color: AppColors.primary, size: 18),
           ),
-          suffixIcon: _selectedImage != null
+          suffixIcon: (_selectedImage != null || _scannedImagePath != null)
               ? _isScanning
                   ? const Padding(
                       padding: EdgeInsets.all(12),
@@ -599,7 +604,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   }
 
   Widget _buildPhotoUploadArea() {
-    if (_selectedImage != null) return _buildImagePreview();
+    if (_selectedImage != null || _scannedImagePath != null) return _buildImagePreview();
     return GestureDetector(
       onTap: _showImageSourceSelector,
       child: Container(
@@ -673,25 +678,34 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
             borderRadius: BorderRadius.circular(14),
             child: Stack(
               children: [
-                FutureBuilder(
-                  future: _selectedImage!.readAsBytes(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return Image.memory(
-                        snapshot.data!,
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
+                // Display scanned image or selected image
+                if (_scannedImagePath != null)
+                  Image.file(
+                    File(_scannedImagePath!),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  )
+                else if (_selectedImage != null)
+                  FutureBuilder(
+                    future: _selectedImage!.readAsBytes(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Image.memory(
+                          snapshot.data!,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        );
+                      }
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation(AppColors.primary),
+                        ),
                       );
-                    }
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation(AppColors.primary),
-                      ),
-                    );
-                  },
-                ),
+                    },
+                  ),
                 Positioned(
                   top: 10,
                   right: 10,
@@ -1460,6 +1474,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
                           _selectedDocumentType = null;
                           _documentNumberController.clear();
                           _selectedImage = null;
+                          _scannedImagePath = null;
                           _hasConsented = false;
                           _rejectReason = '';
                         });
@@ -1593,11 +1608,28 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
               ),
               const SizedBox(height: 20),
               const Text(
-                'Choose Photo Source',
+                'Scan or Upload Document',
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'Document scanner detects edges automatically',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
               const SizedBox(height: 20),
+              // Document Scanner option (recommended)
+              _buildSourceOption(
+                icon: Icons.document_scanner_rounded,
+                label: 'Scan Document',
+                subtitle: 'Auto edge detection',
+                isRecommended: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  _scanDocument();
+                },
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -1638,38 +1670,87 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     required String label,
     required String subtitle,
     required VoidCallback onTap,
+    bool isRecommended = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: isRecommended
+              ? AppColors.primary.withOpacity(0.05)
+              : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
+          border: Border.all(
+            color: isRecommended
+                ? AppColors.primary.withOpacity(0.3)
+                : const Color(0xFFE0E0E0),
+          ),
         ),
         child: Column(
           children: [
+            if (isRecommended)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'RECOMMENDED',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             Container(
               padding: const EdgeInsets.all(14),
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
+              decoration: BoxDecoration(
+                gradient: isRecommended
+                    ? AppColors.primaryGradient
+                    : AppColors.primaryGradient,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: Colors.white, size: 28),
             ),
             const SizedBox(height: 12),
             Text(label,
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isRecommended ? AppColors.primary : Colors.black87)),
             const SizedBox(height: 4),
             Text(subtitle,
+                textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _scanDocument() async {
+    try {
+      final scannedPaths = await _documentScanner.scanDocument(
+        numberOfPages: 1,
+        allowGallery: true,
+      );
+
+      if (scannedPaths != null && scannedPaths.isNotEmpty) {
+        setState(() {
+          _scannedImagePath = scannedPaths.first;
+          _selectedImage = null; // Clear any previously selected image
+        });
+        // Auto-scan document ID after scanning
+        await _scanDocumentId();
+      }
+    } catch (e) {
+      _showError('Failed to scan document: $e');
+    }
   }
 
   Future<void> _takePhoto() async {
@@ -1681,7 +1762,10 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         imageQuality: 90,
       );
       if (image != null) {
-        setState(() => _selectedImage = image);
+        setState(() {
+          _selectedImage = image;
+          _scannedImagePath = null; // Clear any previously scanned image
+        });
         // Auto-scan after image selection
         await _scanDocumentId();
       }
@@ -1699,7 +1783,10 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         imageQuality: 90,
       );
       if (image != null) {
-        setState(() => _selectedImage = image);
+        setState(() {
+          _selectedImage = image;
+          _scannedImagePath = null; // Clear any previously scanned image
+        });
         // Auto-scan after image selection
         await _scanDocumentId();
       }
@@ -1708,10 +1795,13 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     }
   }
 
-  void _removeImage() => setState(() => _selectedImage = null);
+  void _removeImage() => setState(() {
+        _selectedImage = null;
+        _scannedImagePath = null;
+      });
 
   Future<void> _scanDocumentId() async {
-    if (_selectedImage == null) {
+    if (_selectedImage == null && _scannedImagePath == null) {
       _showError('Please upload a document image first');
       return;
     }
@@ -1719,7 +1809,11 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     setState(() => _isScanning = true);
 
     try {
-      final File imageFile = File(_selectedImage!.path);
+      // Use scanned image if available, otherwise use selected image
+      final File imageFile = _scannedImagePath != null
+          ? File(_scannedImagePath!)
+          : File(_selectedImage!.path);
+
       final String? extractedText = await _ocrService.extractDocumentId(imageFile);
 
       setState(() => _isScanning = false);
@@ -1862,7 +1956,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
   bool _canContinue() =>
       _selectedDocumentType != null &&
       _documentNumberController.text.isNotEmpty &&
-      _selectedImage != null &&
+      (_selectedImage != null || _scannedImagePath != null) &&
       _hasConsented;
 
   void _validateAndSubmit() {
@@ -1874,7 +1968,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
       _showError('Please enter your document number');
       return;
     }
-    if (_selectedImage == null) {
+    if (_selectedImage == null && _scannedImagePath == null) {
       _showError('Please upload a photo of your document');
       return;
     }
