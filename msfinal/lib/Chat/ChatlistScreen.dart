@@ -39,6 +39,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   List<ProposalModel> _pendingChatRequests = [];
   bool _requestsLoading = true;
+  bool _chatRequestsLoaded = false;
   int _totalUnreadCount = 0;
   int _totalUnreadConversations = 0;
 
@@ -158,7 +159,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       print('userId: $userId');
       print('name: $name');
 
-      await _loadPendingChatRequests(user.id?.toString() ?? userIdString);
+      // Chat requests now loaded lazily via VisibilityDetector
       _startAdminChatListener(user.id?.toString() ?? userIdString);
       _initChatRoomsStream();
       _startAdminStatusListener();
@@ -192,6 +193,8 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Future<void> _loadPendingChatRequests(String uid) async {
+    if (_chatRequestsLoaded) return;
+
     try {
       if (mounted) setState(() => _requestsLoading = true);
       final all = await ProposalService.fetchProposals(uid, 'received');
@@ -204,6 +207,7 @@ class _ChatListScreenState extends State<ChatListScreen>
         setState(() {
           _pendingChatRequests = pending;
           _requestsLoading = false;
+          _chatRequestsLoaded = true;
         });
       }
     } catch (e) {
@@ -705,6 +709,18 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildChatRequestsSection() {
+    return VisibilityDetector(
+      key: const Key('chat-requests-section'),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction > 0.1 && !_chatRequestsLoaded && userId.isNotEmpty) {
+          _loadPendingChatRequests(userId);
+        }
+      },
+      child: _buildChatRequestsContent(),
+    );
+  }
+
+  Widget _buildChatRequestsContent() {
     if (_requestsLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
