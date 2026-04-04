@@ -17,9 +17,12 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage>
     with SingleTickerProviderStateMixin {
+
   List<Package> packages = [];
   bool isLoading = true;
   String errorMessage = '';
+  int _currentPage = 0;
+  bool _swipeForward = true;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -334,40 +337,39 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   Widget _buildPackageList() {
     if (isLoading) {
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
+        padding: EdgeInsets.symmetric(vertical: 80),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (errorMessage.isNotEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textHint),
-              const SizedBox(height: 16),
-              Text(errorMessage,
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    isLoading = true;
-                    errorMessage = '';
-                  });
-                  fetchPackages();
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                ),
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textHint),
+            const SizedBox(height: 16),
+            Text(errorMessage,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                  errorMessage = '';
+                });
+                fetchPackages();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -385,20 +387,50 @@ class _SubscriptionPageState extends State<SubscriptionPage>
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(packages.length, (index) {
-          final package = packages[index];
-          final config = _tierConfigs[index % _tierConfigs.length];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          const double minVelocity = 200;
+          const double minDistance = 50;
+          final bool fastSwipe = velocity.abs() > minVelocity;
+          final bool farDrag = details.localPosition.dx.abs() > minDistance || fastSwipe;
+          if (!farDrag) return;
+          if (velocity < 0 && _currentPage < packages.length - 1) {
+            setState(() {
+              _swipeForward = true;
+              _currentPage++;
+            });
+          } else if (velocity > 0 && _currentPage > 0) {
+            setState(() {
+              _swipeForward = false;
+              _currentPage--;
+            });
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              final offsetTween = Tween<Offset>(
+                begin: Offset(_swipeForward ? 1.0 : -1.0, 0),
+                end: Offset.zero,
+              );
+              return SlideTransition(
+                position: offsetTween.animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
             child: _PackagePlanCard(
-              package: package,
-              config: config,
-              isPopular: index == 1,
+              key: ValueKey(_currentPage),
+              package: packages[_currentPage],
+              config: _tierConfigs[_currentPage % _tierConfigs.length],
+              isPopular: _currentPage == 1,
             ),
-          );
-        }),
+          ),
+        ),
       ),
     );
   }
@@ -577,6 +609,7 @@ class _PackagePlanCard extends StatelessWidget {
   final bool isPopular;
 
   const _PackagePlanCard({
+    super.key,
     required this.package,
     required this.config,
     this.isPopular = false,
