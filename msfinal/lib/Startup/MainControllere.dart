@@ -74,9 +74,16 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
       int unreadConversations = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        final unreadCount =
-            Map<String, int>.from(data['unreadCount'] ?? {});
-        final myUnread = unreadCount[userId] ?? 0;
+        final rawUnread = data['unreadCount'];
+        int myUnread = 0;
+        if (rawUnread is Map) {
+          final val = rawUnread[userId];
+          if (val is int) {
+            myUnread = val;
+          } else if (val is num) {
+            myUnread = val.toInt();
+          }
+        }
         if (myUnread > 0) unreadConversations++;
       }
       if (_chatUnreadCount != unreadConversations) {
