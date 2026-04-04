@@ -10,15 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Calling/incomingvideocall.dart';
 import 'Calling/incommingcall.dart';
 import 'Calling/call_state_recovery_manager.dart';
 import 'Calling/unified_call_manager.dart';
 import 'Chat/call_overlay_manager.dart';
-import 'Chat/ChatdetailsScreen.dart';
-import 'Chat/screen_state_manager.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
 import 'Startup/onboarding.dart';
