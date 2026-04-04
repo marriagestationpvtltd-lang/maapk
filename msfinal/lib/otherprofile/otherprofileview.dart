@@ -15,7 +15,7 @@ import 'modelprofile.dart';
 
 
 class UserProfilePage extends StatefulWidget {
-    var userId;
+    final dynamic userId;
 
  UserProfilePage({Key? key, required this.userId}) : super(key: key);
 
@@ -24,6 +24,8 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
+  int get _parsedUserId => int.parse(widget.userId.toString());
+
   ProfileData? _profileData;
   bool _isLoading = true;
   String _errorMessage = '';
@@ -55,7 +57,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
 
     try {
-      final profileResponse = await _profileService.fetchProfileData(widget.userId, userid!);
+      final profileResponse = await _profileService.fetchProfileData(_parsedUserId, userid!);
 
       if (profileResponse['status'] == 'success') {
         setState(() {
@@ -83,7 +85,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _checkPhotoPrivacy() async {
-    final privacyData = await _profileService.checkPhotoPrivacy(widget.userId);
+    final privacyData = await _profileService.checkPhotoPrivacy(_parsedUserId);
     setState(() {
       _showBlurredImage = privacyData['show_blur'] ?? true;
       _hasRequestedPhoto = privacyData['has_requested'] ?? false;
@@ -92,7 +94,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
 
   Future<void> _fetchGalleryImages() async {
-    final images = await _profileService.fetchGalleryImages(widget.userId);
+    final images = await _profileService.fetchGalleryImages(_parsedUserId);
     setState(() {
       _galleryImages = images;
     });
@@ -146,7 +148,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
       final response = await _profileService.sendRequest(
         senderId: senderId,
-        receiverId: widget.userId,
+        receiverId: _parsedUserId,
         requestType: requestType,
       );
 
