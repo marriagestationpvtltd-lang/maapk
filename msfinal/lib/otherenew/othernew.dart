@@ -1758,6 +1758,32 @@ class _ContactInfoSection extends StatelessWidget {
     );
   }
 
+  String _calculateAgeFromBirthDate(String birthDate) {
+    if (birthDate.isEmpty || birthDate == 'Not specified' || birthDate == 'Not available') {
+      return 'N/A';
+    }
+    try {
+      DateTime? dob = DateTime.tryParse(birthDate);
+      if (dob == null) {
+        final match = RegExp(r'^(\d{2})-(\d{2})-(\d{4})$').firstMatch(birthDate);
+        if (match != null) {
+          dob = DateTime.tryParse(
+            '${match.group(3)}-${match.group(2)}-${match.group(1)}',
+          );
+        }
+      }
+      if (dob == null) return 'N/A';
+      final now = DateTime.now();
+      int age = now.year - dob.year;
+      if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+        age--;
+      }
+      return age.toString();
+    } catch (_) {
+      return 'N/A';
+    }
+  }
+
   Future<void> _navigateToAdminChat(BuildContext context) async {
     final Map<String, dynamic> profileData = {
       'userId': userId,
@@ -1767,7 +1793,7 @@ class _ContactInfoSection extends StatelessWidget {
       'profileImage': userProfile.avatarUrl,
       'bio': userProfile.bio,
       'location': userProfile.location,
-      'age': userProfile.birthDate,
+      'age': _calculateAgeFromBirthDate(userProfile.birthDate),
       'height': userProfile.height,
       'religion': userProfile.religion,
       'community': userProfile.community,
