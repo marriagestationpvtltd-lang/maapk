@@ -317,6 +317,15 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
     return Scaffold(
       key: _refreshKey, // Add key to force refresh
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Education & Career', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFFE64B37),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Stack(
           children: [

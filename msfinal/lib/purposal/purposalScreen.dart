@@ -296,16 +296,19 @@ class _ProposalsPageState extends State<ProposalsPage> {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.favorite_border_rounded,
-              color: Colors.white,
-              size: 22,
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
           ),
           const SizedBox(width: 14),

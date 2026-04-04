@@ -384,6 +384,15 @@ class _FilterPageState extends State<FilterPage> {
       ),
       child: Row(
         children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              height: 50,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.only(right: 8),
+              child: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
+            ),
+          ),
           Expanded(
             child: Container(
               height: 50,

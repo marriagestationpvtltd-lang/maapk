@@ -150,6 +150,15 @@ class _CommunityDetailsPageEditState extends State<CommunityDetailsPageEdit> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Community Details', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFFE64B37),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Stack(
           children: [

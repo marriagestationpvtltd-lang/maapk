@@ -507,6 +507,11 @@ class _SearchPageState extends State<SearchPage>
         children: [
           Row(
             children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 12),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
