@@ -53,6 +53,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
     {'label': 'State ID', 'icon': Icons.perm_identity_outlined},
     {'label': 'PAN Card', 'icon': Icons.credit_card_outlined},
     {'label': 'Aadhaar Card', 'icon': Icons.fingerprint},
+    {'label': 'Marital Document', 'icon': Icons.article_outlined},
   ];
 
   @override
