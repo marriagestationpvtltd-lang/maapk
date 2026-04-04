@@ -69,7 +69,6 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
   static const String _placeholderProfileImage =
       'https://via.placeholder.com/150';
   static const Color _brandRed = AppColors.primary;
-  int _currentIndex = 0;
 
   List<dynamic> _matchedProfilesApi = [];
   bool _isLoading = true;
@@ -132,7 +131,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
 
 
-      print("Checking document status for user ID: $userId");
+      debugPrint("Checking document status for user ID: $userId");
 
       final response = await http.post(
         Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
@@ -140,8 +139,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         body: jsonEncode({'user_id': userId}),
       );
 
-      print("Status check response: ${response.statusCode}");
-      print("Response body: ${response.body}");
+      debugPrint("Status check response: ${response.statusCode}");
+      debugPrint("Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -152,14 +151,14 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             docstatus = result['status'] ?? 'not_uploaded';
             //  _rejectReason = result['reject_reason'] ?? '';
           });
-          //  print("Document status: $_documentStatus");
-          // print("Reject reason: $_rejectReason");
+          //  debugPrint("Document status: $_documentStatus");
+          // debugPrint("Reject reason: $_rejectReason");
         } else {
-          print("API returned success: false");
-          print("Message: ${result['message']}");
+          debugPrint("API returned success: false");
+          debugPrint("Message: ${result['message']}");
         }
       } else {
-        print("HTTP error: ${response.statusCode}");
+        debugPrint("HTTP error: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("Error checking document status: $e");
@@ -306,7 +305,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         _photoRequestProfiles = [];
         _photoRequestsLoading = false;
       });
-      print('Error fetching matched profiles: $e');
+      debugPrint('Error fetching matched profiles: $e');
     }
   }
 
@@ -782,8 +781,6 @@ String usertye = '';
   var  pageno;
   String name = '';
 
- // int _currentIndex = 0;
-
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning';
@@ -801,10 +798,10 @@ String usertye = '';
 
       UserMasterData user = await fetchUserMasterData(userId.toString());
 
-      print("Name: ${user.firstName} ${user.lastName}");
-      print("Usertype: ${user.usertype}");
-      print("Page No: ${user.pageno}");
-      print("Profile: ${user.profilePicture}");
+      debugPrint("Name: ${user.firstName} ${user.lastName}");
+      debugPrint("Usertype: ${user.usertype}");
+      debugPrint("Page No: ${user.pageno}");
+      debugPrint("Profile: ${user.profilePicture}");
       if (!mounted) return;
       setState(() {
         usertye = user.usertype;
@@ -816,7 +813,7 @@ String usertye = '';
        // docstatus = user.docStatus;
       });
     } catch (e) {
-      print("Error: $e");
+      debugPrint("Error: $e");
     }
   }
 
@@ -1189,8 +1186,14 @@ String usertye = '';
               backgroundColor: AppColors.white,
               child: CircleAvatar(
                 radius: 20,
-                backgroundImage: NetworkImage('https://digitallami.com/Api2/$userimage'),
+                backgroundImage: userimage.isNotEmpty
+                    ? NetworkImage('https://digitallami.com/Api2/$userimage')
+                    : null,
                 onBackgroundImageError: (_, __) {},
+                child: userimage.isEmpty
+                    ? const Icon(Icons.person_rounded,
+                        color: AppColors.textHint, size: 22)
+                    : null,
               ),
             ),
           ),
@@ -1695,29 +1698,61 @@ String usertye = '';
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withOpacity(0.22),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.white.withOpacity(0.35),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.black.withOpacity(0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withOpacity(0.22),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.white.withOpacity(0.35),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.black.withOpacity(0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        action['icon'] as IconData,
-                        color: AppColors.white,
-                        size: 28,
-                      ),
+                          child: Icon(
+                            action['icon'] as IconData,
+                            color: AppColors.white,
+                            size: 28,
+                          ),
+                        ),
+                        if ((action['count'] as int? ?? 0) > 0)
+                          Positioned(
+                            top: -5,
+                            right: -5,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                  minWidth: 18, minHeight: 18),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: const BoxDecoration(
+                                color: AppColors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                (action['count'] as int) > 99
+                                    ? '99+'
+                                    : '${action['count']}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: gradient[0],
+                                  height: 1.0,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -1895,20 +1930,6 @@ String usertye = '';
                                           size: 60, color: AppColors.textHint),
                                     ),
                                   ),
-                            Container(
-                              width: double.infinity,
-                              height: 155,
-                              decoration: BoxDecoration(
-                                color: AppColors.black.withOpacity(0.2),
-                              ),
-                              child: BackdropFilter(
-                                filter: ui.ImageFilter.blur(
-                                    sigmaX: 14, sigmaY: 14),
-                                child: Container(
-                                  color: Colors.transparent,
-                                ),
-                              ),
-                            ),
                             Positioned(
                               bottom: 0,
                               left: 0,
@@ -1932,7 +1953,7 @@ String usertye = '';
                               left: 10,
                               right: 10,
                               child: Text(
-                                'Ms $displayName',
+                                'MS $displayName',
                                 style: AppTextStyles.bodySmall.copyWith(
                                   color: AppColors.white,
                                   fontSize: 13,
@@ -2327,6 +2348,11 @@ String usertye = '';
           final location = profile['city'] ?? '';
           final imageUrl = profile['image'] ?? '';
           final isVerified = profile['isVerified']?.toString() == '1';
+          final ageStr = age.toString();
+          final detailLine = [
+            if (ageStr.isNotEmpty && ageStr != '0') '$ageStr yrs',
+            if (location.isNotEmpty) location,
+          ].join(' · ');
 
           return GestureDetector(
             onTap: () async {
@@ -2379,20 +2405,6 @@ String usertye = '';
                                 child: const Center(
                                   child: Icon(Icons.person_rounded,
                                       size: 60, color: AppColors.textHint),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              width: double.infinity,
-                              height: 160,
-                              decoration: BoxDecoration(
-                                color: AppColors.black.withOpacity(0.25),
-                              ),
-                              child: BackdropFilter(
-                                filter: ui.ImageFilter.blur(
-                                    sigmaX: 14, sigmaY: 14),
-                                child: Container(
-                                  color: AppColors.black.withOpacity(0.05),
                                 ),
                               ),
                             ),
@@ -2487,7 +2499,7 @@ String usertye = '';
                                   AppSpacing.horizontalXS,
                                   Expanded(
                                     child: Text(
-                                      '$age yrs · $location',
+                                      detailLine,
                                       style: AppTextStyles.captionSmall.copyWith(
                                         fontSize: 11,
                                         color: AppColors.textSecondary,
@@ -2748,7 +2760,11 @@ String usertye = '';
                           ),
                           AppSpacing.verticalXS,
                           Text(
-                            '$age yrs · ${heightName.isNotEmpty ? heightName.replaceAll(RegExp(r'\s*cm.*'), ' cm') : ''}',
+                            [
+                              if (age.toString().isNotEmpty && age.toString() != '0') '$age yrs',
+                              if (heightName.isNotEmpty)
+                                heightName.replaceAll(RegExp(r'\s*cm.*'), ' cm'),
+                            ].join(' · '),
                             style: AppTextStyles.captionSmall.copyWith(
                               fontSize: 11,
                               color: AppColors.textSecondary,
@@ -2799,14 +2815,6 @@ String usertye = '';
       ),
     );
   }
-
-// Helper method to show blur popup
-
-// Helper method to show blur popup
-
-
-
-
 
   Widget _buildOtherServices() {
     if (_loading && _otherServices.isEmpty) {
@@ -3377,6 +3385,7 @@ class ImageBannerSlider extends StatefulWidget {
 class _ImageBannerSliderState extends State<ImageBannerSlider> {
   final PageController _controller = PageController();
   int _currentPage = 0;
+  Timer? _autoSlideTimer;
 
   // Add your image paths here
   final List<String> bannerImages = [
@@ -3391,19 +3400,22 @@ class _ImageBannerSliderState extends State<ImageBannerSlider> {
     _startAutoSlide();
   }
 
-  void _startAutoSlide() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (_controller.hasClients) {
-        int next = _currentPage + 1;
-        if (next == bannerImages.length) next = 0;
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
 
-        _controller.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-      _startAutoSlide();
+  void _startAutoSlide() {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted || !_controller.hasClients) return;
+      final next = (_currentPage + 1) % bannerImages.length;
+      _controller.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
