@@ -17,11 +17,12 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage>
     with SingleTickerProviderStateMixin {
-  final PageController _pageController = PageController(viewportFraction: 0.85);
+
   List<Package> packages = [];
   bool isLoading = true;
   String errorMessage = '';
   int _currentPage = 0;
+  bool _swipeForward = true;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -47,7 +48,6 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   @override
   void dispose() {
     _animationController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -341,47 +341,46 @@ class _SubscriptionPageState extends State<SubscriptionPage>
 
   Widget _buildPackageCarousel() {
     if (isLoading) {
-      return const SizedBox(
-        height: 460,
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 80),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (errorMessage.isNotEmpty) {
-      return SizedBox(
-        height: 300,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textHint),
-              const SizedBox(height: 16),
-              Text(errorMessage,
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    isLoading = true;
-                    errorMessage = '';
-                  });
-                  fetchPackages();
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textHint),
+            const SizedBox(height: 16),
+            Text(errorMessage,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                  errorMessage = '';
+                });
+                fetchPackages();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
     if (packages.isEmpty) {
-      return SizedBox(
-        height: 200,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
             'No subscription packages available',
@@ -393,27 +392,49 @@ class _SubscriptionPageState extends State<SubscriptionPage>
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SizedBox(
-        height: 500,
-        child: PageView.builder(
-          controller: _pageController,
-          itemCount: packages.length,
-          onPageChanged: (index) => setState(() => _currentPage = index),
-          itemBuilder: (context, index) {
-            final package = packages[index];
-            final config = _tierConfigs[index % _tierConfigs.length];
-            final isSelected = _currentPage == index;
-            return AnimatedScale(
-              scale: isSelected ? 1.0 : 0.92,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              child: _PackagePlanCard(
-                package: package,
-                config: config,
-                isPopular: index == 1,
-              ),
-            );
-          },
+      child: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          const double minVelocity = 200;
+          const double minDistance = 50;
+          final bool fastSwipe = velocity.abs() > minVelocity;
+          final bool farDrag = details.localPosition.dx.abs() > minDistance || fastSwipe;
+          if (!farDrag) return;
+          if (velocity < 0 && _currentPage < packages.length - 1) {
+            setState(() {
+              _swipeForward = true;
+              _currentPage++;
+            });
+          } else if (velocity > 0 && _currentPage > 0) {
+            setState(() {
+              _swipeForward = false;
+              _currentPage--;
+            });
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              final offsetTween = Tween<Offset>(
+                begin: Offset(_swipeForward ? 1.0 : -1.0, 0),
+                end: Offset.zero,
+              );
+              return SlideTransition(
+                position: offsetTween.animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            child: _PackagePlanCard(
+              key: ValueKey(_currentPage),
+              package: packages[_currentPage],
+              config: _tierConfigs[_currentPage % _tierConfigs.length],
+              isPopular: _currentPage == 1,
+            ),
+          ),
         ),
       ),
     );
@@ -667,6 +688,7 @@ class _PackagePlanCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top row: tier icon + popular badge
