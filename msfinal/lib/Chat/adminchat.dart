@@ -537,6 +537,11 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       return _buildInlineCallBubble(data, ts);
     }
 
+    // Render report messages as a special card
+    if (data['type'] == 'report') {
+      return _buildReportMessageCard(data, isMe, formattedTime);
+    }
+
 // Determine if message is from admin
     bool isFromAdmin = data['senderid'] == _adminUserId;
     String senderName =
@@ -795,6 +800,109 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       items.add(_buildMessageItem(doc));
     }
     return items;
+  }
+
+  Widget _buildReportMessageCard(
+      Map<String, dynamic> data, bool isMe, String formattedTime) {
+    final reportReason = data['reportReason'] ?? '';
+    final reportedUserName = data['reportedUserName'] ?? '';
+    final reportedUserId = data['reportedUserId'] ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.80),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            border: Border.all(color: Colors.orange.shade300, width: 1.2),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft:
+                  isMe ? const Radius.circular(16) : const Radius.circular(4),
+              bottomRight:
+                  isMe ? const Radius.circular(4) : const Radius.circular(16),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.12),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade400,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.flag, color: Colors.white, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'प्रोफाइल रिपोर्ट',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (reportedUserName.isNotEmpty)
+                      Text(
+                        'रिपोर्ट गरिएको: $reportedUserName (ID: $reportedUserId)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    if (reportedUserName.isNotEmpty) const SizedBox(height: 4),
+                    Text(
+                      'कारण: $reportReason',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF4A3000),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        formattedTime,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildInlineCallBubble(Map<String, dynamic> data, Timestamp? ts) {

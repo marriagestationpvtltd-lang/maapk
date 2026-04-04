@@ -13,6 +13,7 @@ import '../Auth/Screen/signupscreen10.dart';
 import '../Chat/adminchat.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
+import '../constant/constant.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import '../utils/image_utils.dart';
@@ -219,36 +220,169 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
   void _showReportDialog(BuildContext context) {
-    showDialog<void>(
+    String? selectedReason;
+    showModalBottomSheet<void>(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Report Profile'),
-          content: const Text(
-              'Are you sure you want to report this profile? This action cannot be undone.'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('CANCEL'),
-            ),
-            TextButton(
-              onPressed: () {
-                debugPrint('Profile reported!');
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Profile reported successfully!')),
-                );
-              },
-              child: Text('REPORT',
-                  style: TextStyle(color: Theme.of(context).primaryColor)),
-            ),
-          ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (_, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.flag, color: Colors.orange, size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'प्रोफाइल रिपोर्ट गर्नुहोस्',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'रिपोर्टको कारण छान्नुहोस्:',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...AppConstants.reportReasons.map((reason) => RadioListTile<String>(
+                        value: reason,
+                        groupValue: selectedReason,
+                        onChanged: (value) =>
+                            setSheetState(() => selectedReason = value),
+                        title: Text(reason,
+                            style: const TextStyle(fontSize: 14)),
+                        activeColor: Colors.red,
+                        dense: true,
+                      )),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(),
+                            child: const Text('रद्द गर्नुहोस्'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: selectedReason == null
+                                ? null
+                                : () async {
+                                    Navigator.of(sheetContext).pop();
+                                    await _submitReport(
+                                        context, selectedReason!);
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: const Text(
+                              'रिपोर्ट गर्नुहोस्',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
+  }
+
+  Future<void> _submitReport(BuildContext context, String reason) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+      final userData = jsonDecode(userDataString);
+      final currentUserId = userData['id'].toString();
+      final adminUserId = AppConstants.adminUserId;
+
+      final userProfile =
+          Provider.of<UserProfile>(context, listen: false);
+      final reportedUserName =
+          userProfile.name.isNotEmpty ? userProfile.name : 'Unknown';
+
+      final reportMessage =
+          'मैले यो प्रोफाइल रिपोर्ट गरेको छु।\n\nकारण: $reason\n\nरिपोर्ट गरिएको प्रोफाइल ID: ${widget.userId}';
+
+      await FirebaseFirestore.instance.collection('adminchat').add({
+        'message': reportMessage,
+        'type': 'report',
+        'senderid': currentUserId,
+        'receiverid': adminUserId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'liked': false,
+        'replyto': '',
+        'reportedUserId': widget.userId,
+        'reportedUserName': reportedUserName,
+        'reportReason': reason,
+      });
+
+      final conversationId = AppConstants.conversationId(currentUserId, adminUserId);
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(conversationId)
+          .set({
+        'participants': [currentUserId, adminUserId],
+        'lastMessage': 'प्रोफाइल रिपोर्ट: $reason',
+        'lastTimestamp': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('प्रोफाइल सफलतापूर्वक रिपोर्ट गरियो!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('रिपोर्ट गर्न असफल: $e')),
+        );
+      }
+    }
   }
   @override
   void initState() {
