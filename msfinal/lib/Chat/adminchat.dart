@@ -15,6 +15,11 @@ import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
+import '../Calling/callmanager.dart';
+import '../Calling/incommingcall.dart';
+import '../Calling/incomingvideocall.dart';
+import '../pushnotification/pushservice.dart';
+import 'call_overlay_manager.dart';
 import 'ChatdetailsScreen.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
@@ -90,6 +95,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
   bool _showCallHistory = false;
   bool _callHistoryLoaded = false;
 
+  // Incoming call listener (backup for when CallOverlayWrapper doesn't fire)
+  StreamSubscription<Map<String, dynamic>>? _incomingCallSubscription;
+
   // Current user verification state (loaded for non-admin)
   String _currentUserDocStatus = '';
   String _currentUserType = '';
@@ -120,6 +128,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     }
     _scrollController.addListener(_onScroll);
     _startAdminStatusListener();
+    _setupCallListener();
     _msgSubscription = _messagesStream().listen(
       (snapshot) {
         if (!mounted) return;
@@ -456,6 +465,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     WidgetsBinding.instance.removeObserver(this);
     _msgSubscription?.cancel();
     _adminStatusSubscription?.cancel();
+    _incomingCallSubscription?.cancel();
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _messageFocusNode.dispose();
@@ -495,6 +505,39 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       setState(() {
         _adminOnline = online || recentlySeen;
         _adminLastSeen = lastSeen;
+      });
+    });
+  }
+
+  // Backup incoming call listener so that calls ring even while the user is
+  // typing on this screen.  The global CallOverlayWrapper handles calls for
+  // the rest of the app; this method ensures that if it does not fire (e.g.
+  // due to a timing edge-case), AdminChatScreen still shows the call UI.
+  void _setupCallListener() {
+    _incomingCallSubscription?.cancel();
+    _incomingCallSubscription = NotificationService.incomingCalls.listen((data) {
+      final isVideoCall =
+          data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // isCallScreenShowing is set by the first listener that handles this
+        // call (usually CallOverlayWrapper). If it is already true, the global
+        // handler has already pushed the screen — skip to avoid duplicates.
+        if (CallManager().isCallScreenShowing) return;
+        CallManager().isCallScreenShowing = true;
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: activeCallRouteName),
+                fullscreenDialog: true,
+                builder: (_) => isVideoCall
+                    ? IncomingVideoCallScreen(callData: data)
+                    : IncomingCallScreen(callData: data),
+              ),
+            )
+            .whenComplete(() {
+          CallManager().isCallScreenShowing = false;
+        });
       });
     });
   }
