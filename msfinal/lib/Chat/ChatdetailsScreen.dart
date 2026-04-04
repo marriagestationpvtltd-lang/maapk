@@ -217,7 +217,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       widget.currentUserId,
       partnerUserId: widget.receiverId,
     );
-    unawaited(_setActiveChatPresence(isActive: true));
+    _updateActiveChatPresence(true);
 
     // Add observer for app lifecycle
     WidgetsBinding.instance.addObserver(this);
@@ -552,6 +552,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
+  void _updateActiveChatPresence(bool isActive) {
+    unawaited(
+      _setActiveChatPresence(isActive: isActive).catchError((Object error) {
+        debugPrint('Error updating active chat presence: $error');
+      }),
+    );
+  }
+
   Future<bool> _isReceiverViewingCurrentChat() async {
     if (_isReceiverViewingThisChat) {
       return true;
@@ -587,7 +595,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     if (!hasUnreadIncoming) return;
 
-    unawaited(_markMessagesAsRead());
+    _isMarkingMessagesAsRead = true;
+    unawaited(_markMessagesAsReadInternal().whenComplete(() {
+      _isMarkingMessagesAsRead = false;
+    }));
   }
 
   // ───────── SCROLL TO REPLIED MESSAGE ─────────
@@ -622,7 +633,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   void dispose() {
     // Clear chat active state when screen closes
     ScreenStateManager().onChatScreenClosed();
-    unawaited(_setActiveChatPresence(isActive: false));
+    _updateActiveChatPresence(false);
     WidgetsBinding.instance.removeObserver(this);
     _messageController.removeListener(_onMessageTextChanged);
     _messageController.dispose();
@@ -656,24 +667,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           widget.currentUserId,
           partnerUserId: widget.receiverId,
         );
-        unawaited(_setActiveChatPresence(isActive: true));
+        _updateActiveChatPresence(true);
         _markMessagesAsRead();
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       // App went to background, clear active state
         ScreenStateManager().onChatScreenClosed();
-        unawaited(_setActiveChatPresence(isActive: false));
+        _updateActiveChatPresence(false);
         break;
       case AppLifecycleState.detached:
       // App is closed
         ScreenStateManager().onChatScreenClosed();
-        unawaited(_setActiveChatPresence(isActive: false));
+        _updateActiveChatPresence(false);
         break;
       case AppLifecycleState.hidden:
       // App is hidden
         ScreenStateManager().onChatScreenClosed();
-        unawaited(_setActiveChatPresence(isActive: false));
+        _updateActiveChatPresence(false);
         break;
     }
   }
@@ -682,6 +693,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _markMessagesAsRead() async {
     if (_isMarkingMessagesAsRead) return;
     _isMarkingMessagesAsRead = true;
+    try {
+      await _markMessagesAsReadInternal();
+    } finally {
+      _isMarkingMessagesAsRead = false;
+    }
+  }
+
+  Future<void> _markMessagesAsReadInternal() async {
     try {
       await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
         'unreadCount.${widget.currentUserId}': 0,
@@ -719,8 +738,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       }
     } catch (e) {
       print('Error marking messages as read: $e');
-    } finally {
-      _isMarkingMessagesAsRead = false;
     }
   }
 
