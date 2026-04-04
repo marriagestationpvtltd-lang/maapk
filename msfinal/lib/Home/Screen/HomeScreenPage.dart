@@ -1024,14 +1024,19 @@ String usertye = '';
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
+              gradient: LinearGradient(
+                colors: (usertye.isNotEmpty && usertye != 'free')
+                    ? const [Color(0xFFFFD700), Color(0xFFFF8C00)]
+                    : [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
+                  color: ((usertye.isNotEmpty && usertye != 'free')
+                          ? const Color(0xFFFFD700)
+                          : AppColors.primary)
+                      .withOpacity(0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -1114,32 +1119,92 @@ String usertye = '';
       ),
       actions: [
         if (usertye == 'free')
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            child: TextButton(
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppDimensions.borderRadiusXL,
-                ),
-                minimumSize: const Size(0, 32),
-              ),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => SubscriptionPage())),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.star_rounded, color: AppColors.white, size: 14),
-                  AppSpacing.horizontalXS,
-                  Text(
-                    'Upgrade',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.w700,
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SubscriptionPage()),
+                ).then((_) { if (mounted) loadMasterData(); }),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF8C00), Color(0xFFFFB800)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(17),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF8C00).withOpacity(0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'Upgrade',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          height: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        else if (usertye.isNotEmpty && usertye != 'free')
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Container(
+                height: 30,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFF8C00)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFD700).withOpacity(0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Premium',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
