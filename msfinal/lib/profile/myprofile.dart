@@ -1311,7 +1311,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     'not available',
     'n/a',
     'na',
-  ];
+  };
 
   String _normalizeMaritalStatusValue(dynamic maritalStatus) {
     return maritalStatus?.toString().trim().toLowerCase() ?? '';
