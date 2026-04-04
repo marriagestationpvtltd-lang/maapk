@@ -136,6 +136,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Timer? _typingDebounce;
   bool _isReceiverTyping = false;
   StreamSubscription? _typingSubscription;
+  bool _isMarkingMessagesAsRead = false;
+  bool _isReceiverViewingThisChat = false;
 
   // Receiver online status
   bool _isOtherUserOnline = false;
@@ -164,6 +166,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   static const int _kTypingTimeoutSeconds = 5;
   static const Duration _kTypingDebounceDelay = Duration(seconds: 3);
   static const Duration _kHighlightDuration = Duration(milliseconds: 700);
+  static const Duration _kActiveChatPresenceWindow = Duration(seconds: 30);
 
   static const LinearGradient _primaryGradient = LinearGradient(
     colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
@@ -214,6 +217,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       widget.currentUserId,
       partnerUserId: widget.receiverId,
     );
+    unawaited(_setActiveChatPresence(isActive: true));
 
     // Add observer for app lifecycle
     WidgetsBinding.instance.addObserver(this);
@@ -350,6 +354,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           _messagesCacheVersion++;
           if (_forceScrollToBottom) _forceScrollToBottom = false;
         });
+        _syncVisibleIncomingMessagesAsRead(newCache);
 
         if (shouldScroll) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -471,19 +476,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!mounted) return;
       bool online = false;
       DateTime? lastSeen;
+      bool receiverViewingThisChat = false;
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         final bool isOnline = data['isOnline'] == true;
         final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+        final String activeChatRoomId =
+            data['activeChatRoomId']?.toString() ?? '';
         lastSeen = lastSeenTs?.toDate();
         final bool recentlySeen = lastSeen != null &&
             DateTime.now().difference(lastSeen).inMinutes < 5;
         online = isOnline || recentlySeen;
+        final bool activeChatRecentlyUpdated = lastSeen != null &&
+            DateTime.now().difference(lastSeen) <= _kActiveChatPresenceWindow;
+        receiverViewingThisChat = isOnline &&
+            activeChatRecentlyUpdated &&
+            activeChatRoomId == widget.chatRoomId;
       }
-      if (_isOtherUserOnline != online || _otherUserLastSeen != lastSeen) {
+      if (_isOtherUserOnline != online ||
+          _otherUserLastSeen != lastSeen ||
+          _isReceiverViewingThisChat != receiverViewingThisChat) {
         setState(() {
           _isOtherUserOnline = online;
           _otherUserLastSeen = lastSeen;
+          _isReceiverViewingThisChat = receiverViewingThisChat;
         });
       }
     });
@@ -506,6 +522,72 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
       'typing.${widget.currentUserId}': FieldValue.delete(),
     }).catchError((_) {}); // ignore if doc doesn't exist yet
+  }
+
+  Future<void> _setActiveChatPresence({required bool isActive}) async {
+    try {
+      final userRef = _firestore.collection('users').doc(widget.currentUserId);
+      if (isActive) {
+        await userRef.set({
+          'activeChatRoomId': widget.chatRoomId,
+          'activeChatPartnerId': widget.receiverId,
+        }, SetOptions(merge: true));
+        return;
+      }
+
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(userRef);
+        final data = snapshot.data() as Map<String, dynamic>? ?? {};
+        if (data['activeChatRoomId']?.toString() != widget.chatRoomId) {
+          return;
+        }
+
+        transaction.set(userRef, {
+          'activeChatRoomId': FieldValue.delete(),
+          'activeChatPartnerId': FieldValue.delete(),
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      debugPrint('Error updating active chat presence: $e');
+    }
+  }
+
+  Future<bool> _isReceiverViewingCurrentChat() async {
+    if (_isReceiverViewingThisChat) {
+      return true;
+    }
+
+    try {
+      final doc = await _firestore.collection('users').doc(widget.receiverId).get();
+      if (!doc.exists) return false;
+
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final bool isOnline = data['isOnline'] == true;
+      final String activeChatRoomId = data['activeChatRoomId']?.toString() ?? '';
+      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
+      final DateTime? lastSeen = lastSeenTs?.toDate();
+      final bool activeChatRecentlyUpdated = lastSeen != null &&
+          DateTime.now().difference(lastSeen) <= _kActiveChatPresenceWindow;
+
+      return isOnline &&
+          activeChatRecentlyUpdated &&
+          activeChatRoomId == widget.chatRoomId;
+    } catch (e) {
+      debugPrint('Error checking receiver active chat state: $e');
+      return false;
+    }
+  }
+
+  void _syncVisibleIncomingMessagesAsRead(List<Map<String, dynamic>> messages) {
+    if (_isMarkingMessagesAsRead) return;
+
+    final hasUnreadIncoming = messages.any((message) =>
+        message['receiverId'] == widget.currentUserId &&
+        message['isRead'] != true);
+
+    if (!hasUnreadIncoming) return;
+
+    unawaited(_markMessagesAsRead());
   }
 
   // ───────── SCROLL TO REPLIED MESSAGE ─────────
@@ -540,6 +622,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   void dispose() {
     // Clear chat active state when screen closes
     ScreenStateManager().onChatScreenClosed();
+    unawaited(_setActiveChatPresence(isActive: false));
     WidgetsBinding.instance.removeObserver(this);
     _messageController.removeListener(_onMessageTextChanged);
     _messageController.dispose();
@@ -573,26 +656,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           widget.currentUserId,
           partnerUserId: widget.receiverId,
         );
+        unawaited(_setActiveChatPresence(isActive: true));
         _markMessagesAsRead();
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       // App went to background, clear active state
         ScreenStateManager().onChatScreenClosed();
+        unawaited(_setActiveChatPresence(isActive: false));
         break;
       case AppLifecycleState.detached:
       // App is closed
         ScreenStateManager().onChatScreenClosed();
+        unawaited(_setActiveChatPresence(isActive: false));
         break;
       case AppLifecycleState.hidden:
       // App is hidden
         ScreenStateManager().onChatScreenClosed();
+        unawaited(_setActiveChatPresence(isActive: false));
         break;
     }
   }
 
   // MARK MESSAGES AS READ
   Future<void> _markMessagesAsRead() async {
+    if (_isMarkingMessagesAsRead) return;
+    _isMarkingMessagesAsRead = true;
     try {
       await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
         'unreadCount.${widget.currentUserId}': 0,
@@ -630,6 +719,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       }
     } catch (e) {
       print('Error marking messages as read: $e');
+    } finally {
+      _isMarkingMessagesAsRead = false;
     }
   }
 
@@ -647,6 +738,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     try {
       final timestamp = DateTime.now();
       final messageId = _uuid.v4();
+      final bool receiverViewingThisChat =
+          await _isReceiverViewingCurrentChat();
 
       // Prepare message data
       final messageData = {
@@ -656,8 +749,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'message': messageText,
         'messageType': 'text',
         'timestamp': timestamp,
-        'isRead': false,
-        'isDelivered': false,
+        'isRead': receiverViewingThisChat,
+        'isDelivered': receiverViewingThisChat,
         'isDeletedForSender': false,
         'isDeletedForReceiver': false,
       };
@@ -697,16 +790,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         'lastMessageType': 'text',
         'lastMessageTime': timestamp,
         'lastMessageSenderId': widget.currentUserId,
-        'unreadCount.${widget.receiverId}': FieldValue.increment(1),
+        'unreadCount.${widget.receiverId}': receiverViewingThisChat
+            ? 0
+            : FieldValue.increment(1),
       });
 
-      // Send notification after message is saved
-      await NotificationService.sendChatNotification(
-        recipientUserId: widget.receiverId.toString(),
-        senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
-        senderId: widget.currentUserId.toString(),
-        message: messageText,
-      );
+      if (!receiverViewingThisChat) {
+        // Send notification after message is saved
+        await NotificationService.sendChatNotification(
+          recipientUserId: widget.receiverId.toString(),
+          senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
+          senderId: widget.currentUserId.toString(),
+          message: messageText,
+        );
+      }
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2742,7 +2839,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         TypingIndicatorWidget(dotColor: Colors.white, dotSize: 6),
                         const SizedBox(width: 6),
                         const Text(
-                          'typing...',
+                          'is typing...',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
