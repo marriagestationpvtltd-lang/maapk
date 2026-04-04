@@ -1305,15 +1305,13 @@ String usertye = '';
         children: actions.map((action) {
           final gradient = action['gradient'] as List<Color>;
           final onTap = action['onTap'] as VoidCallback;
-          final int? count = action['count'] as int?;
-          final bool hasCount = count != null && count > 0;
 
           return Expanded(
             child: GestureDetector(
               onTap: onTap,
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: gradient,
@@ -1323,82 +1321,54 @@ String usertye = '';
                   borderRadius: AppDimensions.borderRadiusLG,
                   boxShadow: [
                     BoxShadow(
-                      color: gradient[0].withOpacity(0.32),
-                      blurRadius: 14,
+                      color: gradient[0].withOpacity(0.38),
+                      blurRadius: 18,
                       spreadRadius: 0,
-                      offset: const Offset(0, 5),
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
+                      color: gradient.last.withOpacity(0.18),
+                      blurRadius: 8,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: AppColors.white.withOpacity(0.18),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            action['icon'] as IconData,
-                            color: AppColors.white,
-                            size: 26,
-                          ),
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withOpacity(0.22),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.white.withOpacity(0.35),
+                          width: 1.5,
                         ),
-                        if (hasCount)
-                          Positioned(
-                            top: -4,
-                            right: -6,
-                            child: Container(
-                              constraints: const BoxConstraints(
-                                minWidth: 20,
-                                minHeight: 20,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: AppDimensions.borderRadiusRound,
-                                border: Border.all(
-                                  color: gradient[0],
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.black.withOpacity(0.15),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                count > 99 ? '99+' : '$count',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: gradient.last,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 10,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.black.withOpacity(0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                      ],
+                        ],
+                      ),
+                      child: Icon(
+                        action['icon'] as IconData,
+                        color: AppColors.white,
+                        size: 28,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
                       action['label'] as String,
                       style: AppTextStyles.captionSmall.copyWith(
                         color: AppColors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
+                        letterSpacing: 0.3,
                       ),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
