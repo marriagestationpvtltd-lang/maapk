@@ -114,15 +114,33 @@ class CallStateRecoveryManager {
         );
       }
     } else if (callState.status == CallStatus.active || callState.status == CallStatus.connecting) {
-      // Call is already active/connecting - for now, treat as ringing to allow re-accept
-      // TODO: Create a proper "call in progress" recovery screen
+      // Call is already active/connecting — reconnect to the live call screen
+      final currentUserId = callState.isIncoming ? callState.receiverId : callState.callerId;
+      final currentUserName = callState.isIncoming ? callState.receiverName : callState.callerName;
+      final currentUserImage = callState.isIncoming ? callState.receiverImage : callState.callerImage;
+      final otherUserId = callState.isIncoming ? callState.callerId : callState.receiverId;
+      final otherUserName = callState.isIncoming ? callState.callerName : callState.receiverName;
+      final otherUserImage = callState.isIncoming ? callState.callerImage : callState.receiverImage;
+
       if (callState.callType == 'video') {
-        callScreen = IncomingVideoCallScreen(
-          callData: callData,
+        callScreen = VideoCallScreen(
+          currentUserId: currentUserId,
+          currentUserName: currentUserName,
+          currentUserImage: currentUserImage,
+          otherUserId: otherUserId,
+          otherUserName: otherUserName,
+          otherUserImage: otherUserImage,
+          isOutgoingCall: !callState.isIncoming,
         );
       } else {
-        callScreen = IncomingCallScreen(
-          callData: callData,
+        callScreen = ActiveCallScreen(
+          channel: callState.channelName,
+          localUid: 0,
+          remoteUid: 0,
+          currentUserId: currentUserId,
+          otherUserId: otherUserId,
+          callerName: currentUserName,
+          recipientName: otherUserName,
         );
       }
     } else {

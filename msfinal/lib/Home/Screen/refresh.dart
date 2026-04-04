@@ -8,8 +8,8 @@ class AppRestartHelper {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => WillPopScope(
-            onWillPop: () async => false, // Prevent going back
+          builder: (context) => PopScope(
+            canPop: false, // Prevent going back
             child: MatrimonyHomeScreen(), // Your home screen
           ),
         ),

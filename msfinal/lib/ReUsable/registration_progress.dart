@@ -311,10 +311,11 @@ class RegistrationStepContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SignupModel>(
       builder: (context, model, _) {
-        return WillPopScope(
-          onWillPop: () async {
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (bool didPop) async {
+            if (didPop) return;
             await _handleRegistrationBack(context, model);
-            return false; // Navigation is handled manually above.
           },
           child: Column(
             children: [

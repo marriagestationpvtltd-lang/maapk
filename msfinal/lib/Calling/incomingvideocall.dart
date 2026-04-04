@@ -366,13 +366,13 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _callTimer?.cancel();
 
     if (_callActive) {
-      await NotificationService.sendVideoCallEndedNotification(
+      unawaited(NotificationService.sendVideoCallEndedNotification(
         recipientUserId: _callerId,
         callerName: _recipientName,
         reason: 'ended',
         duration: _duration.inSeconds,
         channelName: _channel,
-      );
+      ));
     }
 
     // Update call history
@@ -384,19 +384,14 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       );
     }
 
-    if (_joined) {
-      await _engine.leaveChannel();
-    }
-    if (_engineInitialized) {
-      await _engine.release();
-    }
-    await _stopForegroundService();
-
+    // Navigate away FIRST so the user never sees the black AgoraRTC screen
     await _end();
+
+    // Release engine resources after navigation (fire-and-forget)
+    if (_engineInitialized) unawaited(_releaseEngineAsync());
   }
 
   Future<void> _end() async {
-    await _stopForegroundService();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -407,6 +402,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
+    unawaited(_stopForegroundService());
   }
 
   // ================= TOGGLE CAMERA =================
@@ -776,7 +772,20 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _ringTimer?.cancel();
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
+    // Release Agora engine if not already released by _endCall
+    if (_engineInitialized) {
+      unawaited(_releaseEngineAsync());
+    }
+    unawaited(_stopForegroundService());
     super.dispose();
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (_) {}
   }
 
   Future<void> _startForegroundService() async {

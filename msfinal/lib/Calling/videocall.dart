@@ -396,19 +396,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     // Always stop ringtone when ending call
     await _stopRingtone();
-    await _stopForegroundService();
 
     // Update call history
     if (_callHistoryId != null && _callHistoryId!.isNotEmpty) {
       CallStatus callStatus;
       if (_callActive && _remoteUid != null) {
-        // Call was connected
         callStatus = CallStatus.completed;
       } else if (_remoteUid == null) {
-        // Call was not answered
         callStatus = CallStatus.missed;
       } else {
-        // Call was cancelled
         callStatus = CallStatus.cancelled;
       }
 
@@ -419,45 +415,39 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       );
     }
 
+    // Send end/cancel notifications
     if (_callActive) {
-      await NotificationService.sendVideoCallEndedNotification(
+      unawaited(NotificationService.sendVideoCallEndedNotification(
         recipientUserId: widget.otherUserId,
         callerName: widget.currentUserName,
         reason: 'ended',
         duration: _duration.inSeconds,
         channelName: _channel,
-      );
+      ));
     } else if (!_callActive && widget.isOutgoingCall && _channel.isNotEmpty) {
-      // Call was never answered; notify receiver to dismiss their incoming call screen
-      await NotificationService.sendVideoCallCancelledNotification(
+      unawaited(NotificationService.sendVideoCallCancelledNotification(
         recipientUserId: widget.otherUserId,
         callerName: widget.currentUserName,
         channelName: _channel,
         callerId: widget.currentUserId,
-      );
+      ));
     }
 
-    if (_joined) {
-      await _engine.leaveChannel();
-    }
-    if (_engineInitialized) {
-      await _engine.release();
-    }
-
+    // Navigate away FIRST so the user never sees the black AgoraRTC screen
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
         (route) => route.settings.name == activeCallRouteName || route.isFirst,
       );
     }
-
     CallOverlayManager().reset();
-
     await _exit();
+
+    // Release engine resources after navigation (fire-and-forget)
+    if (_engineInitialized) unawaited(_releaseEngineAsync());
+    unawaited(_stopForegroundService());
   }
 
   Future<void> _exit() async {
-    await _stopForegroundService();
-    CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -472,6 +462,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       otherUserName: widget.otherUserName,
       callId: _channel,
     );
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (_) {}
   }
 
   Future<void> _stopForegroundService() async {
@@ -893,7 +891,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _ringtonePlayerStateSubscription?.cancel();
     _ringtonePlayerCompleteSubscription?.cancel();
     _ringtonePlayerLogSubscription?.cancel();
-    _ringtonePlayer.dispose(); // Dispose audio player
+    _ringtonePlayer.dispose();
+    // Release Agora engine if not already released by _endCall
+    if (_engineInitialized) {
+      unawaited(_releaseEngineAsync());
+    }
     unawaited(_stopForegroundService());
     super.dispose();
   }

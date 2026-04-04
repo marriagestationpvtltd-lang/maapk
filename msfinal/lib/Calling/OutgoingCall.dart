@@ -381,33 +381,23 @@ class _CallScreenState extends State<CallScreen> {
     _responseSubscription?.cancel();
 
     await _stopRingtone();
-    await _stopForegroundService();
 
     // If the call was never answered, notify the receiver to dismiss their incoming call screen
     if (!_callActive && widget.isOutgoingCall && _channel.isNotEmpty) {
-      await NotificationService.sendCallCancelledNotification(
+      unawaited(NotificationService.sendCallCancelledNotification(
         recipientUserId: widget.otherUserId,
         callerName: widget.currentUserName,
         channelName: _channel,
         callerId: widget.currentUserId,
-      );
+      ));
     }
 
-    if (_engineInitialized) {
-      try {
-        await _engine.leaveChannel();
-        await _engine.release();
-      } catch (e) {
-        debugPrint("Engine cleanup error: $e");
-      }
-    }
-
+    // Navigate away FIRST so the user never sees the black AgoraRTC screen
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
         (route) => route.settings.name == activeCallRouteName || route.isFirst,
       );
     }
-
     CallOverlayManager().reset();
 
     if (mounted && Navigator.of(context).canPop()) {
@@ -427,14 +417,30 @@ class _CallScreenState extends State<CallScreen> {
         }
       });
     }
+
+    // Release engine resources after navigation (fire-and-forget)
+    if (_engineInitialized) {
+      unawaited(_releaseEngineAsync());
+    }
+    unawaited(_stopForegroundService());
   }
 
 
   Future<void> _exit() async {
-    await _stopForegroundService();
     CallOverlayManager().reset();
     if (mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+    }
+    unawaited(_stopForegroundService());
+  }
+
+  /// Releases the Agora engine; safe to call fire-and-forget from dispose().
+  Future<void> _releaseEngineAsync() async {
+    try {
+      if (_joined) await _engine.leaveChannel();
+      await _engine.release();
+    } catch (e) {
+      debugPrint("Engine cleanup error: $e");
     }
   }
 
@@ -609,6 +615,10 @@ class _CallScreenState extends State<CallScreen> {
     _ringtonePlayerStateSubscription?.cancel();
     _ringtonePlayerCompleteSubscription?.cancel();
     _ringtonePlayer.dispose();
+    // Release Agora engine if not already released by _endCall
+    if (_engineInitialized) {
+      unawaited(_releaseEngineAsync());
+    }
     unawaited(_stopForegroundService());
     super.dispose();
   }

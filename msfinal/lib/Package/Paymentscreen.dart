@@ -787,8 +787,8 @@ class _PaymentPageState extends State<PaymentPage> {
     // Clear navigation stack and restart home screen
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) => WillPopScope(
-          onWillPop: () async => false,
+        builder: (context) => PopScope(
+          canPop: false,
           child: const MatrimonyHomeScreen(),
         ),
       ),
