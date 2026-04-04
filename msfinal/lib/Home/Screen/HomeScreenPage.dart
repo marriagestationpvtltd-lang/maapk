@@ -946,10 +946,10 @@ String usertye = '';
               ),
               onPressed: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => SubscriptionPage())),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, color: AppColors.white, size: 14),
+                  const Icon(Icons.star_rounded, color: AppColors.white, size: 14),
                   AppSpacing.horizontalXS,
                   Text(
                     'Upgrade',
@@ -1060,7 +1060,7 @@ String usertye = '';
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Complete Your Profile',
                   style: AppTextStyles.heading4.copyWith(
                     color: AppColors.white,
@@ -1111,7 +1111,7 @@ String usertye = '';
                       color: AppColors.white,
                       borderRadius: AppDimensions.borderRadiusRound,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
@@ -1122,7 +1122,7 @@ String usertye = '';
                           ),
                         ),
                         AppSpacing.horizontalXS,
-                        Icon(Icons.arrow_forward_rounded,
+                        const Icon(Icons.arrow_forward_rounded,
                             color: AppColors.primary, size: 14),
                       ],
                     ),
@@ -1392,7 +1392,7 @@ String usertye = '';
               AppSpacing.verticalSM,
               TextButton(
                 onPressed: fetchMatchedProfiles,
-                child: const Text('Retry', style: AppTextStyles.primaryLabel),
+                child: Text('Retry', style: AppTextStyles.primaryLabel),
               ),
             ],
           ),
@@ -1706,7 +1706,7 @@ String usertye = '';
                                   }
                                 }
                               },
-                              child: const Text(
+                              child: Text(
                                 'Connect',
                                 style: AppTextStyles.primaryLabel,
                               ),
@@ -2052,10 +2052,10 @@ String usertye = '';
                             ),
                             borderRadius: AppDimensions.borderRadiusMD,
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.star_rounded,
+                              const Icon(Icons.star_rounded,
                                   color: AppColors.white, size: 10),
                               AppSpacing.horizontalXS,
                               Text(
@@ -2159,7 +2159,7 @@ String usertye = '';
                                               IDVerificationScreen()));
                                 }
                               },
-                              child: const Text(
+                              child: Text(
                                 'View Profile',
                                 style: AppTextStyles.whiteLabel,
                               ),
@@ -2372,7 +2372,7 @@ String usertye = '';
                           ),
                           icon: const Icon(Icons.chat_bubble_outline_rounded,
                               color: AppColors.white, size: 16),
-                          label: const Text(
+                          label: Text(
                             'Start Conversation',
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.white,

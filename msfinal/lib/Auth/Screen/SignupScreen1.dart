@@ -375,7 +375,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   "Add Profile Picture",
                   style: AppTextStyles.heading4,
                 ),
@@ -412,7 +412,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           "Your photos are 100% secure. Others cannot view without your permission. Only after your approval can others see it.",
                           style: AppTextStyles.caption.copyWith(height: 1.4),
@@ -544,7 +544,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                         child: const Icon(Icons.language, color: AppColors.white, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
+                      Text(
                         "Select Languages",
                         style: AppTextStyles.heading3,
                       ),
@@ -634,7 +634,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                   // Available languages list
                   Expanded(
                     child: available.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               "No languages available",
                               style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
@@ -812,13 +812,13 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                           const SizedBox(height: 12),
                           GestureDetector(
                             onTap: _showImageSourceOptions,
-                            child: const Text(
+                            child: Text(
                               "Add profile picture",
                               style: AppTextStyles.primaryLabel,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             "Clear photo increases profile views by 80%",
                             style: AppTextStyles.caption,
                           ),
@@ -850,7 +850,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const Flexible(
+                                Flexible(
                                   child: Text(
                                     "Your photo will not be visible to others without your permission until approved by admin",
                                     style: AppTextStyles.captionSmall,
@@ -1036,15 +1036,15 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 8, left: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8, left: 4),
                             child: Row(
                               children: [
                                 Text(
                                   'Phone Number',
                                   style: AppTextStyles.labelMedium,
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
                                   '*',
                                   style: AppTextStyles.labelMedium.copyWith(color: AppColors.error),
@@ -1438,15 +1438,15 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8, left: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8, left: 4),
                           child: Row(
                             children: [
                               Text(
                                 'Languages',
                                 style: AppTextStyles.labelMedium,
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Text(
                                 '*',
                                 style: AppTextStyles.labelMedium.copyWith(color: AppColors.error),
