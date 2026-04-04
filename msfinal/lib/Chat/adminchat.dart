@@ -129,9 +129,6 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         if (firstLoad && newCache.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
-            Future.delayed(const Duration(milliseconds: 400), () {
-              if (mounted) _messageFocusNode.requestFocus();
-            });
           });
         }
       },
