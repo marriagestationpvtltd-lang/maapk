@@ -72,23 +72,34 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           // other screens (e.g. Settings, Home) always show up-to-date info.
           final personalDetail = data['data']?['personalDetail'];
           if (personalDetail != null) {
-            final currentUserData =
-                jsonDecode(prefs.getString('user_data') ?? '{}') as Map<String, dynamic>;
+            Map<String, dynamic> currentUserData;
+            try {
+              currentUserData =
+                  jsonDecode(prefs.getString('user_data') ?? '{}') as Map<String, dynamic>;
+            } catch (_) {
+              currentUserData = {};
+            }
+            bool updated = false;
             final String? firstName = personalDetail['firstName']?.toString();
             final String? lastName = personalDetail['lastName']?.toString();
             final String? profilePic = personalDetail['profile_picture']?.toString();
             if (firstName != null) {
               currentUserData['firstName'] = firstName;
               await prefs.setString('user_firstName', firstName);
+              updated = true;
             }
             if (lastName != null) {
               currentUserData['lastName'] = lastName;
               await prefs.setString('user_lastName', lastName);
+              updated = true;
             }
             if (profilePic != null) {
               currentUserData['profile_picture'] = profilePic;
+              updated = true;
             }
-            await prefs.setString('user_data', jsonEncode(currentUserData));
+            if (updated) {
+              await prefs.setString('user_data', jsonEncode(currentUserData));
+            }
           }
         } else {
           setState(() {
