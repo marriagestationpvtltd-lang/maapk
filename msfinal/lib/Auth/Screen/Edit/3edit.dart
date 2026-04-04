@@ -91,6 +91,11 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
   bool _hasSavedData = false;
   int? _userId;
 
+  // Full profile data for About Me generation
+  Map<String, dynamic> _fullProfileData = {};
+  String _userFirstName = '';
+  String _userLastName = '';
+
   // Service instance
   late UserPersonalDetailService _detailService;
 
@@ -107,6 +112,21 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     } else {
       _loadUserData();
     }
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final firstName = prefs.getString('user_firstName') ?? '';
+      final lastName = prefs.getString('user_lastName') ?? '';
+      if (mounted) {
+        setState(() {
+          _userFirstName = firstName;
+          _userLastName = lastName;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadUserData() async {
@@ -179,6 +199,17 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
   void _populateFormWithData(Map<String, dynamic> data) {
     print('Populating form with data: $data');
+
+    // Store full data for About Me generation
+    _fullProfileData = Map<String, dynamic>.from(data);
+
+    // Also capture name if available in the data
+    if (data['firstName'] != null && data['firstName'].toString().isNotEmpty) {
+      _userFirstName = data['firstName'].toString();
+    }
+    if (data['lastName'] != null && data['lastName'].toString().isNotEmpty) {
+      _userLastName = data['lastName'].toString();
+    }
 
     // Marital Status
     final maritalId = data['maritalStatusId']?.toString();
@@ -255,6 +286,71 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  String _generateAboutMeText() {
+    final String name = [_userFirstName, _userLastName]
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+
+    String? birthDate = _fullProfileData['birthDate']?.toString();
+    int age = 0;
+    if (birthDate != null && birthDate.isNotEmpty) {
+      try {
+        final parts = birthDate.split('-');
+        if (parts.length == 3) {
+          final dob = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
+          final today = DateTime.now();
+          age = today.year - dob.year;
+          if (today.month < dob.month ||
+              (today.month == dob.month && today.day < dob.day)) {
+            age--;
+          }
+        }
+      } catch (_) {}
+    }
+
+    String _nonEmpty(String? v) =>
+        (v == null || v.trim().isEmpty || v.trim().toLowerCase() == 'null') ? '' : v.trim();
+
+    final marital = _nonEmpty(_selectedMaritalStatus);
+    final location = _nonEmpty(_fullProfileData['city']?.toString());
+    final country = _nonEmpty(_fullProfileData['country']?.toString());
+    final religion = _nonEmpty(_fullProfileData['religionName']?.toString());
+    final community = _nonEmpty(_fullProfileData['communityName']?.toString());
+    final degree = _nonEmpty(_fullProfileData['degree']?.toString());
+    final designation = _nonEmpty(_fullProfileData['designation']?.toString());
+    final company = _nonEmpty(_fullProfileData['companyname']?.toString());
+
+    final sentences = <String>[];
+
+    final introBits = <String>[];
+    if (name.isNotEmpty) introBits.add(name);
+    if (age > 0) introBits.add('$age years old');
+    if (location.isNotEmpty || country.isNotEmpty) {
+      final loc = [location, country].where((s) => s.isNotEmpty).join(', ');
+      introBits.add('based in $loc');
+    }
+    if (introBits.isNotEmpty) sentences.add('I am ${introBits.join(', ')}.');
+
+    if (marital.isNotEmpty) sentences.add('My marital status is $marital.');
+
+    final workBits = <String>[];
+    if (designation.isNotEmpty) workBits.add('working as $designation');
+    if (company.isNotEmpty) workBits.add('at $company');
+    if (degree.isNotEmpty) workBits.add('with a degree in $degree');
+    if (workBits.isNotEmpty) sentences.add('Professionally, I am ${workBits.join(' ')}.');
+
+    final bgBits = <String>[];
+    if (religion.isNotEmpty) bgBits.add(religion);
+    if (community.isNotEmpty) bgBits.add(community);
+    if (bgBits.isNotEmpty) sentences.add('My background is rooted in ${bgBits.join(', ')}.');
+
+    return sentences.join(' ').trim();
   }
 
   @override
@@ -688,6 +784,41 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
                     // About Yourself
                     _buildSectionTitle("About Yourself"),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.auto_awesome, color: Color(0xFF48A54C), size: 18),
+                        label: const Text(
+                          'Auto Generate Your About Me',
+                          style: TextStyle(color: Color(0xFF48A54C), fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF48A54C)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          final generated = _generateAboutMeText();
+                          if (generated.isNotEmpty) {
+                            setState(() {
+                              _aboutYourselfController.text = generated;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please fill in more profile details to auto-generate.',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       height: 120,
