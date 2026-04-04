@@ -20,6 +20,7 @@ import 'package:http/http.dart' as http;
 import 'package:ms2026/constant/app_colors.dart';
 import 'package:ms2026/constant/app_dimensions.dart';
 import 'package:ms2026/constant/app_text_styles.dart';
+import 'package:ms2026/constant/status_bar_utils.dart';
 
 import '../../Notification/notificationscreen.dart';
 import '../../Notification/notification_inbox_service.dart';
@@ -825,6 +826,7 @@ String usertye = '';
       shadowColor: Colors.transparent,
       scrolledUnderElevation: 0,
       titleSpacing: 16,
+      systemOverlayStyle: setStatusBar(AppColors.white, Brightness.dark),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(
