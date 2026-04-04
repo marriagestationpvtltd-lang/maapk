@@ -137,19 +137,19 @@ class MatchedProfile {
 
   factory MatchedProfile.fromJson(Map<String, dynamic> json) {
     return MatchedProfile(
-      userid: json['userid'] ?? 0,
+      userid: int.tryParse(json['userid']?.toString() ?? '') ?? 0,
       memberid: json['memberid'],
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
-      isVerified: json['isVerified'] ?? 0,
+      isVerified: int.tryParse(json['isVerified']?.toString() ?? '') ?? 0,
       profilePicture: json['profile_picture'],
       privacy: json['privacy'] ?? 'private',
-      age: json['age'] ?? 0,
+      age: int.tryParse(json['age']?.toString() ?? '') ?? 0,
       heightName: json['height_name'] ?? '',
       country: json['country'] ?? '',
       city: json['city'] ?? '',
       designation: json['designation'] ?? '',
-      matchPercent: json['matchPercent'] ?? 0,
+      matchPercent: int.tryParse(json['matchPercent']?.toString() ?? '') ?? 0,
       photoRequest: json['photo_request'] ?? 'not sent',
       like: json['like'] ?? false,
       gallery: List<String>.from(json['gallery'] ?? []),
@@ -379,7 +379,7 @@ class FamilyDetail {
 
   factory FamilyDetail.fromJson(Map<String, dynamic> json) {
     return FamilyDetail(
-      familyId: json['familyId'] ?? 0,
+      familyId: int.tryParse(json['familyId']?.toString() ?? '') ?? 0,
       familytype: json['familytype'] ?? '',
       familybackground: json['familybackground'] ?? '',
       fatherstatus: json['fatherstatus'] ?? '',
@@ -432,7 +432,7 @@ class Lifestyle {
 
   factory Lifestyle.fromJson(Map<String, dynamic> json) {
     return Lifestyle(
-      lifestyleId: json['lifestyleId'] ?? 0,
+      lifestyleId: int.tryParse(json['lifestyleId']?.toString() ?? '') ?? 0,
       smoketype: json['smoketype'] ?? '',
       diet: json['diet'] ?? '',
       drinks: json['drinks'] ?? '',
@@ -594,7 +594,7 @@ class GalleryImage {
 
   factory GalleryImage.fromJson(Map<String, dynamic> json) {
     return GalleryImage(
-      id: json['id'] ?? 0,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       imageurl: json['imageurl'] ?? '',
       status: json['status'] ?? '',
       rejectReason: json['reject_reason'],
@@ -625,8 +625,8 @@ class PartnerMatch {
 
   factory PartnerMatch.fromJson(Map<String, dynamic> json) {
     return PartnerMatch(
-      matchedCount: json['matched_count'] ?? 0,
-      totalCount: json['total_count'] ?? 0,
+      matchedCount: int.tryParse(json['matched_count']?.toString() ?? '') ?? 0,
+      totalCount: int.tryParse(json['total_count']?.toString() ?? '') ?? 0,
       details: Map<String, bool>.from(json['details'] ?? {}),
     );
   }
