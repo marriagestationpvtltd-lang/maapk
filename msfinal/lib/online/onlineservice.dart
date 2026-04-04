@@ -15,12 +15,12 @@ class OnlineStatusService {
   final String _apiUrl =
       "https://digitallami.com/request/update_last_login.php";
 
-  /// 🔥 Start tracking (call on app start)
+  /// 🔥 Start tracking (call on app start / app resume)
   void start() {
     _updateNow(); // immediate call
 
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
       _updateNow();
     });
   }
@@ -41,21 +41,29 @@ class OnlineStatusService {
 
       final userData = jsonDecode(userDataString);
       final userId = userData["id"].toString();
+      if (userId.isEmpty || userId == 'null') return;
 
-      // Update HTTP API
-      await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"user_id": userId}),
-      );
-
-      // Update Firestore online status
+      // Update Firestore online status first (lower latency, drives UI)
       await _firestore.collection('users').doc(userId).set({
         'isOnline': true,
         'lastSeen': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      // Update HTTP API (best-effort, non-blocking for UI)
+      http.post(
+        Uri.parse(_apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"user_id": userId}),
+      ).catchError((e) {
+        print("⚠️ Online API update failed (non-critical): $e");
+      });
     } catch (e) {
       print("❌ Online status error: $e");
+      // Restart the timer in case of transient error
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
+        _updateNow();
+      });
     }
   }
 
@@ -69,6 +77,7 @@ class OnlineStatusService {
 
       final userData = jsonDecode(userDataString);
       final userId = userData["id"].toString();
+      if (userId.isEmpty || userId == 'null') return;
 
       await _firestore.collection('users').doc(userId).set({
         'isOnline': false,

@@ -381,6 +381,42 @@ class NotificationService {
     );
   }
 
+  // ─── Priority direct-send for time-critical call signalling ──────────────
+  // Bypasses the sequential queue and 300 ms throttle so that call
+  // notifications reach FCM as fast as possible.
+  static Future<bool> _sendCallNotificationFast({
+    required String userId,
+    required String title,
+    required String body,
+    required Map<String, dynamic> data,
+  }) async {
+    const timeoutDuration = Duration(seconds: 8);
+    try {
+      final response = await http.post(
+        Uri.parse(_notificationUrl),
+        body: {
+          'user_id': userId,
+          'title': title,
+          'body': body,
+          'data': json.encode(data),
+        },
+      ).timeout(timeoutDuration);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result['status'] == true) {
+          print('✅ Call notification sent fast to user: $userId');
+          return true;
+        }
+      }
+      print('⚠️ Fast call notification failed for user: $userId');
+      return false;
+    } catch (e) {
+      print('❌ Fast call notification error: $e');
+      return false;
+    }
+  }
+
   // Send call notification (OUTGOING)
   static Future<bool> sendCallNotification({
     required String recipientUserId,
@@ -392,7 +428,7 @@ class NotificationService {
     required String agoraCertificate,
     String? chatRoomId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: '📞 Incoming Call',
       body: '$callerName is calling you',
@@ -420,7 +456,7 @@ class NotificationService {
     required String recipientUid,
     String? channelName,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: callerId, // Send back to the CALLER
       title: accepted ? '✅ Call Accepted' : '❌ Call Rejected',
       body: accepted
@@ -444,7 +480,7 @@ class NotificationService {
     required String callerName,
     String? senderId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: callerId,
       title: '⏰ Missed Call',
       body: 'Missed call from $callerName',
@@ -465,7 +501,7 @@ class NotificationService {
     required int duration,
     String? channelName,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: reason == 'timeout' ? '⏰ Missed Call' : '📞 Call Ended',
       body: reason == 'timeout'
@@ -489,7 +525,7 @@ class NotificationService {
     return '${minutes}m ${remainingSeconds}s';
   }
 
-// Add these video call notification methods to your existing NotificationService class
+// Video call notification methods — all use priority fast-send path
 
 // Send video call notification (OUTGOING)
   static Future<bool> sendVideoCallNotification({
@@ -502,7 +538,7 @@ class NotificationService {
     required String agoraCertificate,
     String? chatRoomId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: '📹 Incoming Video Call',
       body: '$callerName is calling you with video',
@@ -531,7 +567,7 @@ class NotificationService {
     required String recipientUid,
     String? channelName,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: callerId, // Send back to the CALLER
       title: accepted ? '✅ Video Call Accepted' : '❌ Video Call Rejected',
       body: accepted
@@ -556,7 +592,7 @@ class NotificationService {
     required String callerName,
     String? senderId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: callerId,
       title: '⏰ Missed Video Call',
       body: 'Missed video call from $callerName',
@@ -578,7 +614,7 @@ class NotificationService {
     required int duration,
     String? channelName,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: reason == 'timeout' ? '⏰ Missed Video Call' : '📹 Video Call Ended',
       body: reason == 'timeout'
@@ -603,7 +639,7 @@ class NotificationService {
     required String channelName,
     String? callerId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: '📞 Call Cancelled',
       body: '$callerName cancelled the call',
@@ -624,7 +660,7 @@ class NotificationService {
     required String channelName,
     String? callerId,
   }) async {
-    return await sendNotification(
+    return await _sendCallNotificationFast(
       userId: recipientUserId,
       title: '📹 Video Call Cancelled',
       body: '$callerName cancelled the video call',
