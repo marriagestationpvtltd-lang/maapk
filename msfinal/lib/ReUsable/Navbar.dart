@@ -91,7 +91,7 @@ class AppNavbar extends StatelessWidget {
         height: 64,
         child: Center(
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
