@@ -560,32 +560,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
   }
 
-  Future<bool> _isReceiverViewingCurrentChat() async {
-    if (_isReceiverViewingThisChat) {
-      return true;
-    }
-
-    try {
-      final doc = await _firestore.collection('users').doc(widget.receiverId).get();
-      if (!doc.exists) return false;
-
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final bool isOnline = data['isOnline'] == true;
-      final String activeChatRoomId = data['activeChatRoomId']?.toString() ?? '';
-      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-      final DateTime? lastSeen = lastSeenTs?.toDate();
-      final bool activeChatRecentlyUpdated = lastSeen != null &&
-          DateTime.now().difference(lastSeen) <= _kActiveChatPresenceWindow;
-
-      return isOnline &&
-          activeChatRecentlyUpdated &&
-          activeChatRoomId == widget.chatRoomId;
-    } catch (e) {
-      debugPrint('Error checking receiver active chat state: $e');
-      return false;
-    }
-  }
-
   void _syncVisibleIncomingMessagesAsRead(List<Map<String, dynamic>> messages) {
     if (_isMarkingMessagesAsRead) return;
 
@@ -755,8 +729,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     try {
       final timestamp = DateTime.now();
       final messageId = _uuid.v4();
-      final bool receiverViewingThisChat =
-          await _isReceiverViewingCurrentChat();
+      final bool receiverViewingThisChat = _isReceiverViewingThisChat;
 
       // Prepare message data
       final messageData = {
