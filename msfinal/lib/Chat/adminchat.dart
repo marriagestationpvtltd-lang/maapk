@@ -142,7 +142,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         });
         if (firstLoad && newCache.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
+            _scrollToBottom(animate: false);
           });
         }
       },
@@ -499,14 +499,21 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     });
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animate = true}) {
     if (_scrollController.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (!_scrollController.hasClients) return;
+        if (animate) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollController.jumpTo(
+            _scrollController.position.maxScrollExtent,
+          );
+        }
       });
     }
   }
