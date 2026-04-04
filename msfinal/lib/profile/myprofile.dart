@@ -152,7 +152,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           final status = result['status'] ?? 'not_uploaded';
           final maritalStatusName =
               profileData?['personalDetail']?['maritalStatusName']?.toString() ?? '';
-          final requiresDoc = _docRequiredStatuses.contains(maritalStatusName);
+          final requiresDoc = _requiresMaritalStatusDocument(maritalStatusName);
           setState(() {
             _docStatus = status;
             // If marital status requires a document, only mark as verified
@@ -1301,15 +1301,33 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     return values.where(_isMissing).length;
   }
 
-  static const List<String> _docRequiredStatuses = [
-    'Widowed',
-    'Divorced',
-    'Waiting Divorce',
+  // API responses currently use a mix of placeholder values for unset marital
+  // status, so keep them grouped here and avoid showing a false document prompt.
+  static const Set<String> _maritalStatusesWithoutRequiredDocument = {
+    '',
+    'still unmarried',
+    'unmarried',
+    'not specified',
+    'not available',
+    'n/a',
+    'na',
   ];
+
+  String _normalizeMaritalStatusValue(dynamic maritalStatus) {
+    return maritalStatus?.toString().trim().toLowerCase() ?? '';
+  }
+
+  bool _requiresMaritalStatusDocument(dynamic maritalStatus) {
+    final normalizedStatus = _normalizeMaritalStatusValue(maritalStatus);
+    if (normalizedStatus.isEmpty) {
+      return false;
+    }
+    return !_maritalStatusesWithoutRequiredDocument.contains(normalizedStatus);
+  }
 
   Widget _buildDocumentStatusSection(Map<String, dynamic> personalDetail) {
     final maritalStatus = personalDetail['maritalStatusName']?.toString() ?? '';
-    if (!_docRequiredStatuses.contains(maritalStatus)) {
+    if (!_requiresMaritalStatusDocument(maritalStatus)) {
       return const SizedBox.shrink();
     }
 
