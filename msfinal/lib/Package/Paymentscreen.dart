@@ -674,7 +674,7 @@ class _PaymentPageState extends State<PaymentPage> {
         final lowerValue = value.toLowerCase();
         if (lowerValue.contains('cancel') ||
             lowerValue.contains('fail') ||
-            lowerValue == 'declined') return true;
+            lowerValue.contains('decline')) return true;
       }
     }
     return false;
