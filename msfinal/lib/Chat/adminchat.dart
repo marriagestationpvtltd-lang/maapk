@@ -59,6 +59,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   bool _profileCardSent = false; // Track if profile card was sent
   String _currentUserImage = ''; // Store current user image
 
+  static const int _messagePageSize = 30;
+
   // Pagination & cache
   List<DocumentSnapshot> _cachedMessages = [];
   bool _isLoadingMore = false;
@@ -68,9 +70,13 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   bool _streamLoading = true;
   bool _streamHasError = false;
 
+  // Swipe-to-reply offsets (keyed by message ID)
+  final Map<String, double> _swipeOffsets = {};
+
   // Call history
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
+  bool _callHistoryLoaded = false;
 
 // Updated color scheme with gradients
   final LinearGradient _primaryGradient = const LinearGradient(
@@ -105,7 +111,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         setState(() {
           _cachedMessages = newCache;
           _streamLoading = false;
-          _hasMoreMessages = snapshot.docs.length >= 30;
+          _hasMoreMessages = snapshot.docs.length >= _messagePageSize;
           if (_lastDocument == null && snapshot.docs.isNotEmpty) {
             _lastDocument = snapshot.docs.last; // oldest (desc query → last)
           }
@@ -126,7 +132,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         if (mounted) setState(() { _streamHasError = true; _streamLoading = false; });
       },
     );
-    _loadCallHistory();
+    // Call history is loaded lazily when the user taps the call history header
 
 // Automatically send profile card if provided (optional)
     if (widget.initialProfileData != null && !_profileCardSent) {
@@ -181,7 +187,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         .where('senderid', whereIn: [widget.senderID, _adminUserId])
         .where('receiverid', whereIn: [widget.senderID, _adminUserId])
         .orderBy('timestamp', descending: true)
-        .limit(30)
+        .limit(_messagePageSize)
         .snapshots();
   }
 
@@ -203,7 +209,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
           .where('receiverid', whereIn: [widget.senderID, _adminUserId])
           .orderBy('timestamp', descending: true)
           .startAfterDocument(_lastDocument!)
-          .limit(30)
+          .limit(_messagePageSize)
           .get();
 
       if (snap.docs.isEmpty) {
@@ -221,7 +227,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         final newDocs = olderDocs.where((d) => !existingIds.contains(d.id)).toList();
         _cachedMessages = [...newDocs, ..._cachedMessages];
         _lastDocument = snap.docs.last;
-        _hasMoreMessages = snap.docs.length >= 30;
+        _hasMoreMessages = snap.docs.length >= _messagePageSize;
         _isLoadingMore = false;
       });
 
@@ -247,8 +253,13 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               (c.callerId == widget.senderID && c.recipientId == _adminUserId) ||
               (c.callerId == _adminUserId && c.recipientId == widget.senderID))
           .toList();
-      if (mounted) setState(() => _callHistory = filtered);
-    } catch (_) {}
+      if (mounted) setState(() {
+        _callHistory = filtered;
+        _callHistoryLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _callHistoryLoaded = true);
+    }
   }
 
   String _formatDateForGrouping(DateTime dt) {
@@ -489,17 +500,20 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     String senderName =
         isFromAdmin ? "Admin Support" : (isMe ? "You" : widget.userName);
 
-    double _swipeOffset = 0.0;
+    double _swipeOffset = _swipeOffsets[msgID] ?? 0.0;
 
     return StatefulBuilder(
       builder: (context, setItemState) {
+        _swipeOffset = _swipeOffsets[msgID] ?? 0.0;
         return GestureDetector(
           onDoubleTap: () => _toggleLike(msgID, data['liked'] ?? false),
           onLongPress: () => _setReplyTo(msgID, data),
           onHorizontalDragUpdate: (details) {
             if (details.delta.dx > 0) {
               setItemState(() {
-                _swipeOffset = (_swipeOffset + details.delta.dx).clamp(0.0, 70.0);
+                final newOffset = (_swipeOffset + details.delta.dx).clamp(0.0, 70.0);
+                _swipeOffsets[msgID] = newOffset;
+                _swipeOffset = newOffset;
               });
             }
           },
@@ -507,7 +521,10 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
             if (_swipeOffset > 50) {
               _setReplyTo(msgID, data);
             }
-            setItemState(() => _swipeOffset = 0.0);
+            setItemState(() {
+              _swipeOffsets[msgID] = 0.0;
+              _swipeOffset = 0.0;
+            });
           },
           child: Stack(
             children: [
@@ -721,10 +738,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   List<Widget> _buildMessagesFromCache() {
     final items = <Widget>[];
 
-    // Call history at the top
-    if (_callHistory.isNotEmpty) {
-      items.add(_buildCallHistorySection());
-    }
+    // Always show call history section at the top (loads lazily on tap)
+    items.add(_buildCallHistorySection());
 
     String? lastDateLabel;
     for (final doc in _cachedMessages) {
@@ -759,7 +774,12 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => _showCallHistory = !_showCallHistory),
+            onTap: () {
+              if (!_callHistoryLoaded) {
+                _loadCallHistory();
+              }
+              setState(() => _showCallHistory = !_showCallHistory);
+            },
             borderRadius: BorderRadius.circular(16),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -784,14 +804,33 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
             ),
           ),
           if (_showCallHistory)
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _callHistory.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 1, color: Colors.grey.shade100),
-              itemBuilder: (context, i) => _buildCallHistoryItem(_callHistory[i]),
-            ),
+            _callHistoryLoaded
+                ? (_callHistory.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('No call history',
+                            style: TextStyle(
+                                color: _lightTextColor, fontSize: 13)),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _callHistory.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 1, color: Colors.grey.shade100),
+                        itemBuilder: (context, i) =>
+                            _buildCallHistoryItem(_callHistory[i]),
+                      ))
+                : const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
         ],
       ),
     );
