@@ -1123,8 +1123,10 @@ String usertye = '';
             child: Padding(
               padding: const EdgeInsets.only(right: 6),
               child: GestureDetector(
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => SubscriptionPage())),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SubscriptionPage()),
+                ).then((_) { if (mounted) loadMasterData(); }),
                 child: Container(
                   height: 34,
                   padding: const EdgeInsets.symmetric(horizontal: 11),
