@@ -508,6 +508,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
+          onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
           onContinue: _validateAndSubmit,
           isLoading: isLoading,
           canContinue: !isLoading,
@@ -524,6 +525,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
                   currentStep: 8,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
+                  onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 ),
                 const SizedBox(height: 20),
 

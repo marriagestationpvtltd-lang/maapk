@@ -716,6 +716,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                 scrollController: scrollController,
                 onContinue: model.isSubmitting ? null : _submitSignup,
                 onBack: () => Navigator.pop(context),
+                onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 continueText: 'Continue',
                 canContinue: !model.isSubmitting,
                 isLoading: model.isSubmitting,
@@ -729,6 +730,7 @@ class _YourDetailsPageState extends State<YourDetailsPage>
                       currentStep: 2,
                       totalSteps: 11,
                       onBack: () => Navigator.pop(context),
+                      onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                     ),
 
                     const SizedBox(height: 32),

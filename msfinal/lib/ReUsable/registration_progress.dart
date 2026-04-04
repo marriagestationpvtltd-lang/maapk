@@ -72,13 +72,22 @@ Future<bool> _showLogoutConfirmation(BuildContext context) async {
 
 /// Handles the back-navigation logic shared across all registration screens.
 ///
-/// - If the account is already registered (bearer token is present), a
-///   confirmation dialog is shown before logging out.
-/// - Otherwise the user is taken directly to [OnboardingScreen].
+/// - If [onStepBack] is provided, it will navigate to the previous step.
+/// - Otherwise, if the user is on the first step or no step back is available,
+///   shows a confirmation dialog before logging out (if bearerToken exists)
+///   or navigating to onboarding.
 Future<void> _handleRegistrationBack(
   BuildContext context,
-  SignupModel model,
-) async {
+  SignupModel model, {
+  VoidCallback? onStepBack,
+}) async {
+  // If a step-back callback is provided, use it to navigate to previous step
+  if (onStepBack != null) {
+    onStepBack();
+    return;
+  }
+
+  // No step-back available - this means user is trying to exit registration flow
   if (model.bearerToken?.isNotEmpty == true) {
     final shouldLogout = await _showLogoutConfirmation(context);
     if (!shouldLogout) return; // User chose to stay — do nothing.
@@ -181,6 +190,7 @@ class RegistrationStepHeader extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
   final VoidCallback? onBack;
+  final VoidCallback? onStepBack;
 
   const RegistrationStepHeader({
     Key? key,
@@ -189,6 +199,7 @@ class RegistrationStepHeader extends StatelessWidget {
     required this.currentStep,
     this.totalSteps = 11,
     this.onBack,
+    this.onStepBack,
   }) : super(key: key);
 
   @override
@@ -217,10 +228,13 @@ class RegistrationStepHeader extends StatelessWidget {
                   child: Consumer<SignupModel>(
                     builder: (context, model, _) {
                       return InkWell(
-                        // Use the shared back-navigation helper so this button
-                        // has the same logout-confirmation behaviour as all
-                        // other back-navigation entry points.
-                        onTap: () => _handleRegistrationBack(context, model),
+                        // Use the shared back-navigation helper with onStepBack
+                        // to allow step-by-step navigation if provided
+                        onTap: () => _handleRegistrationBack(
+                          context,
+                          model,
+                          onStepBack: onStepBack,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                         child: const Padding(
                           padding: EdgeInsets.all(12),
@@ -285,6 +299,7 @@ class RegistrationStepContainer extends StatelessWidget {
   final Widget child;
   final VoidCallback? onContinue;
   final VoidCallback? onBack;
+  final VoidCallback? onStepBack;
   final String continueText;
   final bool isLoading;
   final bool canContinue;
@@ -296,6 +311,7 @@ class RegistrationStepContainer extends StatelessWidget {
     required this.child,
     this.onContinue,
     this.onBack,
+    this.onStepBack,
     this.continueText = 'Continue',
     this.isLoading = false,
     this.canContinue = true,
@@ -315,7 +331,11 @@ class RegistrationStepContainer extends StatelessWidget {
           canPop: false,
           onPopInvoked: (bool didPop) async {
             if (didPop) return;
-            await _handleRegistrationBack(context, model);
+            await _handleRegistrationBack(
+              context,
+              model,
+              onStepBack: onStepBack,
+            );
           },
           child: Column(
             children: [
@@ -358,7 +378,11 @@ class RegistrationStepContainer extends StatelessWidget {
                           child: OutlinedButton(
                             onPressed: isLoading
                                 ? null
-                                : () => _handleRegistrationBack(context, model),
+                                : () => _handleRegistrationBack(
+                                      context,
+                                      model,
+                                      onStepBack: onStepBack,
+                                    ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               side: const BorderSide(

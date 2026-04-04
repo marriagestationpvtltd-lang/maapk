@@ -123,6 +123,7 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
       body: SafeArea(
         child: RegistrationStepContainer(
           onBack: () => Navigator.pop(context),
+          onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
           onContinue: _validateAndSubmit,
           isLoading: _isLoading,
           canContinue: _canContinue,
@@ -136,6 +137,7 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
                 currentStep: 4,
                 totalSteps: 11,
                 onBack: () => Navigator.pop(context),
+                onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
               ),
               const SizedBox(height: 32),
 

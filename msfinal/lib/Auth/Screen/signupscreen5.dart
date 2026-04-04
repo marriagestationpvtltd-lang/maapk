@@ -170,6 +170,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
           children: [
             RegistrationStepContainer(
               onBack: () => Navigator.pop(context),
+              onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
               onContinue: _validateAndSubmit,
               isLoading: isLoading,
               canContinue: _canContinue,
@@ -183,6 +184,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                     currentStep: 6,
                     totalSteps: 11,
                     onBack: () => Navigator.pop(context),
+                    onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                   ),
                   const SizedBox(height: 32),
 

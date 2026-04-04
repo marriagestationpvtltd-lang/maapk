@@ -913,6 +913,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
           child: RegistrationStepContainer(
             onContinue: (_isSubmitting || _isLoadingInitialData) ? null : _validateAndSubmit,
             onBack: () => Navigator.pop(context),
+            onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
             continueText: 'Continue',
             canContinue: !_isSubmitting && !_isLoadingInitialData,
             isLoading: _isSubmitting || _isLoadingInitialData,
@@ -926,6 +927,7 @@ class _PartnerPreferencesPageState extends State<PartnerPreferencesPage> with Si
                   currentStep: 10,
                   totalSteps: 11,
                   onBack: () => Navigator.pop(context),
+                  onStepBack: () => Navigator.pop(context), // Allow step-by-step back navigation
                 ),
 
                 const SizedBox(height: 32),
