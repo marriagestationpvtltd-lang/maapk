@@ -15,6 +15,7 @@ import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
+import '../utils/image_utils.dart';
 import 'modelfile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -2414,8 +2415,8 @@ class _ContactInfoSection extends StatelessWidget {
                         userId: userName,
                       },
                       'participantImages': {
-                        currentUserId: currentUserImage,
-                        userId: userProfile.avatarUrl,
+                        currentUserId: resolveApiImageUrl(currentUserImage),
+                        userId: resolveApiImageUrl(userProfile.avatarUrl),
                       },
                       'unreadCount': {
                         currentUserId: 0,
@@ -2440,16 +2441,12 @@ class _ContactInfoSection extends StatelessWidget {
                         receiverName: userName.isNotEmpty
                             ? userName
                             : "User $userId",
-                        receiverImage: userProfile.avatarUrl.isNotEmpty
-                            ? userProfile.avatarUrl
-                            : '',
+                        receiverImage: resolveApiImageUrl(userProfile.avatarUrl),
                         currentUserId: currentUserId,
                         currentUserName: currentUserName.isNotEmpty
                             ? currentUserName
                             : "User $currentUserId",
-                        currentUserImage: currentUserImage.isNotEmpty
-                            ? currentUserImage
-                            : '',
+                        currentUserImage: resolveApiImageUrl(currentUserImage),
                       ),
                     ),
                   );
