@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../constant/app_colors.dart';
@@ -169,11 +170,18 @@ class _NoInternetScreenState extends State<NoInternetScreen>
     final bool isDisconnected = !_connectivityService.isWifiConnected &&
         !_connectivityService.isMobileConnected;
 
-    return PopScope(
-      canPop: false,
-      child: Scaffold(
-        backgroundColor: AppColors.white,
-        body: SafeArea(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemStatusBarContrastEnforced: false,
+      ),
+      child: PopScope(
+        canPop: false,
+        child: Scaffold(
+          backgroundColor: AppColors.white,
+          body: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: Padding(
