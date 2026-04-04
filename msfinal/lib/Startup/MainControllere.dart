@@ -1,6 +1,8 @@
 // screens/main_controller_screen.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ReUsable/Navbar.dart'; // AppNavbar with onItemSelected callback
@@ -26,12 +28,20 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
   String? _senderId;
   String? _senderName;
   String? _currentUserImage;
+  int _chatUnreadCount = 0;
+  StreamSubscription<QuerySnapshot>? _unreadSubscription;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
     _loadUserFromPrefs();
+  }
+
+  @override
+  void dispose() {
+    _unreadSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserFromPrefs() async {
@@ -45,10 +55,38 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
           _senderName = data['firstName']?.toString() ?? 'User';
           _currentUserImage = data['profile_picture']?.toString();
         });
+        if (_senderId != null) {
+          _listenUnreadCounts(_senderId!);
+        }
       }
     } catch (e) {
       debugPrint('MainControllerScreen: loadUser error: $e');
     }
+  }
+
+  void _listenUnreadCounts(String userId) {
+    _unreadSubscription?.cancel();
+    _unreadSubscription = FirebaseFirestore.instance
+        .collection('chatRooms')
+        .where('participants', arrayContains: userId)
+        .snapshots()
+        .listen((snapshot) {
+      int unreadConversations = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final unreadCount =
+            Map<String, int>.from(data['unreadCount'] ?? {});
+        final myUnread = unreadCount[userId] ?? 0;
+        if (myUnread > 0) unreadConversations++;
+      }
+      if (_chatUnreadCount != unreadConversations) {
+        setState(() {
+          _chatUnreadCount = unreadConversations;
+        });
+      }
+    }, onError: (e) {
+      debugPrint('MainControllerScreen: unread listener error: $e');
+    });
   }
 
   // Build the pages. Index 0=Home, 1=Liked, 2=Chat, 3=Account
@@ -84,6 +122,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
         bottomNavigationBar: AppNavbar(
           selectedIndex: _selectedIndex,
           currentUserImage: _currentUserImage,
+          chatUnreadCount: _chatUnreadCount,
           onItemSelected: (index) {
             setState(() {
               if (_selectedIndex != _chatTabIndex && index == _chatTabIndex) {

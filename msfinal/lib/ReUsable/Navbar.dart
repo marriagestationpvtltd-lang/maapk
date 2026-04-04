@@ -4,15 +4,18 @@ class AppNavbar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
   final String? currentUserImage;
+  final int chatUnreadCount;
 
   static const Color _activeColor = Color(0xFFF90E18);
   static const Color _inactiveColor = Color(0xFF9E9E9E);
+  static const int _chatIndex = 2;
 
   const AppNavbar({
     super.key,
     required this.selectedIndex,
     required this.onItemSelected,
     this.currentUserImage,
+    this.chatUnreadCount = 0,
   });
 
   @override
@@ -98,10 +101,45 @@ class AppNavbar extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  isActive ? item.activeIcon : item.icon,
-                  color: isActive ? _activeColor : _inactiveColor,
-                  size: 28,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      isActive ? item.activeIcon : item.icon,
+                      color: isActive ? _activeColor : _inactiveColor,
+                      size: 28,
+                    ),
+                    if (index == _chatIndex && chatUnreadCount > 0)
+                      Positioned(
+                        top: -4,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: _activeColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            chatUnreadCount > 99
+                                ? '99+'
+                                : '$chatUnreadCount',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
