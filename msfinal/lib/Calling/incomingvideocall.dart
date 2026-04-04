@@ -508,85 +508,186 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   }
 
   Widget _buildIncomingCallUI() {
-    return Column(
-      children: [
-        Expanded(
-          child: Center(
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1A237E), // Deep indigo (different from audio)
+            Color(0xFF283593), // Medium indigo
+            Color(0xFF3949AB), // Lighter indigo
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 60),
+          // Top section with caller info
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 70,
-                  backgroundColor: Colors.blue.shade800,
-                  child: const Icon(
-                    Icons.person,
-                    size: 100,
-                    color: Colors.white70,
-                  ),
+                // Animated video camera icon with glow effect
+                TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 1500),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.9 + (value * 0.1),
+                      child: Container(
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF00C853), // Bright green
+                              Color(0xFF64DD17), // Lime green
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00C853).withOpacity(0.6),
+                              blurRadius: 35,
+                              spreadRadius: 12,
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.videocam,
+                            size: 90,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 30),
-                Text(
-                  _callerName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _isVideoCall ? 'Video Call' : 'Voice Call',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isVideoCall ? Icons.videocam : Icons.call,
-                      color: Colors.white70,
-                      size: 24,
+                const SizedBox(height: 50),
+                // Caller name with slide-in animation
+                TweenAnimationBuilder<Offset>(
+                  duration: const Duration(milliseconds: 600),
+                  tween: Tween(begin: const Offset(0, -0.5), end: Offset.zero),
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: value * 50,
+                      child: Opacity(
+                        opacity: 1.0 - value.dy.abs(),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    _callerName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Incoming Call',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 18,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Video call badge
+                TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 800),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.25),
+                          Colors.white.withOpacity(0.15),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
                       ),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.videocam,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Video Call',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 35),
+                // Incoming text with pulsing animation
+                TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 1200),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: 0.65 + (value * 0.35),
+                      child: child,
+                    );
+                  },
+                  child: const Text(
+                    'Incoming Video Call...',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-        // Accept/Reject buttons at the bottom
-        Padding(
-          padding: const EdgeInsets.only(bottom: 40.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _acceptRejectButton(
-                icon: Icons.call,
-                color: Colors.green,
-                onPressed: _acceptCall,
-                size: 72,
-                loading: _processing,
-              ),
-              _acceptRejectButton(
-                icon: Icons.call_end,
-                color: Colors.red,
-                onPressed: _rejectCall,
-                size: 72,
-              ),
-            ],
+          // Accept/Reject buttons at the bottom
+          Padding(
+            padding: const EdgeInsets.only(bottom: 60.0, left: 24, right: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _modernAcceptRejectButton(
+                  icon: Icons.videocam,
+                  color: const Color(0xFF4CAF50), // Green
+                  onPressed: _acceptCall,
+                  size: 76,
+                  loading: _processing,
+                  label: 'Accept',
+                ),
+                _modernAcceptRejectButton(
+                  icon: Icons.call_end,
+                  color: const Color(0xFFF44336), // Red
+                  onPressed: _rejectCall,
+                  size: 76,
+                  label: 'Decline',
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -713,80 +814,84 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     );
   }
 
-  Widget _acceptRejectButton({
+  Widget _modernAcceptRejectButton({
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
     double size = 72,
     bool loading = false,
+    String? label,
   }) {
-    return GestureDetector(
-      onTap: loading ? null : onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.85),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: loading ? null : onPressed,
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 150),
+            tween: Tween(begin: 1.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color,
+                        color.withOpacity(0.75),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.6),
+                        blurRadius: 25,
+                        spreadRadius: 3,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: loading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: Colors.white,
+                          size: size * 0.48,
+                        ),
+                ),
+              );
+            },
+          ),
         ),
-        child: loading
-            ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)))
-            : Icon(
-                icon,
-                color: Colors.white,
-                size: size * 0.45,
-              ),
-      ),
+        if (label != null) ...[
+          const SizedBox(height: 14),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
-  Widget _activeControls() => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: [
-      _controlButton(
-        icon: _micMuted ? Icons.mic_off : Icons.mic,
-        color: Colors.white,
-        onPressed: _toggleMute,
-      ),
-      if (_isVideoCall)
-        _controlButton(
-          icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
-          color: Colors.white,
-          onPressed: _toggleVideo,
-        ),
-      _controlButton(
-        icon: Icons.call_end,
-        color: Colors.red,
-        onPressed: _endCall,
-        size: 56,
-      ),
-      if (_isVideoCall)
-        _controlButton(
-          icon: Icons.switch_camera,
-          color: Colors.white,
-          onPressed: _toggleCamera,
-        ),
-      _controlButton(
-        icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
-        color: Colors.white,
-        onPressed: () {
-          setState(() => _speakerOn = !_speakerOn);
-          if (_engineInitialized) {
-            _engine.setEnableSpeakerphone(_speakerOn);
-          }
-        },
-      ),
-    ],
-  );
-
-  Widget _controlButton({
+  Widget _modernControlButton({
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
@@ -798,24 +903,67 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: color == Colors.red ? Colors.red.withOpacity(0.85) : Colors.black54,
+          color: Colors.white.withOpacity(0.25),
           shape: BoxShape.circle,
+          border: Border.all(
+            color: color,
+            width: 2.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: color.withOpacity(0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Icon(
           icon,
-          color: color == Colors.red ? Colors.white : color,
+          color: color,
           size: size * 0.55,
         ),
       ),
     );
   }
+
+  Widget _activeControls() => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      _modernControlButton(
+        icon: _micMuted ? Icons.mic_off : Icons.mic,
+        color: _micMuted ? const Color(0xFFFF9800) : Colors.white,
+        onPressed: _toggleMute,
+      ),
+      if (_isVideoCall)
+        _modernControlButton(
+          icon: _cameraOn ? Icons.videocam : Icons.videocam_off,
+          color: _cameraOn ? Colors.white : const Color(0xFFFF9800),
+          onPressed: _toggleVideo,
+        ),
+      _modernAcceptRejectButton(
+        icon: Icons.call_end,
+        color: const Color(0xFFF44336),
+        onPressed: _endCall,
+        size: 68,
+      ),
+      if (_isVideoCall)
+        _modernControlButton(
+          icon: Icons.switch_camera,
+          color: Colors.white,
+          onPressed: _toggleCamera,
+        ),
+      _modernControlButton(
+        icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
+        color: _speakerOn ? const Color(0xFF2196F3) : Colors.white,
+        onPressed: () {
+          setState(() => _speakerOn = !_speakerOn);
+          if (_engineInitialized) {
+            _engine.setEnableSpeakerphone(_speakerOn);
+          }
+        },
+      ),
+    ],
+  );
 
   String _format(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';

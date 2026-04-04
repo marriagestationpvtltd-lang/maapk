@@ -629,98 +629,434 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
         await _minimizeCall();
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _callActive
+                  ? [
+                      const Color(0xFF0D47A1), // Deep blue
+                      const Color(0xFF1565C0), // Medium blue
+                      const Color(0xFF1976D2), // Lighter blue
+                    ]
+                  : [
+                      const Color(0xFF880E4F), // Deep pink
+                      const Color(0xFF6A1B9A), // Purple
+                      const Color(0xFF4A148C), // Deep purple
+                    ],
+            ),
+          ),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
                   children: [
+                    // Top minimize button
                     Align(
                       alignment: Alignment.topRight,
-                       child: Padding(
-                         padding: const EdgeInsets.only(right: 16, bottom: 24),
-                         child: CallMinimizeButton(onPressed: _minimizeCall),
-                       ),
-                     ),
-                    // Ringing animation when call is ringing
-                    if (_isCallRinging && widget.isOutgoingCall)
-                      _buildRingingAnimation(),
-
-                Icon(
-                  _callActive
-                      ? Icons.phone_in_talk
-                      : (_isCallRinging ? Icons.phone_forwarded : Icons.phone),
-                  color: Colors.white,
-                  size: 80,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _callActive
-                      ? 'Connected with ${widget.otherUserName}'
-                      : (_isCallRinging && !_remoteAccepted
-                      ? 'Calling ${widget.otherUserName}...'
-                      : 'Connecting...'),
-                  style: const TextStyle(color: Colors.white, fontSize: 22),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _callActive
-                      ? _format(_duration)
-                      : (_isCallRinging && !_remoteAccepted ? 'Ringing...' : 'Connecting...'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Mute button (only enabled when call is active)
-                     IconButton(
-                       icon: Icon(
-                         _micMuted ? Icons.mic_off : Icons.mic,
-                         color: _callActive ? Colors.white : Colors.white30,
-                         size: 36,
-                       ),
-                       onPressed: _callActive ? _toggleMute : null,
-                     ),
-                    // End call button
-                    IconButton(
-                      icon: const Icon(Icons.call_end,
-                          color: Colors.red, size: 56),
-                      onPressed: _endCall,
-                    ),
-                    // Speaker button
-                    IconButton(
-                      icon: Icon(
-                        _speakerOn
-                            ? Icons.volume_up
-                            : Icons.volume_off,
-                        color: _callActive || _isCallRinging ? Colors.white : Colors.white30,
-                        size: 36,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16, top: 12),
+                        child: CallMinimizeButton(onPressed: _minimizeCall),
                       ),
-                      onPressed: (_callActive || _isCallRinging) ? _toggleSpeaker : null,
+                    ),
+                    const SizedBox(height: 40),
+                    // Main content
+                    Expanded(
+                      child: _callActive ? _buildActiveCallUI() : _buildOutgoingCallUI(),
                     ),
                   ],
                 ),
-                // Ringtone status indicator (optional)
-                if (_isPlayingRingtone && widget.isOutgoingCall)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 20),
-                    child: Text(
-                      'Playing ringtone ${_speakerOn ? '(Speaker)' : '(Earpiece)'}',
-                      style: const TextStyle(color: Colors.green, fontSize: 12),
-                    ),
-                  ),
+                // Connectivity overlay banner
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: ConnectionStatusOverlay(message: _connectionStatus),
+                ),
               ],
             ),
           ),
-          // Connectivity overlay banner
-          ConnectionStatusOverlay(message: _connectionStatus),
-        ],
-      ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOutgoingCallUI() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Top section with receiver info
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated phone icon with pulse effect
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1500),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.9 + (value * 0.1),
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFFFF6B6B), // Coral red
+                            Color(0xFFEE5A6F), // Dark coral
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B6B).withOpacity(0.5),
+                            blurRadius: 30,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.phone_forwarded,
+                          size: 80,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 40),
+              // Receiver name with fade-in animation
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 600),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: child,
+                  );
+                },
+                child: Text(
+                  widget.otherUserName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Call type badge
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 800),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.phone,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Voice Call',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Ringing status with animated dots
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1000),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: 0.7 + (value * 0.3),
+                    child: child,
+                  );
+                },
+                child: Text(
+                  _isCallRinging && !_remoteAccepted ? 'Calling...' : 'Connecting...',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (_isCallRinging && widget.isOutgoingCall) ...[
+                const SizedBox(height: 20),
+                _buildModernRingingAnimation(),
+              ],
+            ],
+          ),
+        ),
+        // Bottom controls
+        Padding(
+          padding: const EdgeInsets.only(bottom: 50.0),
+          child: _buildOutgoingControls(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveCallUI() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const SizedBox(height: 60),
+        // Active call info
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.phone_in_talk,
+                color: Colors.white,
+                size: 100,
+              ),
+              const SizedBox(height: 30),
+              const Text(
+                'Connected',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.otherUserName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(
+                  _format(_duration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Control buttons
+        Padding(
+          padding: const EdgeInsets.only(bottom: 50.0),
+          child: _buildActiveControls(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOutgoingControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _modernControlBtn(
+          icon: _micMuted ? Icons.mic_off : Icons.mic,
+          color: _micMuted ? const Color(0xFFFF9800) : Colors.white,
+          onPressed: _callActive ? _toggleMute : null,
+          active: !_micMuted && _callActive,
+        ),
+        _modernCallBtn(
+          icon: Icons.call_end,
+          color: const Color(0xFFF44336),
+          onPressed: _endCall,
+          size: 72,
+        ),
+        _modernControlBtn(
+          icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
+          color: _speakerOn ? const Color(0xFF2196F3) : Colors.white,
+          onPressed: (_callActive || _isCallRinging) ? _toggleSpeaker : null,
+          active: _speakerOn,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _modernControlBtn(
+          icon: _micMuted ? Icons.mic_off : Icons.mic,
+          color: _micMuted ? const Color(0xFFFF9800) : Colors.white,
+          onPressed: _toggleMute,
+          active: !_micMuted,
+        ),
+        _modernCallBtn(
+          icon: Icons.call_end,
+          color: const Color(0xFFF44336),
+          onPressed: _endCall,
+          size: 72,
+        ),
+        _modernControlBtn(
+          icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
+          color: _speakerOn ? const Color(0xFF2196F3) : Colors.white,
+          onPressed: _toggleSpeaker,
+          active: _speakerOn,
+        ),
+      ],
+    );
+  }
+
+  Widget _modernCallBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onPressed,
+    double size = 72,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 150),
+        tween: Tween(begin: 1.0, end: 1.0),
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: value,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color,
+                    color.withOpacity(0.8),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.5),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: size * 0.45),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _modernControlBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onPressed,
+    bool active = false,
+    double size = 64,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: active ? color.withOpacity(0.3) : Colors.white.withOpacity(0.2),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: onPressed == null ? Colors.white30 : color,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (onPressed == null ? Colors.white30 : color).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: onPressed == null ? Colors.white30 : color,
+          size: size * 0.5,
+        ),
+      ),
+    );
+  }
+
+  // Modern pulsing animation for ringing state
+  Widget _buildModernRingingAnimation() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        return TweenAnimationBuilder<double>(
+          key: ValueKey(index),
+          duration: Duration(milliseconds: 800 + (index * 150)),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            final double scale = 0.5 + (value * 0.5);
+            final double opacity = 1.0 - (value * 0.6);
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(opacity),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(opacity * 0.5),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              transform: Matrix4.identity()..scale(scale),
+            );
+          },
+          onEnd: () {
+            if (mounted) setState(() {});
+          },
+        );
+      }),
     );
   }
 
@@ -740,29 +1076,6 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     }
     unawaited(_stopForegroundService());
     super.dispose();
-  }
-
-  // ================= RINGING ANIMATION =================
-  Widget _buildRingingAnimation() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(3, (index) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            curve: Curves.easeInOut,
-          );
-        }),
-      ),
-    );
   }
 
   String _format(Duration d) =>
