@@ -20,9 +20,7 @@ import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
 
 class ChatListScreen extends StatefulWidget {
-  final int refreshKey;
-
-  const ChatListScreen({super.key, this.refreshKey = 0});
+  const ChatListScreen({super.key});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -85,18 +83,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     _adminStatusSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant ChatListScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.refreshKey != oldWidget.refreshKey) {
-      if (userId.isNotEmpty) {
-        _loadPendingChatRequests(userId);
-      } else {
-        _loadUserData();
-      }
-    }
   }
 
   @override

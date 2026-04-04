@@ -57,7 +57,7 @@ class _MainControllerScreenState extends State<MainControllerScreen> {
       MatrimonyHomeScreen(),  // index 0
       FavoritePeoplePage(),   // index 1
       _senderId != null
-          ? ChatListScreen(refreshKey: _chatRefreshKey)
+          ? ChatListScreen(key: ValueKey(_chatRefreshKey))
           : const Center(child: Text('Loading chat...')), // index 2
       MatrimonyProfilePage(), // index 3
     ];
