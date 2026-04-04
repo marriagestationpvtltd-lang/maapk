@@ -293,62 +293,65 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
         .where((s) => s.isNotEmpty)
         .join(' ');
 
-    String? birthDate = _fullProfileData['birthDate']?.toString();
     int age = 0;
-    if (birthDate != null && birthDate.isNotEmpty) {
-      try {
-        final parts = birthDate.split('-');
-        if (parts.length == 3) {
-          final dob = DateTime(
-            int.parse(parts[0]),
-            int.parse(parts[1]),
-            int.parse(parts[2]),
-          );
-          final today = DateTime.now();
-          age = today.year - dob.year;
-          if (today.month < dob.month ||
-              (today.month == dob.month && today.day < dob.day)) {
-            age--;
-          }
+    try {
+      final rawDate = _fullProfileData['birthDate']?.toString() ?? '';
+      if (rawDate.isNotEmpty) {
+        final dob = DateTime.parse(rawDate);
+        final today = DateTime.now();
+        age = today.year - dob.year;
+        if (today.month < dob.month ||
+            (today.month == dob.month && today.day < dob.day)) {
+          age--;
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
+
+    String clean(String? v) {
+      final s = v?.trim() ?? '';
+      return (s.isEmpty || s.toLowerCase() == 'null') ? '' : s;
     }
 
-    String _nonEmpty(String? v) =>
-        (v == null || v.trim().isEmpty || v.trim().toLowerCase() == 'null') ? '' : v.trim();
-
-    final marital = _nonEmpty(_selectedMaritalStatus);
-    final location = _nonEmpty(_fullProfileData['city']?.toString());
-    final country = _nonEmpty(_fullProfileData['country']?.toString());
-    final religion = _nonEmpty(_fullProfileData['religionName']?.toString());
-    final community = _nonEmpty(_fullProfileData['communityName']?.toString());
-    final degree = _nonEmpty(_fullProfileData['degree']?.toString());
-    final designation = _nonEmpty(_fullProfileData['designation']?.toString());
-    final company = _nonEmpty(_fullProfileData['companyname']?.toString());
+    final marital = clean(_selectedMaritalStatus);
+    final city = clean(_fullProfileData['city']?.toString());
+    final country = clean(_fullProfileData['country']?.toString());
+    final religion = clean(_fullProfileData['religionName']?.toString());
+    final community = clean(_fullProfileData['communityName']?.toString());
+    final degree = clean(_fullProfileData['degree']?.toString());
+    final designation = clean(_fullProfileData['designation']?.toString());
+    final company = clean(_fullProfileData['companyname']?.toString());
 
     final sentences = <String>[];
 
-    final introBits = <String>[];
-    if (name.isNotEmpty) introBits.add(name);
-    if (age > 0) introBits.add('$age years old');
-    if (location.isNotEmpty || country.isNotEmpty) {
-      final loc = [location, country].where((s) => s.isNotEmpty).join(', ');
-      introBits.add('based in $loc');
+    // Intro sentence
+    final introParts = <String>[];
+    if (name.isNotEmpty) introParts.add(name);
+    if (age > 0) introParts.add('$age years old');
+    final locationStr = [city, country].where((s) => s.isNotEmpty).join(', ');
+    if (locationStr.isNotEmpty) introParts.add('based in $locationStr');
+    if (introParts.isNotEmpty) {
+      sentences.add('I am ${introParts.join(', ')}.');
     }
-    if (introBits.isNotEmpty) sentences.add('I am ${introBits.join(', ')}.');
 
     if (marital.isNotEmpty) sentences.add('My marital status is $marital.');
 
-    final workBits = <String>[];
-    if (designation.isNotEmpty) workBits.add('working as $designation');
-    if (company.isNotEmpty) workBits.add('at $company');
-    if (degree.isNotEmpty) workBits.add('with a degree in $degree');
-    if (workBits.isNotEmpty) sentences.add('Professionally, I am ${workBits.join(' ')}.');
+    // Work sentence — only build when it produces grammatical output
+    if (designation.isNotEmpty && company.isNotEmpty) {
+      sentences.add('I work as a $designation at $company.');
+    } else if (designation.isNotEmpty) {
+      sentences.add('I work as a $designation.');
+    } else if (company.isNotEmpty) {
+      sentences.add('I am employed at $company.');
+    }
+    if (degree.isNotEmpty) sentences.add('I hold a degree in $degree.');
 
-    final bgBits = <String>[];
-    if (religion.isNotEmpty) bgBits.add(religion);
-    if (community.isNotEmpty) bgBits.add(community);
-    if (bgBits.isNotEmpty) sentences.add('My background is rooted in ${bgBits.join(', ')}.');
+    // Background sentence
+    final bgParts = <String>[];
+    if (religion.isNotEmpty) bgParts.add(religion);
+    if (community.isNotEmpty) bgParts.add(community);
+    if (bgParts.isNotEmpty) {
+      sentences.add('My background is rooted in ${bgParts.join(' and ')}.');
+    }
 
     return sentences.join(' ').trim();
   }
