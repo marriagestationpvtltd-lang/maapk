@@ -89,6 +89,22 @@ class _ChatListScreenState extends State<ChatListScreen>
       OnlineStatusService().setOffline();
     } else if (state == AppLifecycleState.resumed) {
       OnlineStatusService().start();
+      // Restart online status listeners so they are fresh after resume
+      _startAdminStatusListener();
+      if (_cachedRooms.isNotEmpty) {
+        final participantIds = <String>{};
+        for (final doc in _cachedRooms) {
+          final data = doc.data() as Map<String, dynamic>;
+          final participants =
+              List<String>.from(data['participants'] ?? []);
+          for (final p in participants) {
+            if (p.trim() != userId.trim()) participantIds.add(p.trim());
+          }
+        }
+        if (participantIds.isNotEmpty) {
+          _startOnlineStatusListeners(participantIds.toList());
+        }
+      }
     }
   }
 
