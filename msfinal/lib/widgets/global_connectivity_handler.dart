@@ -3,9 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../Startup/SplashScreen.dart';
 import '../constant/app_colors.dart';
-import '../navigation/app_navigation.dart';
 import '../service/connectivity_service.dart';
 
 class GlobalConnectivityHandler extends StatefulWidget {
@@ -29,7 +27,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
   bool _isBannerVisible = false;
   bool _isRetrying = false;
   bool _wasConnected = true;
-  bool _isRefreshScheduled = false;
   String _bannerMessage = '';
   Color _bannerColor = AppColors.textSecondary;
 
@@ -107,14 +104,9 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       return;
     }
 
-    final shouldRefresh = !_wasConnected;
-
     // Only show the "Back online" banner if we were previously offline.
     // On initial app launch _wasConnected is true so we skip the banner.
-    if (!shouldRefresh) {
-      setState(() {
-        _wasConnected = true;
-      });
+    if (_wasConnected) {
       return;
     }
 
@@ -127,10 +119,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
       _bannerColor = Colors.black;
       _bannerMessage = 'Back online';
     });
-
-    if (shouldRefresh) {
-      _refreshCurrentRoute();
-    }
 
     _hideBannerTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted) {
@@ -166,48 +154,6 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
     setState(() {
       _isRetrying = false;
       _bannerMessage = _buildOfflineMessage(connectivityService);
-    });
-  }
-
-  void _refreshCurrentRoute() {
-    if (_isRefreshScheduled) {
-      return;
-    }
-
-    final navigator = navigatorKey.currentState;
-    final route = appRouteTracker.currentRoute;
-
-    if (navigator == null || route == null) {
-      return;
-    }
-
-    _isRefreshScheduled = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _isRefreshScheduled = false;
-
-      if (!mounted) {
-        return;
-      }
-
-      if (route.settings.name != null && route.settings.name!.isNotEmpty) {
-        navigator.pushReplacementNamed(
-          route.settings.name!,
-          arguments: route.settings.arguments,
-        );
-        return;
-      }
-
-      debugPrint(
-        'Falling back to SplashScreen after reconnect because the current route '
-        'could not be refreshed by name.',
-      );
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => const SplashScreen(),
-        ),
-        (route) => false,
-      );
     });
   }
 
