@@ -106,6 +106,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<Map<String, dynamic>> _cachedMessages = [];
   bool _isFirstLoad = true;
 
+  // Track whether the compose field has text (avoids per-keystroke full rebuild)
+  bool _hasText = false;
+
+  // Message-widget cache: rebuilt only when messages/highlight/loading state changes
+  List<Widget>? _cachedMessageWidgets;
+  int _messagesCacheVersion = 0;
+  int _lastBuiltVersion = -1;
+  String? _lastBuiltHighlightId;
+  bool _lastBuiltIsLoadingMore = false;
+
   // Lazy loading variables
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
@@ -220,6 +230,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (mounted) setState(() => _playbackDuration = dur);
     });
 
+    // Update _hasText without a full rebuild on every keystroke
+    _messageController.addListener(_onMessageTextChanged);
+
     // Add scroll listener for lazy loading
     _scrollController.addListener(_onScroll);
 
@@ -231,6 +244,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     // Start listening to receiver's online status
     _startReceiverStatusListener();
+  }
+
+  void _onMessageTextChanged() {
+    final hasText = _messageController.text.trim().isNotEmpty;
+    if (hasText != _hasText && mounted) {
+      setState(() => _hasText = hasText);
+    }
   }
 
   void _onScroll() {
@@ -269,6 +289,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           if (lastDoc != null) _lastDocument = lastDoc;
           _isFirstLoad = false;
           _cachedMessages = newMessages;
+          _messagesCacheVersion++;
         });
 
         // Jump instantly to the last message on first load (no animation).
@@ -319,6 +340,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
         setState(() {
           _cachedMessages = newCache;
+          _messagesCacheVersion++;
           if (_forceScrollToBottom) _forceScrollToBottom = false;
         });
 
@@ -451,10 +473,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             DateTime.now().difference(lastSeen).inMinutes < 5;
         online = isOnline || recentlySeen;
       }
-      setState(() {
-        _isOtherUserOnline = online;
-        _otherUserLastSeen = lastSeen;
-      });
+      if (_isOtherUserOnline != online || _otherUserLastSeen != lastSeen) {
+        setState(() {
+          _isOtherUserOnline = online;
+          _otherUserLastSeen = lastSeen;
+        });
+      }
     });
   }
 
@@ -510,6 +534,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     // Clear chat active state when screen closes
     ScreenStateManager().onChatScreenClosed();
     WidgetsBinding.instance.removeObserver(this);
+    _messageController.removeListener(_onMessageTextChanged);
     _messageController.dispose();
     _editController.dispose();
     _scrollController.dispose();
@@ -1758,7 +1783,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     final hasText = isEditing
         ? _editController.text.trim().isNotEmpty
-        : _messageController.text.trim().isNotEmpty;
+        : _hasText;
 
     return Container(
       padding: EdgeInsets.only(
@@ -1833,9 +1858,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                             ),
                           ),
                           onChanged: (value) {
-                            if (mounted) {
-                              setState(() {});
-                            }
                             // Fire typing indicator only when composing (not editing)
                             if (!isEditing && value.isNotEmpty) {
                               _onTypingChanged();
@@ -1958,6 +1980,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         // Prepend older messages
         _cachedMessages.insertAll(0, newMessages);
         _isLoadingMore = false;
+        _messagesCacheVersion++;
       });
 
       // Restore scroll position using the actual change in maxScrollExtent
@@ -2025,6 +2048,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
   }
   Widget _buildMessagesFromCache() {
+    // Reuse cached widget list when nothing relevant has changed.
+    // Bypass cache while audio is actively playing so progress updates render correctly.
+    final canUseCache = _cachedMessageWidgets != null &&
+        _playingMessageId == null &&
+        _lastBuiltVersion == _messagesCacheVersion &&
+        _lastBuiltHighlightId == _highlightedMessageId &&
+        _lastBuiltIsLoadingMore == _isLoadingMore;
+
+    if (canUseCache) {
+      return ListView(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+        children: _cachedMessageWidgets!,
+      );
+    }
+
     final List<Widget> messageWidgets = [];
 
     // Add loading indicator at the top if loading more
@@ -2132,6 +2171,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         }
       }
     }
+
+    // Cache for next rebuild
+    _cachedMessageWidgets = messageWidgets;
+    _lastBuiltVersion = _messagesCacheVersion;
+    _lastBuiltHighlightId = _highlightedMessageId;
+    _lastBuiltIsLoadingMore = _isLoadingMore;
 
     return ListView.builder(
       reverse: false, // Keep as false for natural order
