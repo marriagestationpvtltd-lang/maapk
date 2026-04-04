@@ -49,12 +49,34 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   String _docStatus = 'not_uploaded';
   bool _isCheckingConnectivity = false;
   bool? _lastConnectivityState;
+  ConnectivityService? _connectivityService;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(_statusBarStyle);
     fetchProfileData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final connectivityService = context.read<ConnectivityService>();
+    if (_connectivityService == connectivityService) {
+      return;
+    }
+
+    _connectivityService?.removeListener(_handleConnectivityChange);
+    _connectivityService = connectivityService;
+    _connectivityService?.addListener(_handleConnectivityChange);
+    _handleConnectivityChange();
+  }
+
+  @override
+  void dispose() {
+    _connectivityService?.removeListener(_handleConnectivityChange);
+    super.dispose();
   }
 
   Future<void> fetchProfileData() async {
@@ -634,17 +656,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     );
   }
 
-  void _syncConnectivityUi(bool isConnected) {
+  void _handleConnectivityChange() {
+    final isConnected = _connectivityService?.isConnected ?? false;
     if (_lastConnectivityState == isConnected) {
       return;
     }
 
     final previousState = _lastConnectivityState;
     _lastConnectivityState = isConnected;
-
-    SystemChrome.setSystemUIOverlayStyle(
-      _statusBarStyle,
-    );
 
     if (previousState == false && isConnected) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -705,7 +724,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     return Consumer<ConnectivityService>(
       builder: (context, connectivityService, _) {
         final isConnected = connectivityService.isConnected;
-        _syncConnectivityUi(isConnected);
 
         if (!isConnected) {
           return KeyedSubtree(
@@ -990,7 +1008,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         _buildInfoBadge(_stringValue(model.gender), Icons.wc),
                     ],
                  ),
-                 SizedBox(height: 16),
+                  const SizedBox(height: 16),
                  Container(
                    width: double.infinity,
                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
