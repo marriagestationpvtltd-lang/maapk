@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../Home/Screen/HomeScreenPage.dart';
+import '../constant/design_system.dart';
 
 class PaymentPage extends StatefulWidget {
   final double amount;
@@ -50,6 +51,7 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _showWebView = false;
   String? _paymentUrl;
   late WebViewController _webViewController;
+  bool _isWebViewLoading = true;
 
   double get processingCharge => widget.amount;
   double get discount => widget.discount;
@@ -61,12 +63,12 @@ class _PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white),
           onPressed: () {
             if (_showWebView) {
               _handlePaymentCancel();
@@ -76,14 +78,21 @@ class _PaymentPageState extends State<PaymentPage> {
           },
         ),
         title: Text(
-          _showWebView ? 'Payment Processing' : 'Payment',
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          _showWebView ? 'Payment Processing' : 'Secure Payment',
+          style: AppTextStyles.whiteLabel.copyWith(fontSize: 18),
         ),
         centerTitle: true,
+        actions: [
+          if (!_showWebView)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(
+                Icons.shield_rounded,
+                color: AppColors.premium,
+                size: 24,
+              ),
+            ),
+        ],
       ),
       body: _showWebView ? _buildWebView() : _buildPaymentForm(),
     );
@@ -119,48 +128,82 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildWebView() {
-    return Column(
+    return Stack(
       children: [
-
-        Expanded(
-          child: WebViewWidget(
-            controller: _webViewController,
-          ),
+        WebViewWidget(
+          controller: _webViewController,
         ),
+        if (_isWebViewLoading)
+          Container(
+            color: AppColors.white,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Loading Payment Gateway...',
+                    style: AppTextStyles.labelMedium.copyWith(
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please wait',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildPaymentStatus() {
-    Color statusColor = Colors.orange;
-    IconData statusIcon = Icons.info_outline;
+    Color statusColor = AppColors.warning;
+    IconData statusIcon = Icons.info_outline_rounded;
 
     if (_paymentStatus.contains('Success')) {
-      statusColor = Colors.green;
-      statusIcon = Icons.check_circle;
+      statusColor = AppColors.success;
+      statusIcon = Icons.check_circle_rounded;
     } else if (_paymentStatus.contains('Error')) {
-      statusColor = Colors.red;
-      statusIcon = Icons.error_outline;
+      statusColor = AppColors.error;
+      statusIcon = Icons.error_outline_rounded;
     }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        color: statusColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 1.5),
       ),
       child: Row(
         children: [
-          Icon(statusIcon, color: statusColor),
-          const SizedBox(width: 12),
+          Icon(statusIcon, color: statusColor, size: 26),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               _paymentStatus,
-              style: TextStyle(
+              style: AppTextStyles.labelMedium.copyWith(
                 color: statusColor,
-                fontWeight: FontWeight.w500,
+                fontSize: 14,
               ),
             ),
           ),
@@ -170,118 +213,154 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildPaymentMethods() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Pay with',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 16),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.payment_rounded, color: AppColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Select Payment Method',
+                style: AppTextStyles.heading4.copyWith(fontSize: 17),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
 
-        // Connect IPS QR Scan
-        PaymentMethodTile(
-          title: 'Connect IPS QR scan',
-          icon: Icons.qr_code_scanner_rounded,
-          iconColor: const Color(0xFF4A148C),
-          backgroundColor: const Color(0xFFF3E5F5),
-          isSelected: _selectedMethod == PaymentMethod.connectIps,
-          isEnabled: !_isProcessing,
-          onTap: () => _selectMethod(PaymentMethod.connectIps),
-        ),
-        const SizedBox(height: 12),
+          // Connect IPS QR Scan
+          PaymentMethodTile(
+            title: 'Connect IPS QR Scan',
+            subtitle: 'Scan QR with mobile banking app',
+            icon: Icons.qr_code_scanner_rounded,
+            iconColor: const Color(0xFF5C2D91),
+            backgroundColor: const Color(0xFFF3E5F5),
+            isSelected: _selectedMethod == PaymentMethod.connectIps,
+            isEnabled: !_isProcessing,
+            onTap: () => _selectMethod(PaymentMethod.connectIps),
+          ),
+          const SizedBox(height: 12),
 
-        // Khalti
-        PaymentMethodTile(
-          title: 'Khalti',
-          icon: Icons.account_balance_wallet_rounded,
-          iconColor: const Color(0xFF5C2D91),
-          backgroundColor: const Color(0xFFEDE7F6),
-          isSelected: _selectedMethod == PaymentMethod.khalti,
-          isEnabled: !_isProcessing,
-          onTap: () => _selectMethod(PaymentMethod.khalti),
-        ),
-        const SizedBox(height: 12),
+          // Khalti
+          PaymentMethodTile(
+            title: 'Khalti',
+            subtitle: 'Pay with Khalti digital wallet',
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: const Color(0xFF5C2D91),
+            backgroundColor: const Color(0xFFEDE7F6),
+            isSelected: _selectedMethod == PaymentMethod.khalti,
+            isEnabled: !_isProcessing,
+            onTap: () => _selectMethod(PaymentMethod.khalti),
+            isRecommended: true,
+          ),
+          const SizedBox(height: 12),
 
-        // Pay with Card (HBL)
-        PaymentMethodTile(
-          title: 'Pay with Card',
-          icon: Icons.credit_card_rounded,
-          iconColor: const Color(0xFF1565C0),
-          backgroundColor: const Color(0xFFE3F2FD),
-          isSelected: _selectedMethod == PaymentMethod.card,
-          isEnabled: !_isProcessing,
-          onTap: () => _selectMethod(PaymentMethod.card),
-        ),
-        const SizedBox(height: 12),
+          // Pay with Card (HBL)
+          PaymentMethodTile(
+            title: 'Debit/Credit Card',
+            subtitle: 'Visa, Mastercard, etc.',
+            icon: Icons.credit_card_rounded,
+            iconColor: const Color(0xFF1565C0),
+            backgroundColor: const Color(0xFFE3F2FD),
+            isSelected: _selectedMethod == PaymentMethod.card,
+            isEnabled: !_isProcessing,
+            onTap: () => _selectMethod(PaymentMethod.card),
+          ),
+          const SizedBox(height: 12),
 
-        // Pay with Esewa
-        PaymentMethodTile(
-          title: 'Pay with Esewa',
-          icon: Icons.payment_rounded,
-          iconColor: const Color(0xFF2E7D32),
-          backgroundColor: const Color(0xFFE8F5E9),
-          isSelected: _selectedMethod == PaymentMethod.esewa,
-          isEnabled: !_isProcessing,
-          onTap: () => _selectMethod(PaymentMethod.esewa),
-        ),
-      ],
+          // Pay with Esewa
+          PaymentMethodTile(
+            title: 'eSewa',
+            subtitle: 'Pay with eSewa digital wallet',
+            icon: Icons.payment_rounded,
+            iconColor: const Color(0xFF2E7D32),
+            backgroundColor: const Color(0xFFE8F5E9),
+            isSelected: _selectedMethod == PaymentMethod.esewa,
+            isEnabled: !_isProcessing,
+            onTap: () => _selectMethod(PaymentMethod.esewa),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPaymentSummary() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.borderLight, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Payment summary',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+          Row(
+            children: [
+              Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Bill Summary',
+                style: AppTextStyles.heading4.copyWith(fontSize: 17),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 
-          // Package Info
+          // Package Info Card
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade100),
             ),
             child: Row(
               children: [
-                const Icon(Icons.diamond_rounded, color: Colors.blue, size: 24),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.workspace_premium_rounded,
+                    color: AppColors.premium,
+                    size: 26),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.packageName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: AppTextStyles.whiteLabel.copyWith(fontSize: 16),
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         widget.packageDuration,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                        style: AppTextStyles.whiteBody.copyWith(
+                          fontSize: 13,
+                          color: AppColors.white.withOpacity(0.85),
                         ),
                       ),
                     ],
@@ -290,50 +369,80 @@ class _PaymentPageState extends State<PaymentPage> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Price Breakdown
-          _buildPriceRow('Processing charge', 'Rs. ${processingCharge.toStringAsFixed(0)}'),
+          Text(
+            'Price Details',
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 12),
 
-          _buildPriceRow('Discount', '- Rs. ${discount.toStringAsFixed(0)}',
-              isDiscount: true),
-          const SizedBox(height: 12),
+          _buildPriceRow('Package Price', 'Rs. ${processingCharge.toStringAsFixed(0)}'),
+          const SizedBox(height: 10),
 
-          const Divider(height: 1, color: Colors.grey),
-          const SizedBox(height: 12),
+          if (discount > 0)
+            _buildPriceRow('Discount', '- Rs. ${discount.toStringAsFixed(0)}',
+                isDiscount: true),
+          if (discount > 0)
+            const SizedBox(height: 10),
 
-          _buildPriceRow('Amount', 'Rs. ${subtotal.toStringAsFixed(0)}',
+          Divider(height: 1, color: AppColors.border, thickness: 1),
+          const SizedBox(height: 10),
+
+          _buildPriceRow('Subtotal', 'Rs. ${subtotal.toStringAsFixed(0)}',
               isBold: true),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          _buildPriceRow('Tax 13%', 'Rs. ${taxAmount.toStringAsFixed(0)}'),
+          _buildPriceRow('VAT (13%)', 'Rs. ${taxAmount.toStringAsFixed(0)}',
+              showInfo: true),
           const SizedBox(height: 16),
 
-          // Total Amount
+          // Total Amount Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: const Color(0xFF2196F3),
+              gradient: AppColors.secondaryGradient,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.secondary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total Amount',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Amount',
+                      style: AppTextStyles.whiteBody.copyWith(
+                        fontSize: 14,
+                        color: AppColors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Including all taxes',
+                      style: AppTextStyles.whiteBody.copyWith(
+                        fontSize: 11,
+                        color: AppColors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   'Rs. ${totalAmount.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
+                  style: AppTextStyles.whiteHeading.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -345,24 +454,35 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildPriceRow(String label, String value,
-      {bool isDiscount = false, bool isBold = false}) {
+      {bool isDiscount = false, bool isBold = false, bool showInfo = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey.shade700,
-            fontWeight: isBold ? FontWeight.w600 : FontWeight.w400,
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: isBold ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            if (showInfo)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: AppColors.textHint,
+                ),
+              ),
+          ],
         ),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 16,
-            color: isDiscount ? Colors.green : Colors.black,
-            fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: isDiscount ? AppColors.success : AppColors.textPrimary,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
           ),
         ),
       ],
@@ -370,48 +490,64 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildPayNowButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _isProcessing ? null : _processPayment,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2196F3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: _isProcessing ? null : AppColors.primaryGradient,
+        boxShadow: _isProcessing ? [] : [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-          elevation: 0,
-          disabledBackgroundColor: Colors.grey.shade300,
-        ),
-        child: _isProcessing
-            ? const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 58,
+        child: ElevatedButton(
+          onPressed: _isProcessing ? null : _processPayment,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
-            SizedBox(width: 12),
-            Text(
-              'Processing...',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+            elevation: 0,
+            disabledBackgroundColor: AppColors.border,
+          ),
+          child: _isProcessing
+              ? Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                ),
               ),
-            ),
-          ],
-        )
-            : const Text(
-          'Pay Now',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+              const SizedBox(width: 14),
+              Text(
+                'Processing Payment...',
+                style: AppTextStyles.whiteLabel.copyWith(fontSize: 16),
+              ),
+            ],
+          )
+              : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_rounded, color: AppColors.white, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Pay Rs. ${totalAmount.toStringAsFixed(0)}',
+                style: AppTextStyles.whiteLabel.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -419,55 +555,67 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildSecurityInfo() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock_rounded, color: Colors.green.shade600, size: 16),
-            const SizedBox(width: 8),
-            const Text(
-              'Secure Payment',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.green,
-                fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.success.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.verified_user_rounded,
+                color: AppColors.success,
+                size: 20),
+              const SizedBox(width: 10),
+              Text(
+                '100% Secure Payment',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.success,
+                  fontSize: 15,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Your payment is secured with 256-bit SSL encryption',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey,
+            ],
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildSecureIcon(Icons.verified_user_rounded),
-            const SizedBox(width: 16),
-            _buildSecureIcon(Icons.shield_rounded),
-            const SizedBox(width: 16),
-            _buildSecureIcon(Icons.security_rounded),
-          ],
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(
+            'Your payment is protected with 256-bit SSL encryption',
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSecureIcon(Icons.shield_rounded),
+              const SizedBox(width: 14),
+              _buildSecureIcon(Icons.lock_rounded),
+              const SizedBox(width: 14),
+              _buildSecureIcon(Icons.verified_rounded),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSecureIcon(IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        shape: BoxShape.circle,
+        color: AppColors.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, size: 20, color: Colors.green),
+      child: Icon(icon, size: 20, color: AppColors.success),
     );
   }
 
@@ -601,26 +749,41 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() {
       _showWebView = true;
       _paymentUrl = cleanUrl;
+      _isWebViewLoading = true;
     });
 
     // Initialize WebViewController
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.white)
+      ..setBackgroundColor(AppColors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
             print('WebView loading: $progress%');
+            if (progress == 100) {
+              setState(() {
+                _isWebViewLoading = false;
+              });
+            }
           },
           onPageStarted: (String url) {
             print('Page started loading: $url');
+            setState(() {
+              _isWebViewLoading = true;
+            });
           },
           onPageFinished: (String url) {
             print('Page finished loading: $url');
+            setState(() {
+              _isWebViewLoading = false;
+            });
             _handleUrlChange(url);
           },
           onWebResourceError: (WebResourceError error) {
             print('WebView error: ${error.description}');
+            setState(() {
+              _isWebViewLoading = false;
+            });
           },
           onNavigationRequest: (NavigationRequest request) {
             print('Navigation request to: ${request.url}');
@@ -912,65 +1075,127 @@ extension PaymentMethodExtension on PaymentMethod {
 
 class PaymentMethodTile extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final IconData icon;
   final Color iconColor;
   final Color backgroundColor;
   final bool isSelected;
   final bool isEnabled;
   final VoidCallback onTap;
+  final bool isRecommended;
 
   const PaymentMethodTile({
     super.key,
     required this.title,
+    this.subtitle,
     required this.icon,
     required this.iconColor,
     required this.backgroundColor,
     required this.isSelected,
     required this.isEnabled,
     required this.onTap,
+    this.isRecommended = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: isEnabled ? onTap : null,
-      child: Opacity(
-        opacity: isEnabled ? 1.0 : 0.5,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? iconColor : Colors.transparent,
-              width: 2,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? backgroundColor.withOpacity(0.15) : backgroundColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? iconColor : backgroundColor,
+            width: isSelected ? 2.5 : 1,
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: iconColor.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ] : [],
+        ),
+        child: Stack(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? iconColor.withOpacity(0.15) : AppColors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 26),
                 ),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: Colors.black87,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontSize: 15,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle!,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AnimatedScale(
+                  scale: isSelected ? 1.0 : 0.8,
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: isSelected ? iconColor : AppColors.border,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSelected ? Icons.check_circle : Icons.circle_outlined,
+                      color: AppColors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (isRecommended)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Recommended',
+                    style: AppTextStyles.whiteBody.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-              if (isSelected)
-                Icon(Icons.check_circle_rounded, color: iconColor, size: 24),
-            ],
-          ),
+          ],
         ),
       ),
     );
