@@ -179,10 +179,12 @@ class _GlobalConnectivityHandlerState extends State<GlobalConnectivityHandler> {
             child: IgnorePointer(
               ignoring: !_isBannerVisible,
               child: AnnotatedRegion<SystemUiOverlayStyle>(
-                value: const SystemUiOverlayStyle(
+                value: SystemUiOverlayStyle(
                   statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.dark,
-                  statusBarBrightness: Brightness.light,
+                  // Use light icons when banner is visible (colored backgrounds)
+                  // Use dark icons when banner is hidden (underlying screen takes over)
+                  statusBarIconBrightness: _isBannerVisible ? Brightness.light : Brightness.dark,
+                  statusBarBrightness: _isBannerVisible ? Brightness.dark : Brightness.light,
                   systemStatusBarContrastEnforced: false,
                 ),
                 child: AnimatedSlide(

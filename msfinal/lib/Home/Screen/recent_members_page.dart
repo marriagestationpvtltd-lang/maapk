@@ -195,8 +195,6 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
 
   @override
   Widget build(BuildContext context) {
-    setStatusBar(AppColors.white, Brightness.dark);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -211,8 +209,10 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
           style: AppTextStyles.heading3,
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: AppColors.white,
+          statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
         ),
       ),
       body: _buildBody(),
