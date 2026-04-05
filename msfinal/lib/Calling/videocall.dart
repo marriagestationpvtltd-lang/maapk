@@ -78,6 +78,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   StreamSubscription? _ringtonePlayerLogSubscription;
   String? _connectionStatus;
 
+  // Network quality tracking
+  int _networkQuality = 0; // 0=unknown, 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
+  String _networkQualityText = 'Unknown';
+  Timer? _qualityUpdateTimer;
+
   // Audio player for ringtone
   late AudioPlayer _ringtonePlayer;
   bool _isPlayingRingtone = false;
@@ -411,6 +416,34 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
             }
           },
           onError: (code, msg) => debugPrint('Agora error: $code $msg'),
+          onNetworkQuality: (connection, remoteUid, txQuality, rxQuality) {
+            // Track network quality for adaptive bitrate
+            final quality = max(txQuality.index, rxQuality.index);
+            if (mounted && quality != _networkQuality) {
+              setState(() {
+                _networkQuality = quality;
+                _networkQualityText = _getQualityText(quality);
+              });
+              _adaptVideoQuality(quality);
+            }
+          },
+          onConnectionStateChanged: (connection, state, reason) {
+            debugPrint('Connection state: $state, reason: $reason');
+            // Handle reconnection scenarios
+            if (state == ConnectionStateType.connectionStateReconnecting) {
+              if (mounted) {
+                setState(() => _connectionStatus = 'Reconnecting...');
+              }
+            } else if (state == ConnectionStateType.connectionStateConnected) {
+              if (mounted) {
+                setState(() => _connectionStatus = null);
+              }
+            } else if (state == ConnectionStateType.connectionStateFailed) {
+              if (mounted) {
+                setState(() => _connectionStatus = 'Connection failed');
+              }
+            }
+          },
         ),
       );
 
@@ -418,10 +451,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       await _engine.enableAudio();
       await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
 
+      // Enable network quality monitoring (updates every 2 seconds)
+      await _engine.enableNetworkQuality(enabled: true, quality: QualityType.qualityUnknown);
+
+      // Configure video encoder with adaptive bitrate support
       await _engine.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 640, height: 480),
           frameRate: 15,
+          bitrate: 0, // 0 = let SDK determine based on resolution
+          minBitrate: -1, // -1 = SDK default minimum
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced, // Balance quality and framerate
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
         ),
       );
 
@@ -982,11 +1024,80 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   String _format(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
+  // ================= ADAPTIVE VIDEO QUALITY =================
+  String _getQualityText(int quality) {
+    switch (quality) {
+      case 0: return 'Unknown';
+      case 1: return 'Excellent';
+      case 2: return 'Good';
+      case 3: return 'Poor';
+      case 4: return 'Bad';
+      case 5: return 'Very Bad';
+      case 6: return 'Disconnected';
+      default: return 'Unknown';
+    }
+  }
+
+  Future<void> _adaptVideoQuality(int quality) async {
+    if (!_engineInitialized || !_joined) return;
+
+    try {
+      // Adaptive bitrate based on network quality
+      // Quality: 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
+      VideoEncoderConfiguration config;
+
+      if (quality <= 2) {
+        // Excellent or Good - HD quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 640, height: 480),
+          frameRate: 15,
+          bitrate: 0, // SDK determines optimal
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced,
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Maintaining HD video (640x480@15fps)');
+      } else if (quality == 3) {
+        // Poor - Reduce to standard quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 480, height: 360),
+          frameRate: 12,
+          bitrate: 0,
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced,
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Reducing to standard video (480x360@12fps)');
+      } else if (quality >= 4) {
+        // Bad or Very Bad - Reduce to low quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 320, height: 240),
+          frameRate: 10,
+          bitrate: 0,
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainFramerate, // Prioritize smooth video
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Reducing to low video (320x240@10fps)');
+      } else {
+        return; // Unknown quality
+      }
+
+      await _engine.setVideoEncoderConfiguration(config);
+    } catch (e) {
+      debugPrint('Error adapting video quality: $e');
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _callTimer?.cancel();
     _timeoutTimer?.cancel();
+    _qualityUpdateTimer?.cancel();
     _responseSubscription?.cancel();
     _connectivitySubscription?.cancel();
     _controlsHideTimer?.cancel();
