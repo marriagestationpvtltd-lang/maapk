@@ -1,6 +1,7 @@
 package com.Marriage.Station
 
 import android.app.*
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -93,7 +94,16 @@ class CallForegroundService : Service() {
 
     private fun startForegroundCall(callType: String, callerName: String, isIncoming: Boolean) {
         val notification = createCallNotification(callType, callerName, isIncoming)
-        startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val serviceType = if (callType == "video") {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
         Log.d(TAG, "Started foreground service for $callType call with $callerName")
     }
 
