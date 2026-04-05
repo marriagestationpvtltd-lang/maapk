@@ -287,6 +287,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
         backgroundColor: Colors.red,
         foregroundColor: Colors.white,
         elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

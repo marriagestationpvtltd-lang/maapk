@@ -46,6 +46,12 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
         appBar: AppBar(
           title: const Text('Call History'),
           backgroundColor: const Color(0xFFF90E18),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemStatusBarContrastEnforced: false,
+          ),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -60,6 +66,12 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
         backgroundColor: const Color(0xFFF90E18),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
       ),
       body: StreamBuilder<List<CallHistory>>(
         stream: CallHistoryService.getCallHistory(_currentUserId),

@@ -2263,6 +2263,12 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         title: Row(
           children: [
             CircleAvatar(
