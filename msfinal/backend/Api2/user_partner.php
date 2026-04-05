@@ -84,7 +84,7 @@ if ($check->num_rows > 0) {
         otherexpectation=?
         WHERE userid=?");
     $stmt->bind_param(
-        "ssssssssssssssssssssssssssssi", // 28 strings + 1 integer (userid)
+        "ssssssssssssssssssssssssssssi", // 28 strings + 1 integer (userid last)
         $minage, $maxage,
         $minheight, $maxheight,
         $maritalstatus,
