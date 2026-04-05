@@ -872,17 +872,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _pickAndSendImage() async {
     if (_isBlocked || _isSendingImage) return;
     final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
+    XFile? picked;
+    try {
+      picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to access gallery. Please check permissions.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
     if (picked == null || !mounted) return;
 
     setState(() => _isSendingImage = true);
     try {
       final messageId = _uuid.v4();
       final file = File(picked.path);
-      final ref = _storage.ref().child('chat_images/${widget.chatRoomId}/$messageId.jpg');
+      final ext = picked.name.contains('.') ? picked.name.split('.').last : 'jpg';
+      final ref = _storage.ref().child('chat_images/${widget.chatRoomId}/$messageId.$ext');
       await ref.putFile(file);
       final imageUrl = await ref.getDownloadURL();
 
