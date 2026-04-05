@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -50,6 +51,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   Duration _duration = Duration.zero;
   StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
 
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+
   // Call history tracking
   String? _callHistoryId;
   String _currentUserId = '';
@@ -67,9 +70,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
 
-    // Cancel the call notification once the screen is mounted and visible
+    // Cancel the call notification once the screen is mounted and visible,
+    // then start the looping ringtone
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cancelCallNotification();
+      _playRingtone();
     });
   }
 
@@ -81,6 +86,25 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       debugPrint('✅ Cancelled call notification after screen mounted');
     } catch (e) {
       debugPrint('Error cancelling call notification: $e');
+    }
+  }
+
+  Future<void> _playRingtone() async {
+    try {
+      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
+      debugPrint('✅ Incoming call ringtone started');
+    } catch (e) {
+      debugPrint('Error playing incoming call ringtone: $e');
+    }
+  }
+
+  Future<void> _stopRingtone() async {
+    try {
+      await _ringtonePlayer.stop();
+      debugPrint('✅ Incoming call ringtone stopped');
+    } catch (e) {
+      debugPrint('Error stopping incoming call ringtone: $e');
     }
   }
 
@@ -179,6 +203,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
     try {
       _ringTimer?.cancel();
+      await _stopRingtone();
 
       if (!(await Permission.microphone.request()).isGranted) {
         await _end();
@@ -273,6 +298,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   Future<void> _rejectCall() async {
     _ringTimer?.cancel();
+    await _stopRingtone();
     await NotificationService.sendCallResponseNotification(
       callerId: _callerId,
       recipientName: _recipientName,
@@ -285,6 +311,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   // ================= MISSED =================
   Future<void> _missedCall() async {
+    await _stopRingtone();
     await NotificationService.sendMissedCallNotification(
       callerId: _callerId,
       callerName: _callerName,
@@ -392,6 +419,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 
   Future<void> _end() async {
+    await _stopRingtone();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -870,6 +898,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     _ringTimer?.cancel();
     _callTimer?.cancel();
     _cancelSubscription?.cancel();
+    _ringtonePlayer.dispose();
     // Release Agora engine if not already released
     if (_engineInitialized) {
       unawaited(_releaseEngineAsync());

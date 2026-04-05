@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -54,6 +55,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Duration _duration = Duration.zero;
   StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
 
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+
   // Network quality tracking
   int _networkQuality = 0; // 0=unknown, 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
   String _networkQualityText = 'Unknown';
@@ -76,9 +79,11 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
 
-    // Cancel the call notification once the screen is mounted and visible
+    // Cancel the call notification once the screen is mounted and visible,
+    // then start the looping ringtone
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cancelCallNotification();
+      _playRingtone();
     });
   }
 
@@ -90,6 +95,25 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       debugPrint('✅ Cancelled video call notification after screen mounted');
     } catch (e) {
       debugPrint('Error cancelling video call notification: $e');
+    }
+  }
+
+  Future<void> _playRingtone() async {
+    try {
+      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
+      debugPrint('✅ Incoming video call ringtone started');
+    } catch (e) {
+      debugPrint('Error playing incoming video call ringtone: $e');
+    }
+  }
+
+  Future<void> _stopRingtone() async {
+    try {
+      await _ringtonePlayer.stop();
+      debugPrint('✅ Incoming video call ringtone stopped');
+    } catch (e) {
+      debugPrint('Error stopping incoming video call ringtone: $e');
     }
   }
 
@@ -191,6 +215,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       print('📞 Is Video Call: $_isVideoCall');
 
       _ringTimer?.cancel();
+      await _stopRingtone();
 
       // Permissions
         if (!(await Permission.microphone.request()).isGranted) {
@@ -362,6 +387,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   Future<void> _rejectCall() async {
     _ringTimer?.cancel();
+    await _stopRingtone();
     await NotificationService.sendVideoCallResponseNotification(
       callerId: _callerId,
       recipientName: _recipientName,
@@ -387,6 +413,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   // ================= MISSED =================
   Future<void> _missedCall() async {
+    await _stopRingtone();
     await NotificationService.sendMissedVideoCallNotification(
       callerId: _callerId,
       callerName: _callerName,
@@ -490,6 +517,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   }
 
   Future<void> _end() async {
+    await _stopRingtone();
     final wasMinimized = CallOverlayManager().isMinimized;
     if (wasMinimized) {
       navigatorKey.currentState?.popUntil(
@@ -1124,6 +1152,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _callTimer?.cancel();
     _qualityUpdateTimer?.cancel();
     _cancelSubscription?.cancel();
+    _ringtonePlayer.dispose();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
       unawaited(_releaseEngineAsync());
