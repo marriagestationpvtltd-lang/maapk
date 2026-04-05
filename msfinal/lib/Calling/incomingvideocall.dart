@@ -1156,7 +1156,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     _callTimer?.cancel();
     _qualityUpdateTimer?.cancel();
     _cancelSubscription?.cancel();
-    _ringtonePlayer.dispose();
+    // FlutterRingtonePlayer doesn't have a dispose method, stop is called in _endCall
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
       unawaited(_releaseEngineAsync());
