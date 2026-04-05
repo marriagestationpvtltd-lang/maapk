@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -512,22 +513,30 @@ class _SearchPageState extends State<SearchPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      body: Column(
-        children: [
-          _buildGradientHeader(),
-          _buildTabBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildQuickSearchTab(),
-                _buildAdvancedSearchTab(),
-              ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F7F7),
+        body: Column(
+          children: [
+            _buildGradientHeader(),
+            _buildTabBar(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildQuickSearchTab(),
+                  _buildAdvancedSearchTab(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -536,7 +545,7 @@ class _SearchPageState extends State<SearchPage>
 
   Widget _buildGradientHeader() {
     return Container(
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 56, bottom: 20),
+      padding: EdgeInsets.only(left: 20, right: 20, top: MediaQuery.of(context).padding.top + 8, bottom: 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xffFF1500), Color(0xffFF5A60)],

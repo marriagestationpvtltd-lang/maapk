@@ -38,6 +38,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         systemStatusBarContrastEnforced: false,
       );
 
+  static const SystemUiOverlayStyle _loadingStatusBarStyle =
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemStatusBarContrastEnforced: false,
+      );
+
   Map<String, dynamic>? profileData;
   bool isLoading = true;
   bool isProfileVerified = false;
@@ -54,7 +62,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(_statusBarStyle);
     fetchProfileData();
   }
 
@@ -705,9 +712,9 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     );
   }
 
-  Widget _buildOnlineScaffold({required Widget child}) {
+  Widget _buildOnlineScaffold({required Widget child, SystemUiOverlayStyle? overlayStyle}) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: _statusBarStyle,
+      value: overlayStyle ?? _statusBarStyle,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
@@ -740,6 +747,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           return KeyedSubtree(
             key: const ValueKey('my-profile-online-loading'),
             child: _buildOnlineScaffold(
+              overlayStyle: _loadingStatusBarStyle,
               child: const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD32F2F)),
@@ -753,6 +761,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           return KeyedSubtree(
             key: const ValueKey('my-profile-online-empty'),
             child: _buildOnlineScaffold(
+              overlayStyle: _loadingStatusBarStyle,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
