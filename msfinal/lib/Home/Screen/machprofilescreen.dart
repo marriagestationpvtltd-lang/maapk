@@ -9,6 +9,7 @@ import '../../main.dart';
 import '../../otherprofile/otherprofileview.dart';
 import '../../pushnotification/pushservice.dart';
 import '../../ReUsable/loading_widgets.dart';
+import '../../utils/privacy_utils.dart';
 
 class MatchedProfilesPagee extends StatefulWidget {
   final int currentUserId;
@@ -187,8 +188,11 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
         ? baseImageUrl + profilePicture
         : 'https://via.placeholder.com/300x200?text=No+Image';
 
-    // Check if should show clear image
-    final shouldShowClearImage = privacy == 'free' || photoRequestStatus == 'accepted';
+    // Check if should show clear image using PrivacyUtils
+    final shouldShowClearImage = PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequestStatus,
+    );
     final isActuallyBlurred = _isBlurred && !shouldShowClearImage;
 
     return Container(
@@ -225,7 +229,10 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
                         Stack(
                           children: [
                             ImageFiltered(
-                              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              imageFilter: ui.ImageFilter.blur(
+                                sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                                sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                              ),
                               child: Image.network(
                                 imageUrl,
                                 fit: BoxFit.cover,
