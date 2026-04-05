@@ -2910,32 +2910,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         systemStatusBarContrastEnforced: false,
       ),
       child: Scaffold(
-      backgroundColor: _backgroundColor,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_backgroundColor, _backgroundColor.withOpacity(0.92)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+        backgroundColor: _backgroundColor,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_backgroundColor, _backgroundColor.withOpacity(0.92)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                     ),
+                    child: _buildMessagesList(),
                   ),
-                  child: _buildMessagesList(),
                 ),
-              ),
-              _bottomSection(),
-            ],
-          ),
+                _bottomSection(),
+              ],
+            ),
 
-          if (showActionOverlay) _fullScreenActionOverlay(),
-          if (showDeletePopup) _deletePopupOverlay(),
-        ],
-      ),
+            if (showActionOverlay) _fullScreenActionOverlay(),
+            if (showDeletePopup) _deletePopupOverlay(),
+          ],
+        ),
       ),
     );
   }
