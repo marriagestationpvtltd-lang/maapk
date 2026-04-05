@@ -417,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       elevation: 0,
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
-      systemOverlayStyle: const SystemUiOverlayStyle(
+      systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.white,
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
