@@ -15,7 +15,7 @@ $conn = new mysqli($host, $user, $pass, $dbname);
 // ✅ Show DB connection errors
 if ($conn->connect_error) {
     http_response_code(500);
-    echo json_encode(["error" => "Database connection failed", "details" => $conn->connect_error]);
+    echo json_encode(["error" => "Database connection failed"]);
     exit;
 }
 
@@ -105,7 +105,8 @@ try {
 } catch (Exception $e) {
     $conn->rollback();
     http_response_code(500);
-    echo json_encode(["error" => "Update failed", "details" => $e->getMessage()]);
+    error_log('update.php Exception: ' . $e->getMessage());
+    echo json_encode(["error" => "Update failed"]);
 }
 
 $conn->close();

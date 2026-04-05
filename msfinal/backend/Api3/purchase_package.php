@@ -92,9 +92,9 @@ try {
 
 } catch (Exception $e) {
     $pdo->rollBack();
-
+    error_log('purchase_package.php Exception: ' . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => $e->getMessage()
+        "message" => "Purchase failed"
     ]);
 }

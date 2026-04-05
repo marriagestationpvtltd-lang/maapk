@@ -1,6 +1,6 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+    error_reporting(0);
+    ini_set('display_errors', 0);
 
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
@@ -15,7 +15,7 @@ $dbname = "ms";
 
 $conn = new mysqli($host, $user, $pass, $dbname);
 if ($conn->connect_error) {
-    echo json_encode(["success" => false, "message" => "Database connection failed: " . $conn->connect_error]);
+    echo json_encode(["success" => false, "message" => "Database connection failed"]);
     exit;
 }
 

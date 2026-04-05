@@ -71,8 +71,9 @@ try {
         ]
     ]);
 } catch (Exception $e) {
+    error_log('privacy.php Exception: ' . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => $e->getMessage()
+        "message" => "Failed to update privacy"
     ]);
 }

@@ -81,8 +81,9 @@ try {
     ]);
 
 } catch (PDOException $e) {
+    error_log('add_profile_view.php PDOException: ' . $e->getMessage());
     echo json_encode([
         "status" => false,
-        "message" => $e->getMessage()
+        "message" => "Database error"
     ]);
 }

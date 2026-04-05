@@ -15,8 +15,8 @@ if (empty($data)) {
 }
 
 $userid = intval($data['userid'] ?? 0);
-$delete_reason = trim($data['delete_reason'] ?? '');
-$feedback = trim($data['feedback'] ?? '');
+$delete_reason = substr(trim($data['delete_reason'] ?? ''), 0, 500);
+$feedback = substr(trim($data['feedback'] ?? ''), 0, 1000);
 
 if ($userid <= 0) {
     echo json_encode(["status" => "error", "message" => "Invalid user ID"]);

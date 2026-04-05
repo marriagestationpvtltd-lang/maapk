@@ -96,5 +96,6 @@ try {
     ]);
 
 } catch (Exception $e) {
-    response(false, 'Server error', ['error' => $e->getMessage()], 500);
+    error_log('api9/login.php Exception: ' . $e->getMessage());
+    response(false, 'Server error', [], 500);
 }

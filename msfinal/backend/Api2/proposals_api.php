@@ -113,7 +113,8 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
     if ($result === false) {
-        throw new Exception($stmt->error);
+        error_log('proposals_api.php stmt error: ' . $stmt->error);
+        throw new Exception("Failed to fetch proposals");
     }
 
     $data = [];
@@ -152,10 +153,10 @@ try {
     ]);
 
 } catch (Exception $e) {
+    error_log('proposals_api.php Exception: ' . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => "Server error",
-        "debug" => $e->getMessage()
+        "message" => "Server error"
     ]);
 }
 

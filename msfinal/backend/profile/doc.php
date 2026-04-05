@@ -158,7 +158,8 @@ elseif ($method == 'POST') {
     if ($stmt->execute()) {
         echo json_encode(["success" => true, "message" => "Document updated successfully"]);
     } else {
-        echo json_encode(["success" => false, "message" => "Error updating document: " . $stmt->error]);
+        error_log('profile/doc.php execute error: ' . $stmt->error);
+        echo json_encode(["success" => false, "message" => "Error updating document"]);
     }
     $stmt->close();
 }

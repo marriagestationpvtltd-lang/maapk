@@ -88,8 +88,9 @@ try {
     ]);
 
 } catch (PDOException $e) {
+    error_log('request_list.php PDOException: ' . $e->getMessage());
     echo json_encode([
         "status" => false,
-        "message" => $e->getMessage()
+        "message" => "Database error"
     ]);
 }

@@ -157,7 +157,8 @@ if ($check->num_rows > 0) {
 if ($stmt->execute()) {
     echo json_encode(["status"=>"success"]);
 } else {
-    echo json_encode(["status"=>"error","message"=>$stmt->error]);
+    error_log('user_partner.php execute error: ' . $stmt->error);
+    echo json_encode(["status"=>"error","message"=>"Failed to save partner preferences"]);
 }
 $stmt->close();
 $conn->close();
