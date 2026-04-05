@@ -1,0 +1,81 @@
+/* Custom styles */
+.badge-pending {
+    background-color: #fef3c7;
+    color: #d97706;
+    border: none;
+}
+
+.badge-approved {
+    background-color: #d1fae5;
+    color: #059669;
+    border: none;
+}
+
+.badge-rejected {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: none;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #6b7280;
+    font-weight: 500;
+    padding: 12px 20px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+    background: none;
+}
+
+.document-image {
+    height: 200px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.document-image img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .navbar-top {
+        padding: 0 15px;
+    }
+    
+    .content-wrapper {
+        padding: 15px;
+    }
+}

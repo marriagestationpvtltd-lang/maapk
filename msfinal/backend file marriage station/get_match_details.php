@@ -1,0 +1,202 @@
+<?php
+header('Content-Type: application/json');
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+include 'db_connect.php';
+
+// ✅ Set Nepal timezone
+date_default_timezone_set('Asia/Kathmandu');
+$conn->query("SET time_zone = '+05:45'");
+
+// ✅ Base URL for images
+$base_url = "https://digitallami.com/Api2/";
+
+/* ----------------------------------------------------------
+   STEP 0: Get user_id from GET request
+---------------------------------------------------------- */
+$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+
+if ($user_id == 0) {
+    echo json_encode(["status" => "error", "message" => "user_id is required"]);
+    exit;
+}
+
+/* ----------------------------------------------------------
+   STEP 1: Get user details
+---------------------------------------------------------- */
+$userQuery = $conn->prepare("
+    SELECT u.id, u.firstName, u.lastName, u.gender, u.profile_picture,
+           upd.birthDate, upd.memberid, upd.occupationId, upd.educationId,
+           upd.maritalStatusId, upd.religionId, upd.communityId
+    FROM users u
+    JOIN userpersonaldetail upd ON u.id = upd.userId
+    WHERE u.id = ?
+");
+$userQuery->bind_param("i", $user_id);
+$userQuery->execute();
+$userResult = $userQuery->get_result();
+
+if ($userResult->num_rows === 0) {
+    echo json_encode(["status" => "error", "message" => "User not found"]);
+    exit;
+}
+
+$user = $userResult->fetch_assoc();
+
+// Calculate user age
+$age = null;
+if (!empty($user['birthDate'])) {
+    $birth = new DateTime($user['birthDate']);
+    $age = (new DateTime())->diff($birth)->y;
+}
+
+// Get profile picture URL
+$profile_picture = "";
+if (!empty($user['profile_picture'])) {
+    if (strpos($user['profile_picture'], 'http') === 0) {
+        $profile_picture = $user['profile_picture'];
+    } else {
+        $profile_picture = $base_url . $user['profile_picture'];
+    }
+}
+
+/* ----------------------------------------------------------
+   STEP 2: Get mutual matches (users who match with this user)
+---------------------------------------------------------- */
+$matchQuery = $conn->prepare("
+    SELECT 
+        u.id, u.firstName, u.lastName, u.profile_picture,
+        upd.memberid, upd.birthDate, upd.occupationId
+    FROM users u
+    JOIN userpersonaldetail upd ON u.id = upd.userId
+    WHERE u.id IN (
+        SELECT matched_id FROM matches WHERE user_id = ?
+        UNION
+        SELECT user_id FROM matches WHERE matched_id = ?
+    )
+    LIMIT 10
+");
+$matchQuery->bind_param("ii", $user_id, $user_id);
+$matchQuery->execute();
+$matchResult = $matchQuery->get_result();
+
+$mutualMatches = [];
+while ($match = $matchResult->fetch_assoc()) {
+    // Calculate match age
+    $matchAge = null;
+    if (!empty($match['birthDate'])) {
+        $birth = new DateTime($match['birthDate']);
+        $matchAge = (new DateTime())->diff($birth)->y;
+    }
+    
+    // Get profile picture
+    $matchPicture = "";
+    if (!empty($match['profile_picture'])) {
+        if (strpos($match['profile_picture'], 'http') === 0) {
+            $matchPicture = $match['profile_picture'];
+        } else {
+            $matchPicture = $base_url . $match['profile_picture'];
+        }
+    }
+    
+    // Get occupation
+    $occupation = "";
+    if (!empty($match['occupationId'])) {
+        $occQuery = $conn->prepare("SELECT name FROM occupation WHERE id=?");
+        $occQuery->bind_param("i", $match['occupationId']);
+        $occQuery->execute();
+        $occResult = $occQuery->get_result();
+        if ($occResult->num_rows) {
+            $occupation = $occResult->fetch_assoc()['name'];
+        }
+    }
+    
+    $mutualMatches[] = [
+        'id' => $match['id'],
+        'name' => trim($match['firstName'] . ' ' . $match['lastName']),
+        'member_id' => $match['memberid'],
+        'profile_picture' => $matchPicture,
+        'age' => $matchAge,
+        'occupation' => $occupation
+    ];
+}
+
+/* ----------------------------------------------------------
+   STEP 3: Get common interests (simplified - based on matching criteria)
+---------------------------------------------------------- */
+$commonInterests = [];
+
+// Check for matching preferences (you can expand this based on your data)
+$prefQuery = $conn->prepare("SELECT * FROM userpartnerpreferences WHERE userId = ?");
+$prefQuery->bind_param("i", $user_id);
+$prefQuery->execute();
+$prefResult = $prefQuery->get_result();
+
+if ($prefResult->num_rows > 0) {
+    $pref = $prefResult->fetch_assoc();
+    
+    // Add interests based on preferences
+    if (!empty($pref['pReligionId'])) {
+        $relQuery = $conn->prepare("SELECT name FROM religion WHERE id=?");
+        $relQuery->bind_param("i", $pref['pReligionId']);
+        $relQuery->execute();
+        $relResult = $relQuery->get_result();
+        if ($relResult->num_rows) {
+            $commonInterests[] = $relResult->fetch_assoc()['name'];
+        }
+    }
+    
+    if (!empty($pref['pCommunityId'])) {
+        $comQuery = $conn->prepare("SELECT name FROM community WHERE id=?");
+        $comQuery->bind_param("i", $pref['pCommunityId']);
+        $comQuery->execute();
+        $comResult = $comQuery->get_result();
+        if ($comResult->num_rows) {
+            $commonInterests[] = $comResult->fetch_assoc()['name'];
+        }
+    }
+    
+    if (!empty($pref['pEducationTypeId'])) {
+        $eduQuery = $conn->prepare("SELECT name FROM education WHERE id=?");
+        $eduQuery->bind_param("i", $pref['pEducationTypeId']);
+        $eduQuery->execute();
+        $eduResult = $eduQuery->get_result();
+        if ($eduResult->num_rows) {
+            $commonInterests[] = $eduResult->fetch_assoc()['name'];
+        }
+    }
+}
+
+// Add default interests if none found
+if (empty($commonInterests)) {
+    $commonInterests = ['Finding meaningful connections', 'Building relationships'];
+}
+
+/* ----------------------------------------------------------
+   STEP 4: Calculate match percentage (simplified)
+---------------------------------------------------------- */
+$matchPercentage = 75; // Default percentage
+// You can implement more complex matching logic here
+
+/* ----------------------------------------------------------
+   STEP 5: Return response
+---------------------------------------------------------- */
+echo json_encode([
+    "status" => "success",
+    "message" => "Match details fetched successfully",
+    "match_details" => [
+        "percentage" => $matchPercentage,
+        "commonInterests" => $commonInterests,
+        "age" => $age,
+        "member_id" => $user['memberid'],
+        "name" => trim($user['firstName'] . ' ' . $user['lastName']),
+        "profile_picture" => $profile_picture,
+        "gender" => $user['gender']
+    ],
+    "mutual_matches" => $mutualMatches
+], JSON_PRETTY_PRINT);
+
+$conn->close();
+?>
