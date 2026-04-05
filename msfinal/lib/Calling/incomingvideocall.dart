@@ -45,6 +45,9 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   bool _frontCamera = true;
   bool _processing = false;
   bool _foregroundServiceStarted = false;
+  bool _ending = false;
+  bool _remoteVideoStopped = false;
+  bool _connecting = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -63,7 +66,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     super.initState();
     WakelockPlus.enable();
     _parseData();
-    _localUid = Random().nextInt(999999);
+    _localUid = Random().nextInt(999998) + 1;
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
@@ -234,10 +237,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           },
           onUserJoined: (connection, remoteUid, elapsed) {
             print('👤 Remote user joined: $remoteUid');
-            setState(() {
-              _remoteUid = remoteUid;
-            });
+            if (mounted) {
+              setState(() {
+                _remoteUid = remoteUid;
+                _callActive = true;
+                _remoteVideoStopped = false;
+                _connecting = false;
+              });
+            }
             _startCallTimer();
+            _syncOverlayState();
           },
           onUserOffline: (connection, remoteUid, reason) {
             print('👤 Remote user offline: $remoteUid, reason: $reason');
@@ -245,24 +254,25 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           },
           onRemoteVideoStateChanged: (connection, remoteUid, state, reason, elapsed) {
             print('📹 Remote video state changed: uid=$remoteUid, state=$state, reason=$reason');
-            // Handle video state changes
             if (state == RemoteVideoState.remoteVideoStateStopped ||
                 state == RemoteVideoState.remoteVideoStateFailed) {
               print('❌ Remote video stopped/failed');
-              setState(() {
-                if (_remoteUid == remoteUid) {
-                  _remoteUid = null;
-                }
-              });
+              if (mounted) setState(() => _remoteVideoStopped = true);
             } else if (state == RemoteVideoState.remoteVideoStateDecoding) {
               print('✅ Remote video started decoding');
-              setState(() {
-                _remoteUid = remoteUid;
-              });
+              if (mounted) {
+                setState(() {
+                  _remoteUid = remoteUid;
+                  _remoteVideoStopped = false;
+                });
+              }
             }
           },
           onError: (errorCode, errorMsg) {
             print('❌ Agora error $errorCode $errorMsg');
+            if (_remoteUid == null && !_ending) {
+              _endCall();
+            }
           },
         ),
       );
@@ -296,8 +306,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         ),
       );
 
-      print('✅ Call active');
-      setState(() => _callActive = true);
+      print('✅ Joined channel, waiting for remote user...');
+      if (mounted) setState(() => _connecting = true);
       _initializeOverlay();
     } catch (e) {
       print('❌ Accept error: $e');
@@ -404,6 +414,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   // ================= END =================
   Future<void> _endCall() async {
+    if (_ending) return;
+    _ending = true;
     _callTimer?.cancel();
 
     if (_callActive) {
@@ -493,6 +505,9 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         if (_callActive) {
           // If call is active, minimize it
           await _minimizeCall();
+        } else if (_connecting) {
+          // If still connecting, end the call
+          await _endCall();
         } else {
           // If call is not yet accepted, reject it
           await _rejectCall();
@@ -501,7 +516,40 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
+          child: _callActive
+              ? _buildActiveCallUI()
+              : (_connecting ? _buildConnectingUI() : _buildIncomingCallUI()),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectingUI() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.videocam, color: Colors.white, size: 80),
+            const SizedBox(height: 30),
+            Text(
+              _callerName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(color: Colors.white70, strokeWidth: 3),
+            const SizedBox(height: 20),
+            const Text(
+              'Connecting...',
+              style: TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+          ],
         ),
       ),
     );
@@ -694,8 +742,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Widget _buildActiveCallUI() {
     return Stack(
       children: [
-        // Remote video (when active)
-        if (_remoteUid != null && _isVideoCall)
+        // Remote video (when active and video not stopped)
+        if (_remoteUid != null && _isVideoCall && !_remoteVideoStopped)
           AgoraVideoView(
             controller: VideoViewController.remote(
               rtcEngine: _engine,
