@@ -391,7 +391,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);
@@ -451,7 +451,7 @@ class _ProfileSwipeUIState extends State<ProfileSwipeUI> {
       print("Checking document status for user ID: $userId");
 
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
+        Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );

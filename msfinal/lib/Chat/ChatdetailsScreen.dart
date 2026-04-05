@@ -32,7 +32,6 @@ import '../webrtc/webrtc.dart';
 import 'call_overlay_manager.dart';
 import 'widgets/typing_indicator.dart';
 import '../constant/constant.dart';
-import '../constant/app_constants.dart';
 import '../utils/time_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/privacy_utils.dart';

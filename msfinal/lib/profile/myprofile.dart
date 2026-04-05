@@ -91,7 +91,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/myprofile.php?userid=${userId}'),
+        Uri.parse('https://digitallami.com/Api2/myprofile.php?userid=${userId}'),
       );
 
       if (response.statusCode == 200) {
@@ -177,7 +177,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchDocumentStatus(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/check_marital_document_status.php'),
+        Uri.parse('https://digitallami.com/Api2/check_marital_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': int.parse(userId)}),
       );
@@ -206,7 +206,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchActivePackage(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/user_package.php?userid=$userId'),
+        Uri.parse('https://digitallami.com/Api2/user_package.php?userid=$userId'),
       );
 
       if (response.statusCode != 200) {
@@ -250,14 +250,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   String _getFullImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
-      return '';
+      return 'https://via.placeholder.com/150?text=No+Image';
     }
 
     String baseUrl;
     if (imagePath.startsWith('http')) {
       baseUrl = imagePath;
     } else {
-      baseUrl = 'http://192.168.1.9/Api2/$imagePath';
+      baseUrl = 'https://digitallami.com/Api2/$imagePath';
     }
 
     // Add timestamp to prevent caching
@@ -429,7 +429,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     String currentPrivacy = 'Private';
     try {
       final Uri getUrl = Uri.parse(
-          'http://192.168.1.9/Api3/get_privacy.php?userid=$userId');
+          'https://digitallami.com/Api3/get_privacy.php?userid=$userId');
       final response = await http.get(getUrl);
 
       if (response.statusCode == 200) {
@@ -539,7 +539,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     // Step 4: Call update_privacy API
                     try {
                       final Uri updateUrl = Uri.parse(
-                          'http://192.168.1.9/Api3/privacy.php?userid=$userId&privacy=$privacyValue');
+                          'https://digitallami.com/Api3/privacy.php?userid=$userId&privacy=$privacyValue');
                       final response = await http.get(updateUrl);
 
                       if (response.statusCode == 200) {
@@ -911,9 +911,9 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                           image: DecorationImage(
-                            image: _getFullImageUrl(personalDetail['profile_picture']).isNotEmpty
-                                ? NetworkImage(_getFullImageUrl(personalDetail['profile_picture'])) as ImageProvider
-                                : const AssetImage('assets/images/user1.png'),
+                            image: NetworkImage(
+                              _getFullImageUrl(personalDetail['profile_picture']),
+                            ),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -2401,7 +2401,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         ),
       );
 
-      final uri = Uri.parse('http://192.168.1.9/Api2/profile_picture.php');
+      final uri = Uri.parse('https://digitallami.com/Api2/profile_picture.php');
 
       final request = http.MultipartRequest('POST', uri)
         ..fields['userid'] = userId.toString()
@@ -2465,7 +2465,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/aboutme.php"),
+        Uri.parse("https://digitallami.com/Api2/aboutme.php"),
         body: {
           "userid": userId.toString(),
           "aboutMe": aboutMe.trim(),

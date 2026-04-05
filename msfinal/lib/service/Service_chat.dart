@@ -1,11 +1,9 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 
 class ServiceChatPage extends StatefulWidget {
   final String senderId;
@@ -90,21 +88,14 @@ class _ServiceChatPageState extends State<ServiceChatPage> {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
 
-    try {
-      final messageId = const Uuid().v4();
-      final fileName = 'service_chat_images/$chatId/$messageId.jpg';
-      final ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(File(image.path));
-      final imageUrl = await ref.getDownloadURL();
+    // 🔥 Upload to Firebase Storage in real app
+    const imageUrl = "https://via.placeholder.com/400x300.png?text=Service+Image";
 
-      await _sendMessage(
-        type: 'image',
-        imageUrl: imageUrl,
-        message: 'Photo',
-      );
-    } catch (e) {
-      debugPrint('Error uploading service chat image: $e');
-    }
+    await _sendMessage(
+      type: 'image',
+      imageUrl: imageUrl,
+      message: 'Photo',
+    );
   }
 
   Future<void> _sendMessage({

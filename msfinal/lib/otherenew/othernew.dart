@@ -15,7 +15,6 @@ import '../Chat/adminchat.dart';
 import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../constant/constant.dart';
-import '../constant/app_constants.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
 import '../utils/image_utils.dart';
@@ -33,7 +32,7 @@ ProfileScreen({super.key, required this.userId,});
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const String _requestBaseUrl = 'http://192.168.1.9/request';
+  static const String _requestBaseUrl = 'https://digitallami.com/request';
 
   bool _isBlocked = false;
   bool _isLoadingBlock = false;

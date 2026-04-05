@@ -1,14 +1,4 @@
-lib/constants/agora_constants.dart
-
-class ApiConfig {
-  // ── Live Server ──────────────────────────────────────────────────────────
-   static const String baseUrl    = 'https://digitallami.com/Api2';
-   static const String baseUrl3   = 'https://digitallami.com/Api3';
-   static const String requestUrl = 'https://digitallami.com/request';
-   static const String appUrl     = 'https://digitallami.com/app.php';
-
-}
-
+// lib/constants/agora_constants.dart
 class AgoraConstants {
   // Replace these with your actual Agora credentials
   static const String appId = 'a82d7e84e3d34290bea0577ae96c45ae';
