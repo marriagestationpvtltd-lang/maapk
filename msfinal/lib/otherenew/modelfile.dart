@@ -130,7 +130,7 @@ class MatchedProfile {
   String get maritalStatus => "Not specified"; // Not in API
   String get qualification => "Not specified"; // Not in API
   String get imageUrl => profilePicture != null && profilePicture!.isNotEmpty
-      ? "https://digitallami.com/Api2/$profilePicture"
+      ? "http://10.0.2.2/Api2/$profilePicture"
       : '';
 
   bool get isVerifiedBool => isVerified == 1;

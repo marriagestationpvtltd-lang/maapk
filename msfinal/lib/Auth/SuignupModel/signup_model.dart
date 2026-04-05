@@ -99,7 +99,7 @@ class SignupModel extends ChangeNotifier {
 
 
   /// Submit multipart/form-data to signup endpoint
-  Future<bool> submitSignup({String url = 'https://digitallami.com/Api2/signup.php'}) async {
+  Future<bool> submitSignup({String url = 'http://10.0.2.2/Api2/signup.php'}) async {
     isSubmitting = true;
     error = null;
     notifyListeners();

@@ -27,7 +27,7 @@ class _PackageHistoryPageState extends State<PackageHistoryPage> {
       errorMessage = '';
     });
     final url = Uri.parse(
-        "https://digitallami.com/Api2/user_package.php?userid=${widget.userid}");
+        "http://10.0.2.2/Api2/user_package.php?userid=${widget.userid}");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {

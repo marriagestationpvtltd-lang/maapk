@@ -199,7 +199,7 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       print("Loading data for user ID: $userId");
 
       // Call GET API
-      var url = Uri.parse("https://digitallami.com/Api2/get_educationcareer.php?userid=$userId");
+      var url = Uri.parse("http://10.0.2.2/Api2/get_educationcareer.php?userid=$userId");
       var response = await http.get(url);
 
       print("API Response Status: ${response.statusCode}");
@@ -1051,7 +1051,7 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       final userData = jsonDecode(userDataString!);
       final userId = int.tryParse(userData["id"].toString());
 
-      var url = Uri.parse("https://digitallami.com/Api2/educationcareer.php");
+      var url = Uri.parse("http://10.0.2.2/Api2/educationcareer.php");
       var response = await http.post(url, body: {
         "userid": userId.toString(),
         "educationmedium": _selectedEducationMedium ?? '',

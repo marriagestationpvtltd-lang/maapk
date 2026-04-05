@@ -175,7 +175,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
+      "http://10.0.2.2/Api2/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

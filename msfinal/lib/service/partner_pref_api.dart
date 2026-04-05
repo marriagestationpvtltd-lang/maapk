@@ -6,8 +6,8 @@ class UserPartnerPreferenceService {
   final String fetchUrl;
 
   UserPartnerPreferenceService({
-    this.saveUrl = 'https://digitallami.com/Api2/user_partner.php',
-    this.fetchUrl = 'https://digitallami.com/Api2/get_partner_preferences.php',
+    this.saveUrl = 'http://10.0.2.2/Api2/user_partner.php',
+    this.fetchUrl = 'http://10.0.2.2/Api2/get_partner_preferences.php',
   });
 
   Future<Map<String, dynamic>?> fetchPartnerPreference({

@@ -526,7 +526,7 @@ class _LifestylePageState extends State<LifestylePage> with SingleTickerProvider
       body.removeWhere((key, value) => value.isEmpty);
 
       // API URL
-      String url = "https://digitallami.com/Api2/user_lifestyle.php";
+      String url = "http://10.0.2.2/Api2/user_lifestyle.php";
 
       print("Submitting data: $body");
 

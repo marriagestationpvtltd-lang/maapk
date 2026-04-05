@@ -20,7 +20,7 @@ class LoginModel extends ChangeNotifier {
   void clearError() { error = null; notifyListeners(); }
 
   // Login method
-  Future<bool> login({String url = 'https://digitallami.com/Api2/signin.php'}) async {
+  Future<bool> login({String url = 'http://10.0.2.2/Api2/signin.php'}) async {
     isSubmitting = true;
     error = null;
     notifyListeners();

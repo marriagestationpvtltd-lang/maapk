@@ -388,7 +388,7 @@ class _CommunityDetailsPageState extends State<CommunityDetailsPage> {
     required int subCommunityId,
     required String castLanguage,
   }) async {
-    final url = Uri.parse("https://digitallami.com/Api2/update_religion.php");
+    final url = Uri.parse("http://10.0.2.2/Api2/update_religion.php");
 
     try {
       final response = await http.post(

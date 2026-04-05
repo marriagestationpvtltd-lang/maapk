@@ -871,7 +871,7 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
 
       final response = await http
           .post(
-            Uri.parse('https://digitallami.com/Api2/updateadress.php'),
+            Uri.parse('http://10.0.2.2/Api2/updateadress.php'),
             body: body,
           )
           .timeout(const Duration(seconds: 30));

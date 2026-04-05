@@ -29,8 +29,8 @@ class _MatrimonyNotificationPageState
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
-  final String _baseUrl = "https://digitallami.com/Api2";
-  final String _requestUrl = "https://digitallami.com/request/request_list.php";
+  final String _baseUrl = "http://10.0.2.2/Api2";
+  final String _requestUrl = "http://10.0.2.2/request/request_list.php";
 
   @override
   void initState() {

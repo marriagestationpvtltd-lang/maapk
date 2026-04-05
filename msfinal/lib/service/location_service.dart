@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class LocationService {
-  static const String baseUrl = "https://digitallami.com/Api3";
+  static const String baseUrl = "http://10.0.2.2/Api3";
 
   /// Generic GET request
   static Future<List<Map<String, dynamic>>> _getList(

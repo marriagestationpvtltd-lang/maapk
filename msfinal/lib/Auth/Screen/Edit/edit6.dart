@@ -153,7 +153,7 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
       print("Loading family data for user ID: $userId");
 
       // Call GET API
-      var url = Uri.parse("https://digitallami.com/Api2/get_family_details.php?userid=$userId");
+      var url = Uri.parse("http://10.0.2.2/Api2/get_family_details.php?userid=$userId");
       var response = await http.get(url);
 
       print("API Response Status: ${response.statusCode}");
@@ -1209,7 +1209,7 @@ class _FamilyDetailsPageeState extends State<FamilyDetailsPagee> {
       print("Sending request: $requestBody");
 
       var response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/updatefamily.php"),
+        Uri.parse("http://10.0.2.2/Api2/updatefamily.php"),
         body: requestBody,
       ).timeout(const Duration(seconds: 30));
 

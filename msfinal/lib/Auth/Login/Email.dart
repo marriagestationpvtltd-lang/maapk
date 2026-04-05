@@ -102,7 +102,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
   Future<Map<String, dynamic>?> _loginUser(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/signin.php'),
+        Uri.parse('http://10.0.2.2/Api2/signin.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -287,7 +287,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
         final idToken = await firebaseUser.getIdToken();
 
         final response = await http.post(
-          Uri.parse('https://digitallami.com/Api2/google_signin.php'),
+          Uri.parse('http://10.0.2.2/Api2/google_signin.php'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': firebaseUser.email,

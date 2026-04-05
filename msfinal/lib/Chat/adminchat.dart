@@ -179,7 +179,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       if (userId.isEmpty) return;
 
       final url = Uri.parse(
-        'https://digitallami.com/Api2/masterdata.php?userid=$userId',
+        'http://10.0.2.2/Api2/masterdata.php?userid=$userId',
       );
       final response = await http.get(url);
       if (response.statusCode == 200) {

@@ -6,7 +6,7 @@ import '../Home/Screen/profilecard.dart';
 import 'modelprofile.dart';
 
 class ProfileService {
-  static const String _baseUrl = "https://digitallami.com/Api2";
+  static const String _baseUrl = "http://10.0.2.2/Api2";
 
   Future<Map<String, dynamic>> fetchProfileData(int userId, int myid) async {
     try {
