@@ -21,6 +21,7 @@ import '../pushnotification/pushservice.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
+import '../constant/constant.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -175,7 +176,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "${ApiConfig.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

@@ -18,6 +18,7 @@ import '../Package/PackageScreen.dart';
 import '../Startup/onboarding.dart';
 import '../constant/app_colors.dart';
 import '../otherenew/blocked_users_screen.dart';
+import '../constant/constant.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -43,9 +44,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _currentPrivacy = 'Private';
   bool _loadingPrivacy = true;
 
-  final String _baseUrl = 'http://192.168.1.9/Api2';
-  final String _privacyGetUrl = 'http://192.168.1.9/Api3/get_privacy.php';
-  final String _privacyUpdateUrl = 'http://192.168.1.9/Api3/privacy.php';
+  final String _baseUrl = ApiConfig.baseUrl;
+  final String _privacyGetUrl = '${ApiConfig.baseUrl3}/get_privacy.php';
+  final String _privacyUpdateUrl = '${ApiConfig.baseUrl3}/privacy.php';
 
   @override
   void initState() {

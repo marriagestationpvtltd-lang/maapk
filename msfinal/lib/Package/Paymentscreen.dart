@@ -7,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../Home/Screen/HomeScreenPage.dart';
 import '../Startup/MainControllere.dart';
 import '../constant/design_system.dart';
+import '../constant/constant.dart';
 
 class PaymentPage extends StatefulWidget {
   final double amount;
@@ -50,7 +51,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _fetchVatSettings() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/app_settings.php'),
+        Uri.parse('${ApiConfig.baseUrl}/app_settings.php'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -960,7 +961,7 @@ class _PaymentPageState extends State<PaymentPage> {
     }
 
     final Uri url = Uri.parse(
-        "http://192.168.1.9/Api3/purchase_package.php"
+        "${ApiConfig.baseUrl3}/purchase_package.php"
     ).replace(queryParameters: queryParams);
 
     try {
@@ -988,7 +989,7 @@ class _PaymentPageState extends State<PaymentPage> {
     required int packageId,
   }) async {
     final Uri url = Uri.parse(
-        "http://192.168.1.9/Api3/cancel_payment.php"
+        "${ApiConfig.baseUrl3}/cancel_payment.php"
     ).replace(queryParameters: {
       "userid": userId.toString(),
       "paidby": paidBy,

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../constant/app_colors.dart';
 import '../../service/ocr_service.dart';
 import '../../service/document_scanner_service.dart';
+import '../../constant/constant.dart';
 
 /// Screen for uploading a marital-status supporting document (additional
 /// details verification). Completely separate from [IDVerificationScreen]
@@ -116,7 +117,7 @@ class _MaritalDocumentUploadScreenState
 
       final response = await http.post(
         Uri.parse(
-            'http://192.168.1.9/Api2/check_marital_document_status.php'),
+            '${ApiConfig.baseUrl}/check_marital_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -150,7 +151,7 @@ class _MaritalDocumentUploadScreenState
       final userId = int.tryParse(userData['id'].toString());
 
       final uri = Uri.parse(
-          'http://192.168.1.9/Api2/upload_marital_document.php');
+          '${ApiConfig.baseUrl}/upload_marital_document.php');
       final request = http.MultipartRequest('POST', uri);
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;

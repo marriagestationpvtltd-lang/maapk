@@ -11,6 +11,7 @@ import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
 import '../../service/ocr_service.dart';
 import '../../service/document_scanner_service.dart';
+import '../../constant/constant.dart';
 
 class IDVerificationScreen extends StatefulWidget {
   const IDVerificationScreen({super.key});
@@ -112,7 +113,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
         return;
       }
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/check_document_status.php'),
+        Uri.parse('${ApiConfig.baseUrl}/check_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -164,7 +165,7 @@ class _IDVerificationScreenState extends State<IDVerificationScreen>
       final userId = int.tryParse(userData['id'].toString());
 
       final uri =
-          Uri.parse('http://192.168.1.9/Api2/upload_document.php');
+          Uri.parse('${ApiConfig.baseUrl}/upload_document.php');
       final request = http.MultipartRequest('POST', uri);
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;

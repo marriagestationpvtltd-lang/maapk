@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Home/Screen/profilecard.dart';
 import 'modelprofile.dart';
+import '../constant/constant.dart';
 
 class ProfileService {
-  static const String _baseUrl = "http://192.168.1.9/Api2";
+  static const String _baseUrl = ApiConfig.baseUrl;
 
   Future<Map<String, dynamic>> fetchProfileData(int userId, int myid) async {
     try {

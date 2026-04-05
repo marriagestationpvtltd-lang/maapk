@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../ReUsable/dropdownwidget.dart';
 import '../../../service/partner_age_preferences.dart';
 import '../../../service/updatepage.dart';
+import '../../../constant/constant.dart';
 
 
 
@@ -262,7 +263,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
     setState(() => _loadingCountries = true);
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.1.9/Api3/countries.php"),
+        Uri.parse("${ApiConfig.baseUrl3}/countries.php"),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
@@ -310,7 +311,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
         if (countryId == '0') continue; // Skip "Any"
 
         final response = await http.get(
-          Uri.parse("http://192.168.1.9/Api3/states.php?country_id=$countryId"),
+          Uri.parse("${ApiConfig.baseUrl3}/states.php?country_id=$countryId"),
         ).timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
@@ -359,7 +360,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
         if (stateId == 'Any' || stateId == '0') continue;
 
         final response = await http.get(
-          Uri.parse("http://192.168.1.9/Api3/cities.php?state_id=$stateId"),
+          Uri.parse("${ApiConfig.baseUrl3}/cities.php?state_id=$stateId"),
         ).timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
@@ -2317,7 +2318,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
       }
 
       final response = await http.get(
-        Uri.parse("http://192.168.1.9/Api2/get_partner_preferences.php?userid=$userId"),
+        Uri.parse("${ApiConfig.baseUrl}/get_partner_preferences.php?userid=$userId"),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
@@ -2393,7 +2394,7 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
       print("Sending JSON data: $body");
 
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/user_partner.php"),
+        Uri.parse("${ApiConfig.baseUrl}/user_partner.php"),
         body: jsonEncode(body),
         headers: {
           "Content-Type": "application/json; charset=UTF-8",

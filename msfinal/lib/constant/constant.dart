@@ -1,9 +1,9 @@
-// lib/constants/agora_constants.dart
+// lib/constant/constant.dart
 
 /// Central API configuration.
 /// तल तीन option छन् — जुन चाहिन्छ त्यो uncomment गर्नुस्, बाकी comment राख्नुस्।
 class ApiConfig {
-  // ── Live Server ──────────────────────────────────────────────────────────
+  // ── Live Server (Production) ─────────────────────────────────────────────
   // static const String baseUrl    = 'https://digitallami.com/Api2';
   // static const String baseUrl3   = 'https://digitallami.com/Api3';
   // static const String requestUrl = 'https://digitallami.com/request';

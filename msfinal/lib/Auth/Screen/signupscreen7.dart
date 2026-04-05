@@ -12,6 +12,7 @@ import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
 import '../../service/location_service.dart';
 import '../../service/updatepage.dart';
+import '../../constant/constant.dart';
 
 class AstrologicDetailsPage extends StatefulWidget {
   const AstrologicDetailsPage({super.key});
@@ -1544,7 +1545,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
 
       // Send POST request with better error handling
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/user_astrologic.php"),
+        Uri.parse("${ApiConfig.baseUrl}/user_astrologic.php"),
         body: postData,
       ).timeout(const Duration(seconds: 30));
 

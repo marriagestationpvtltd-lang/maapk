@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constant/constant.dart';
 
 class Webrtc {
   final int ide;
@@ -17,7 +18,7 @@ class Webrtc {
 
 
 Future<Webrtc?> fetchWebrtc() async {
-  final String apiUrl = "http://192.168.1.9/Api2/webrtc.php";
+  final String apiUrl = "${ApiConfig.baseUrl}/webrtc.php";
 
   final response = await http.get(Uri.parse(apiUrl));
 

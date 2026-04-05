@@ -9,6 +9,7 @@ import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
+import '../../constant/constant.dart';
 
 class LifestylePage extends StatefulWidget {
   const LifestylePage({super.key});
@@ -526,7 +527,7 @@ class _LifestylePageState extends State<LifestylePage> with SingleTickerProvider
       body.removeWhere((key, value) => value.isEmpty);
 
       // API URL
-      String url = "http://192.168.1.9/Api2/user_lifestyle.php";
+      String url = "${ApiConfig.baseUrl}/user_lifestyle.php";
 
       print("Submitting data: $body");
 

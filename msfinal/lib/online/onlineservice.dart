@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show unawaited;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constant/constant.dart';
 
 class OnlineStatusService {
   static final OnlineStatusService _instance = OnlineStatusService._internal();
@@ -14,7 +15,7 @@ class OnlineStatusService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final String _apiUrl =
-      "http://192.168.1.9/request/update_last_login.php";
+      "${ApiConfig.requestUrl}/update_last_login.php";
 
   /// 🔥 Start tracking (call on app start / app resume)
   void start() {

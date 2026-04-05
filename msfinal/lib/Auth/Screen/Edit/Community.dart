@@ -5,6 +5,7 @@ import 'package:ms2026/Auth/Screen/signupscreen4.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../ReUsable/dropdownwidget.dart';
+import '../../../constant/constant.dart';
 
 
 class CommunityDetailsPageEdit extends StatefulWidget {
@@ -432,7 +433,7 @@ class _CommunityDetailsPageEditState extends State<CommunityDetailsPageEdit> {
     required int subCommunityId,
     required String castLanguage,
   }) async {
-    final url = Uri.parse("http://192.168.1.9/Api2/update_religion.php");
+    final url = Uri.parse("${ApiConfig.baseUrl}/update_religion.php");
 
     try {
       final response = await http.post(

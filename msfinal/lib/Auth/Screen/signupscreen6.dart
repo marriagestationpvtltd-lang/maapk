@@ -11,6 +11,7 @@ import '../../ReUsable/registration_progress.dart';
 import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
 import '../../service/updatepage.dart';
+import '../../constant/constant.dart';
 
 class EducationCareerPage extends StatefulWidget {
   const EducationCareerPage({super.key});
@@ -845,7 +846,7 @@ class _EducationCareerPageState extends State<EducationCareerPage> with SingleTi
       print("Sending request: $requestBody");
 
       var response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/educationcareer.php"),
+        Uri.parse("${ApiConfig.baseUrl}/educationcareer.php"),
         body: requestBody,
       ).timeout(const Duration(seconds: 30));
 

@@ -4,6 +4,7 @@ import 'package:ms2026/Auth/Screen/signupscreen7.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../../ReUsable/dropdownwidget.dart';
+import '../../../constant/constant.dart';
 
 class EducationCareerPagee extends StatefulWidget {
   const EducationCareerPagee({
@@ -199,7 +200,7 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       print("Loading data for user ID: $userId");
 
       // Call GET API
-      var url = Uri.parse("http://192.168.1.9/Api2/get_educationcareer.php?userid=$userId");
+      var url = Uri.parse("${ApiConfig.baseUrl}/get_educationcareer.php?userid=$userId");
       var response = await http.get(url);
 
       print("API Response Status: ${response.statusCode}");
@@ -1051,7 +1052,7 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       final userData = jsonDecode(userDataString!);
       final userId = int.tryParse(userData["id"].toString());
 
-      var url = Uri.parse("http://192.168.1.9/Api2/educationcareer.php");
+      var url = Uri.parse("${ApiConfig.baseUrl}/educationcareer.php");
       var response = await http.post(url, body: {
         "userid": userId.toString(),
         "educationmedium": _selectedEducationMedium ?? '',

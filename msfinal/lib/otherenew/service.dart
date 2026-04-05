@@ -6,9 +6,10 @@ import 'package:http/http.dart' as http;
 import '../Notification/notification_inbox_service.dart';
 import '../pushnotification/pushservice.dart';
 import '../otherenew/modelfile.dart';
+import '../constant/constant.dart';
 
 class ProfileService {
-  static const String baseUrl = 'http://192.168.1.9/Api2';
+  static const String baseUrl = ApiConfig.baseUrl;
 
   /// Fetch profile data from API
   Future<ProfileResponse> fetchProfile({
@@ -274,14 +275,14 @@ class ProfileService {
     required bool like,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/like.php');
+      final url = Uri.parse('$baseUrl/like_action.php');
 
       final response = await http.post(
         url,
         body: {
-          'myid': myId,
-          'userid': userId,
-          'like': like ? '1' : '0',
+          'sender_id': myId,
+          'receiver_id': userId,
+          'action': like ? 'add' : 'delete',
         },
       );
 

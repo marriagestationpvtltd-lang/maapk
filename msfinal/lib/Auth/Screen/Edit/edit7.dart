@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../ReUsable/dropdownwidget.dart';
+import '../../../constant/constant.dart';
 
 class LifestylePagee extends StatefulWidget {
   const LifestylePagee({
@@ -112,7 +113,7 @@ class _LifestylePageeState extends State<LifestylePagee> {
       print("Loading lifestyle data for user ID: $userId");
 
       // Call GET API
-      var url = Uri.parse("http://192.168.1.9/Api2/get_lifestyle.php?userid=$userId");
+      var url = Uri.parse("${ApiConfig.baseUrl}/get_lifestyle.php?userid=$userId");
       var response = await http.get(url);
 
       print("API Response Status: ${response.statusCode}");
@@ -580,7 +581,7 @@ SizedBox(width: 80,),
       body.removeWhere((key, value) => value.isEmpty);
 
       // API URL
-      String url = "http://192.168.1.9/Api2/user_lifestyle.php";
+      String url = "${ApiConfig.baseUrl}/user_lifestyle.php";
 
       print("Submitting lifestyle data: $body");
 

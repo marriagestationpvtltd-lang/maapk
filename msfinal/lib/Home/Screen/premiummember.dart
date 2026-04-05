@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Models/masterdata.dart';
 import '../../main.dart';
 import '../../ReUsable/loading_widgets.dart';
+import '../../constant/constant.dart';
 
 class PaidUsersListPage extends StatefulWidget {
   final int userId;
@@ -79,7 +80,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "${ApiConfig.baseUrl}/masterdata.php?userid=$userId",
     );
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -128,7 +129,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/premiuimmember.php?user_id=${widget.userId}&page=$_currentPage'),
+        Uri.parse('${ApiConfig.baseUrl}/premiuimmember.php?user_id=${widget.userId}&page=$_currentPage'),
       );
 
       if (response.statusCode == 200) {
@@ -258,7 +259,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
     final isVerified = user['isVerified'] == 1;
     final profilePic = user['profile_picture'];
     final imageUrl = profilePic != null && profilePic.toString().isNotEmpty
-        ? 'http://192.168.1.9/Api2/$profilePic'
+        ? '${ApiConfig.baseUrl}/$profilePic'
         : '';
 
     final shouldBlurPhoto = usertye == 'free';

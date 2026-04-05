@@ -38,6 +38,7 @@ import '../../purposal/requestcard.dart' show showUpgradeDialog;
 import '../../service/Service_chat.dart';
 import '../../ReUsable/loading_widgets.dart';
 import 'machprofilescreen.dart';
+import '../../constant/constant.dart';
 
 // Cache data structure for better performance
 class CachedData {
@@ -65,7 +66,7 @@ class MatrimonyHomeScreen extends StatefulWidget {
 }
 
 class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
-  static const String _apiBaseUrl = 'http://192.168.1.9/Api2';
+  static const String _apiBaseUrl = ApiConfig.baseUrl;
   static const String _placeholderProfileImage = '';
   static const Color _brandRed = AppColors.primary;
 
@@ -133,7 +134,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
       debugPrint("Checking document status for user ID: $userId");
 
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
+        Uri.parse("${ApiConfig.baseUrl}/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -251,7 +252,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
 
       // Make API call
-      final url = Uri.parse('http://192.168.1.9/Api2/match.php?userid=$userId');
+      final url = Uri.parse('${ApiConfig.baseUrl}/match.php?userid=$userId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -334,7 +335,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
         if (_shortlistedProfiles.isEmpty) _isLoadingShortlist = true;
       });
 
-      final url = Uri.parse('http://192.168.1.9/Api2/likelist.php?user_id=$userId');
+      final url = Uri.parse('${ApiConfig.baseUrl}/likelist.php?user_id=$userId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -458,7 +459,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     final userid = userData["id"];
 
     try {
-      final url = Uri.parse('http://192.168.1.9/Api2/premiuimmember.php?user_id=${userid}');
+      final url = Uri.parse('${ApiConfig.baseUrl}/premiuimmember.php?user_id=${userid}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -472,7 +473,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             final rawImage = member['profile_picture'] ?? '';
             final imageUrl = rawImage.startsWith('http')
                 ? rawImage
-                : 'http://192.168.1.9/Api2/$rawImage';
+                : '${ApiConfig.baseUrl}/$rawImage';
 
             return {
               'firstName': member['firstName'] ?? '',
@@ -543,7 +544,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
     try {
       // Use search_opposite_gender API with sort by recent registration
-      final url = Uri.parse('http://192.168.1.9/Api2/search_opposite_gender.php?user_id=$userid&sort_by=recent&limit=10');
+      final url = Uri.parse('${ApiConfig.baseUrl}/search_opposite_gender.php?user_id=$userid&sort_by=recent&limit=10');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -569,7 +570,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             final rawImage = member['profile_picture'] ?? '';
             final imageUrl = rawImage.startsWith('http')
                 ? rawImage
-                : 'http://192.168.1.9/Api2/$rawImage';
+                : '${ApiConfig.baseUrl}/$rawImage';
 
             return {
               'userId': member['userid'] ?? member['id'],
@@ -633,7 +634,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "${ApiConfig.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);
@@ -665,7 +666,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
     }
 
     try {
-      final url = Uri.parse('http://192.168.1.9/Api2/services_api.php');
+      final url = Uri.parse('${ApiConfig.baseUrl}/services_api.php');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -679,7 +680,7 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
             final rawImage = service['profile_picture'] ?? '';
             final imageUrl = rawImage.startsWith('http')
                 ? rawImage
-                : 'http://192.168.1.9/$rawImage';
+                : '${ApiConfig.baseUrl}/$rawImage';
 
             return {
               'category': service['servicetype'] ?? '',
@@ -1029,10 +1030,10 @@ String usertye = '';
                         borderRadius: AppDimensions.borderRadiusXL,
                         child: ProfileSwipeUI(
                           userId: userid,
-                          matchApiUrl: 'http://192.168.1.9/Api2/match.php',
-                          baseUrl: 'http://192.168.1.9/Api2',
-                          sendRequestApiUrl: 'http://192.168.1.9/Api2/send_request.php',
-                          likeApiUrl: 'http://192.168.1.9/Api2/like_action.php',
+                          matchApiUrl: '${ApiConfig.baseUrl}/match.php',
+                          baseUrl: ApiConfig.baseUrl,
+                          sendRequestApiUrl: '${ApiConfig.baseUrl}/send_request.php',
+                          likeApiUrl: '${ApiConfig.baseUrl}/like_action.php',
                         ),
                       ),
                     ),
@@ -1186,7 +1187,7 @@ String usertye = '';
               child: CircleAvatar(
                 radius: 20,
                 backgroundImage: userimage.isNotEmpty
-                    ? NetworkImage('http://192.168.1.9/Api2/$userimage')
+                    ? NetworkImage('${ApiConfig.baseUrl}/$userimage')
                     : null,
                 onBackgroundImageError:
                     userimage.isNotEmpty ? (_, __) {} : null,
@@ -1833,7 +1834,7 @@ String usertye = '';
               '$city${city.isNotEmpty && country.isNotEmpty ? ', ' : ''}$country';
           final profilePicture = profile['profile_picture'] ?? '';
           final imageUrl = profilePicture.isNotEmpty
-              ? 'http://192.168.1.9/Api2/$profilePicture'
+              ? '${ApiConfig.baseUrl}/$profilePicture'
               : '';
           final matchPercent = profile['matchPercent'];
           final isVerified = profile['isVerified'] == 1;
@@ -2152,7 +2153,7 @@ String usertye = '';
           final imageUrl = profilePicture.isNotEmpty
               ? (profilePicture.startsWith('http')
                   ? profilePicture
-                  : 'http://192.168.1.9/Api2/$profilePicture')
+                  : '${ApiConfig.baseUrl}/$profilePicture')
               : '';
           final isVerified =
               person['isVerified'] == 1 || person['isVerified'] == '1';

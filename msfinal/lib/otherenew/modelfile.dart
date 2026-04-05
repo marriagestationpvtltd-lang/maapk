@@ -1,6 +1,7 @@
 // modelfile.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../constant/constant.dart';
 
 enum ContactInfoType { freeInquiry, onlineChat }
 
@@ -130,7 +131,7 @@ class MatchedProfile {
   String get maritalStatus => "Not specified"; // Not in API
   String get qualification => "Not specified"; // Not in API
   String get imageUrl => profilePicture != null && profilePicture!.isNotEmpty
-      ? "http://192.168.1.9/Api2/$profilePicture"
+      ? "${ApiConfig.baseUrl}/$profilePicture"
       : '';
 
   bool get isVerifiedBool => isVerified == 1;

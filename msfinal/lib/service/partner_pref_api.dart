@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constant/constant.dart';
 
 class UserPartnerPreferenceService {
   final String saveUrl;
   final String fetchUrl;
 
   UserPartnerPreferenceService({
-    this.saveUrl = 'http://192.168.1.9/Api2/user_partner.php',
-    this.fetchUrl = 'http://192.168.1.9/Api2/get_partner_preferences.php',
+    this.saveUrl = '${ApiConfig.baseUrl}/user_partner.php',
+    this.fetchUrl = '${ApiConfig.baseUrl}/get_partner_preferences.php',
   });
 
   Future<Map<String, dynamic>?> fetchPartnerPreference({

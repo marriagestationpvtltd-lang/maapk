@@ -8,6 +8,7 @@ import 'package:ms2026/otherprofile/otherprofileview.dart'; // Add this import
 import '../main.dart';
 import '../pushnotification/pushservice.dart';
 import 'filterPage.dart';
+import '../constant/constant.dart';
 
 class SearchResultPage extends StatefulWidget {
   final Map<String, dynamic>? filterParams;
@@ -85,7 +86,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
   Future<void> _checkDocumentStatus(int userId) async {
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
+        Uri.parse("${ApiConfig.baseUrl}/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -114,7 +115,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
       final myId = userData["id"].toString();
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/get_blocked_users.php'),
+        Uri.parse('${ApiConfig.baseUrl}/get_blocked_users.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'my_id': myId}),
       );
@@ -144,7 +145,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
       });
 
       String baseUrl =
-          'http://192.168.1.9/Api2/search_opposite_gender.php?user_id=$userId';
+          '${ApiConfig.baseUrl}/search_opposite_gender.php?user_id=$userId';
 
       // Quick search by phone / id / email / name
       if (widget.quickSearchType != null &&

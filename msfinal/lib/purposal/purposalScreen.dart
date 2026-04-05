@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/ChatdetailsScreen.dart';
 import '../Models/masterdata.dart';
 import 'Purposalmodel.dart';
+import '../constant/constant.dart';
 
 class ProposalsPage extends StatefulWidget {
   const ProposalsPage({super.key});
@@ -98,7 +99,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "${ApiConfig.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

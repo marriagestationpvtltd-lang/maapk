@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constant/constant.dart';
 
 class LocationService {
-  static const String baseUrl = "http://192.168.1.9/Api3";
+  static const String baseUrl = ApiConfig.baseUrl3;
 
   /// Generic GET request
   static Future<List<Map<String, dynamic>>> _getList(

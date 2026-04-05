@@ -26,6 +26,7 @@ import '../Package/PackageScreen.dart';
 import '../otherenew/othernew.dart';
 import '../utils/image_utils.dart';
 import '../utils/time_utils.dart';
+import '../constant/constant.dart';
 
 class AdminChatScreen extends StatefulWidget {
   final String senderID;
@@ -179,7 +180,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       if (userId.isEmpty) return;
 
       final url = Uri.parse(
-        'http://192.168.1.9/Api2/masterdata.php?userid=$userId',
+        '${ApiConfig.baseUrl}/masterdata.php?userid=$userId',
       );
       final response = await http.get(url);
       if (response.statusCode == 200) {

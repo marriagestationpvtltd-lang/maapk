@@ -10,6 +10,7 @@ import '../Chat/ChatdetailsScreen.dart';
 import '../pushnotification/pushservice.dart';
 import '../ReUsable/loading_widgets.dart';
 import 'notification_inbox_service.dart';
+import '../constant/constant.dart';
 
 class MatrimonyNotificationPage extends StatefulWidget {
   const MatrimonyNotificationPage({Key? key}) : super(key: key);
@@ -29,8 +30,8 @@ class _MatrimonyNotificationPageState
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
-  final String _baseUrl = "http://192.168.1.9/Api2";
-  final String _requestUrl = "http://192.168.1.9/request/request_list.php";
+  final String _baseUrl = ApiConfig.baseUrl;
+  final String _requestUrl = "${ApiConfig.requestUrl}/request_list.php";
 
   @override
   void initState() {

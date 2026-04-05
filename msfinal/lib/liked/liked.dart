@@ -16,6 +16,7 @@ import 'package:ms2026/utils/image_utils.dart';
 import '../Models/masterdata.dart';
 import '../main.dart';
 import '../pushnotification/pushservice.dart';
+import '../constant/constant.dart';
 
 class FavoritePeoplePage extends StatefulWidget {
   const FavoritePeoplePage({super.key});
@@ -83,7 +84,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
+        Uri.parse("${ApiConfig.baseUrl}/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -126,7 +127,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final url = Uri.parse(
-          'http://192.168.1.9/Api2/likelist.php?user_id=$userId');
+          '${ApiConfig.baseUrl}/likelist.php?user_id=$userId');
 
       final response = await http.get(url);
 
@@ -166,7 +167,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final url = Uri.parse(
-          'http://192.168.1.9/Api2/likelist.php?user_id=$userId&action=delete&receiver_id=$receiverId');
+          '${ApiConfig.baseUrl}/likelist.php?user_id=$userId&action=delete&receiver_id=$receiverId');
 
       final response = await http.get(url);
 
@@ -210,7 +211,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
       print('Request data (JSON): $requestData');
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/send_request.php'),
+        Uri.parse('${ApiConfig.baseUrl}/send_request.php'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -956,7 +957,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "${ApiConfig.baseUrl}/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

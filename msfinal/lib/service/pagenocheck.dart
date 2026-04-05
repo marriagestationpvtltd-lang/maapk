@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constant/constant.dart';
 
 class PageService {
-  static const String apiUrl = "http://192.168.1.9/Api2/get_page.php";
+  static const String apiUrl = "${ApiConfig.baseUrl}/get_page.php";
 
   static Future<int?> getPageNo(int userId) async {
     try {

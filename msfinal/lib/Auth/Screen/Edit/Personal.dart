@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../ReUsable/dropdownwidget.dart';
 import '../../../service/personal_details_api.dart';
 import '../../../service/updatepage.dart';
+import '../../../constant/constant.dart';
 
 
 class PersonalDetailsPageEdit extends StatefulWidget {
@@ -796,7 +797,7 @@ class _PersonalDetailsPageEditState extends State<PersonalDetailsPageEdit> {
       final userId = int.tryParse(userData["id"].toString());
       // Call the reusable service
       final service = UserPersonalDetailService(
-        baseUrl: 'http://192.168.1.9/Api2/save_personal_detail.php',
+        baseUrl: '${ApiConfig.baseUrl}/save_personal_detail.php',
       );
 
       final result = await service.saveUserPersonalDetail(

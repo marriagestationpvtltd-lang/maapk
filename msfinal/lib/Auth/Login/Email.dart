@@ -27,6 +27,7 @@ import '../Screen/signupscreen9.dart';
 import '../Screen/Signup.dart';
 import '../SuignupModel/signup_model.dart';
 import '../forgetpasswordscreen.dart';
+import '../../constant/constant.dart';
 
 class PrefilledEmailScreen extends StatefulWidget {
   const PrefilledEmailScreen({super.key});
@@ -102,7 +103,7 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
   Future<Map<String, dynamic>?> _loginUser(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/signin.php'),
+        Uri.parse('${ApiConfig.baseUrl}/signin.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -287,13 +288,14 @@ class _PrefilledEmailScreenState extends State<PrefilledEmailScreen> with Single
         final idToken = await firebaseUser.getIdToken();
 
         final response = await http.post(
-          Uri.parse('http://192.168.1.9/Api2/google_signin.php'),
+          Uri.parse('${ApiConfig.baseUrl}/google_auth.php'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': firebaseUser.email,
             'google_id': firebaseUser.uid,
-            'firebase_token': idToken,
-            'displayName': firebaseUser.displayName ?? '',
+            'name': firebaseUser.displayName ?? '',
+            'photo_url': firebaseUser.photoURL ?? '',
+            'access_token': idToken,
           }),
         );
 

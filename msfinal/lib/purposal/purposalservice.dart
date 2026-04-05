@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'Purposalmodel.dart';
+import '../constant/constant.dart';
 
 class ProposalService {
-  static const String baseUrl = "http://192.168.1.9/Api2/proposals_api.php";
+  static const String baseUrl = "${ApiConfig.baseUrl}/proposals_api.php";
 
   static Future<List<ProposalModel>> fetchProposals(
       String userId, String type) async {
@@ -28,7 +29,7 @@ class ProposalService {
   // Delete proposal
   static Future<bool> deleteProposal(String userId, String proposalId) async {
     final response = await http.post(
-      Uri.parse("http://192.168.1.9/Api2/purposal_delete.php"),
+      Uri.parse("${ApiConfig.baseUrl}/purposal_delete.php"),
       body: {
         "user_id": userId,
         "proposal_id": proposalId,
@@ -46,7 +47,7 @@ class ProposalService {
   static Future<bool> acceptProposal(String proposalId, String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/acceptProposal.php'), // Update with your actual endpoint
+        Uri.parse('${ApiConfig.baseUrl}/acceptProposal.php'), // Update with your actual endpoint
         body: {
           'proposal_id': proposalId,
           'user_id': userId,
@@ -69,7 +70,7 @@ class ProposalService {
   static Future<bool> rejectProposal(String proposalId, String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9/Api2/rejectProposal.php'), // Update with your actual endpoint
+        Uri.parse('${ApiConfig.baseUrl}/rejectProposal.php'), // Update with your actual endpoint
         body: {
           'proposal_id': proposalId,
           'user_id': userId,

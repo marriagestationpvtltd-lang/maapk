@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constant/constant.dart';
 
 class LoginModel extends ChangeNotifier {
   // Login fields
@@ -20,7 +21,7 @@ class LoginModel extends ChangeNotifier {
   void clearError() { error = null; notifyListeners(); }
 
   // Login method
-  Future<bool> login({String url = 'http://192.168.1.9/Api2/signin.php'}) async {
+  Future<bool> login({String url = '${ApiConfig.baseUrl}/signin.php'}) async {
     isSubmitting = true;
     error = null;
     notifyListeners();

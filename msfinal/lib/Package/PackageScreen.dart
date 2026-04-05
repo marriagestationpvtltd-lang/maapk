@@ -7,6 +7,7 @@ import '../constant/app_colors.dart';
 import '../constant/app_text_styles.dart';
 import 'Paymentscreen.dart';
 import 'historypage.dart';
+import '../constant/constant.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({super.key});
@@ -60,7 +61,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       final userId = userData["id"].toString();
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/user_package.php?userid=$userId'),
+        Uri.parse('${ApiConfig.baseUrl}/user_package.php?userid=$userId'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -83,7 +84,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   Future<void> fetchPackages() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/packagelist.php'),
+        Uri.parse('${ApiConfig.baseUrl}/packagelist.php'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

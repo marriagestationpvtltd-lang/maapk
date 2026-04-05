@@ -14,6 +14,7 @@ import '../../ReUsable/enhanced_form_fields.dart';
 import '../../constant/app_colors.dart';
 import '../../service/location_service.dart';
 import '../../service/updatepage.dart';
+import '../../constant/constant.dart';
 
 class LivingStatusPage extends StatefulWidget {
   const LivingStatusPage({super.key});
@@ -871,7 +872,7 @@ class _LivingStatusPageState extends State<LivingStatusPage> {
 
       final response = await http
           .post(
-            Uri.parse('http://192.168.1.9/Api2/updateadress.php'),
+            Uri.parse('${ApiConfig.baseUrl}/updateadress.php'),
             body: body,
           )
           .timeout(const Duration(seconds: 30));
