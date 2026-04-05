@@ -41,23 +41,25 @@ if (empty($data['userId'])) {
 }
 
 // ✅ Sanitize inputs
-$userId = $conn->real_escape_string($data['userId']);
-$firstName = isset($data['firstName']) ? $conn->real_escape_string($data['firstName']) : null;
-$middleName = isset($data['middleName']) ? $conn->real_escape_string($data['middleName']) : null;
-$lastName = isset($data['lastName']) ? $conn->real_escape_string($data['lastName']) : null;
-$imageUrl = isset($data['imageUrl']) ? $conn->real_escape_string($data['imageUrl']) : null;
+$userId = intval($data['userId']);
+$firstName = isset($data['firstName']) ? $data['firstName'] : null;
+$middleName = isset($data['middleName']) ? $data['middleName'] : null;
+$lastName = isset($data['lastName']) ? $data['lastName'] : null;
+$imageUrl = isset($data['imageUrl']) ? $data['imageUrl'] : null;
 
 // ✅ Begin transaction
 $conn->begin_transaction();
 
 try {
     // Update users table
-    $sqlUser = "UPDATE users SET 
-                    firstName = IFNULL('$firstName', firstName),
-                    middleName = IFNULL('$middleName', middleName),
-                    lastName = IFNULL('$lastName', lastName)
-                WHERE id = '$userId'";
-    $userUpdate = $conn->query($sqlUser);
+    $stmtUser = $conn->prepare("UPDATE users SET 
+                    firstName = IFNULL(?, firstName),
+                    middleName = IFNULL(?, middleName),
+                    lastName = IFNULL(?, lastName)
+                WHERE id = ?");
+    $stmtUser->bind_param("sssi", $firstName, $middleName, $lastName, $userId);
+    $userUpdate = $stmtUser->execute();
+    $stmtUser->close();
 
     if (!$userUpdate) {
         throw new Exception("Failed to update users table: " . $conn->error);
@@ -65,8 +67,10 @@ try {
 
     // Update image if provided
     if ($imageUrl !== null && $imageUrl !== '') {
-        $sqlImage = "UPDATE images SET imageUrl = '$imageUrl' WHERE createdBy = '$userId'";
-        $imgUpdate = $conn->query($sqlImage);
+        $stmtImg = $conn->prepare("UPDATE images SET imageUrl = ? WHERE createdBy = ?");
+        $stmtImg->bind_param("si", $imageUrl, $userId);
+        $imgUpdate = $stmtImg->execute();
+        $stmtImg->close();
 
         if (!$imgUpdate) {
             throw new Exception("Failed to update images table: " . $conn->error);
@@ -77,7 +81,7 @@ try {
     $conn->commit();
 
     // ✅ Fetch updated data
-    $sqlSelect = "SELECT 
+    $stmtSel = $conn->prepare("SELECT 
                     u.id,
                     u.firstName,
                     u.middleName,
@@ -85,9 +89,11 @@ try {
                     i.imageUrl
                   FROM users u
                   LEFT JOIN images i ON i.createdBy = u.id
-                  WHERE u.id = '$userId'";
-
-    $result = $conn->query($sqlSelect);
+                  WHERE u.id = ?");
+    $stmtSel->bind_param("i", $userId);
+    $stmtSel->execute();
+    $result = $stmtSel->get_result();
+    $stmtSel->close();
 
     if ($result && $result->num_rows > 0) {
         $user = $result->fetch_assoc();

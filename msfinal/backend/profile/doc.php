@@ -19,20 +19,24 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method == 'GET') {
 
     // Optional filters (?status=pending or ?userId=10)
-    $where = [];
+    $params = [];
+    $types = '';
+    $whereParts = [];
+
     if (isset($_GET['status'])) {
-        $status = $conn->real_escape_string($_GET['status']);
-        $where[] = "ud.status = '$status'";
+        $statusFilter = $_GET['status'];
+        $whereParts[] = "ud.status = ?";
+        $types .= 's';
+        $params[] = $statusFilter;
     }
     if (isset($_GET['userId'])) {
-        $userId = intval($_GET['userId']);
-        $where[] = "ud.userId = $userId";
+        $userIdFilter = intval($_GET['userId']);
+        $whereParts[] = "ud.userId = ?";
+        $types .= 'i';
+        $params[] = $userIdFilter;
     }
 
-    $whereClause = "";
-    if (!empty($where)) {
-        $whereClause = "WHERE " . implode(" AND ", $where);
-    }
+    $whereClause = !empty($whereParts) ? "WHERE " . implode(" AND ", $whereParts) : "";
 
     // 🔥 Main Query with All Joins
     $sql = "
@@ -79,7 +83,12 @@ if ($method == 'GET') {
         ORDER BY ud.id DESC
     ";
 
-    $result = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     $documents = [];
     $baseUploadUrl = "https://api.digitallami.com/"; // change this to your upload directory
@@ -135,21 +144,23 @@ elseif ($method == 'POST') {
     }
 
     $id = intval($input['id']);
-    $status = $conn->real_escape_string($input['status']);
-    $reject_reason = isset($input['reject_reason']) ? $conn->real_escape_string($input['reject_reason']) : null;
+    $status = $input['status'];
+    $reject_reason = isset($input['reject_reason']) ? $input['reject_reason'] : null;
     $isVerified = ($status == 'approved') ? 1 : 0;
 
-    $sql = "UPDATE userdocument 
-            SET status='$status',
-                reject_reason=" . ($reject_reason ? "'$reject_reason'" : "NULL") . ",
-                isVerified=$isVerified
-            WHERE id=$id";
+    $stmt = $conn->prepare("UPDATE userdocument 
+            SET status=?,
+                reject_reason=?,
+                isVerified=?
+            WHERE id=?");
+    $stmt->bind_param("ssii", $status, $reject_reason, $isVerified, $id);
 
-    if ($conn->query($sql)) {
+    if ($stmt->execute()) {
         echo json_encode(["success" => true, "message" => "Document updated successfully"]);
     } else {
-        echo json_encode(["success" => false, "message" => "Error updating document: " . $conn->error]);
+        echo json_encode(["success" => false, "message" => "Error updating document: " . $stmt->error]);
     }
+    $stmt->close();
 }
 
 else {

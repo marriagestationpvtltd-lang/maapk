@@ -23,15 +23,17 @@ $user_id = intval($_POST['user_id']);
 $proposal_id = intval($_POST['proposal_id']);
 
 // CHECK IF PROPOSAL EXISTS AND BELONGS TO USER
-$sql_check = "SELECT * FROM proposals 
-              WHERE id = $proposal_id 
+$stmt_check = $conn->prepare("SELECT id FROM proposals 
+              WHERE id = ? 
               AND (
-                    sender_id = $user_id 
-                    OR receiver_id = $user_id
+                    sender_id = ? 
+                    OR receiver_id = ?
                   )
-              AND status IN ('pending','rejected')"; // Only pending or rejected
-
-$result = $conn->query($sql_check);
+              AND status IN ('pending','rejected')");
+$stmt_check->bind_param("iii", $proposal_id, $user_id, $user_id);
+$stmt_check->execute();
+$result = $stmt_check->get_result();
+$stmt_check->close();
 
 if ($result->num_rows == 0) {
     echo json_encode(["status" => "error", "message" => "Proposal not found or cannot be deleted"]);
@@ -39,8 +41,9 @@ if ($result->num_rows == 0) {
 }
 
 // DELETE PROPOSAL
-$sql_delete = "DELETE FROM proposals WHERE id = $proposal_id";
-if ($conn->query($sql_delete)) {
+$stmt_delete = $conn->prepare("DELETE FROM proposals WHERE id = ?");
+$stmt_delete->bind_param("i", $proposal_id);
+if ($stmt_delete->execute()) {
     echo json_encode(["status" => "success", "message" => "Proposal deleted successfully"]);
 } else {
     echo json_encode(["status" => "error", "message" => "Failed to delete proposal"]);

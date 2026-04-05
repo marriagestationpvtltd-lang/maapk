@@ -29,8 +29,10 @@ if (!isset($_GET['user_id'])) {
 $user_id = intval($_GET['user_id']);
 
 // FETCH PAGE NO ---------------------------
-$sql = "SELECT pageno FROM users WHERE id = $user_id LIMIT 1";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT pageno FROM users WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
 

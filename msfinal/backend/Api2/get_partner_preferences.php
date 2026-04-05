@@ -10,86 +10,100 @@ if ($conn->connect_error) {
 }
 
 // Handle both GET and POST requests
-$userid = '';
+$userid = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $userid = isset($_GET['userid']) ? $conn->real_escape_string($_GET['userid']) : '';
+    $userid = isset($_GET['userid']) ? intval($_GET['userid']) : 0;
 } else {
     $data = json_decode(file_get_contents("php://input"), true);
     if ($data) {
-        $userid = isset($data['userid']) ? $conn->real_escape_string($data['userid']) : '';
+        $userid = isset($data['userid']) ? intval($data['userid']) : 0;
     }
 }
 
-if (empty($userid)) {
+if ($userid <= 0) {
     die(json_encode(["status" => "error", "message" => "userid required"]));
 }
 
 // Query to get partner preferences
-$sql = "SELECT * FROM user_partner WHERE userid = '$userid'";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT * FROM user_partner WHERE userid = ?");
+$stmt->bind_param("i", $userid);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result && $result->num_rows > 0) {
     $row = $result->fetch_assoc();
-    
+
     // Function to get country names from IDs
     function getCountryNames($conn, $ids) {
         if (empty($ids) || $ids == '0') return ['Any'];
         $idArray = explode(',', $ids);
         $names = [];
         foreach ($idArray as $id) {
-            if ($id == '0') {
+            $id = intval($id);
+            if ($id === 0) {
                 $names[] = 'Any';
             } else {
-                $countryResult = $conn->query("SELECT name FROM countries WHERE id = '$id'");
-                if ($countryResult && $countryResult->num_rows > 0) {
-                    $countryRow = $countryResult->fetch_assoc();
-                    $names[] = $countryRow['name'];
+                $s = $conn->prepare("SELECT name FROM countries WHERE id = ?");
+                $s->bind_param("i", $id);
+                $s->execute();
+                $r = $s->get_result();
+                if ($r && $r->num_rows > 0) {
+                    $names[] = $r->fetch_assoc()['name'];
                 } else {
-                    $names[] = $id; // Fallback to ID if not found
+                    $names[] = (string)$id;
                 }
+                $s->close();
             }
         }
         return $names;
     }
-    
+
     // Function to get state names from IDs (table name is 'state')
     function getStateNames($conn, $ids) {
         if (empty($ids) || $ids == '0') return ['Any'];
         $idArray = explode(',', $ids);
         $names = [];
         foreach ($idArray as $id) {
-            if ($id == '0') {
+            $id = intval($id);
+            if ($id === 0) {
                 $names[] = 'Any';
             } else {
-                $stateResult = $conn->query("SELECT name FROM state WHERE id = '$id'");
-                if ($stateResult && $stateResult->num_rows > 0) {
-                    $stateRow = $stateResult->fetch_assoc();
-                    $names[] = $stateRow['name'];
+                $s = $conn->prepare("SELECT name FROM state WHERE id = ?");
+                $s->bind_param("i", $id);
+                $s->execute();
+                $r = $s->get_result();
+                if ($r && $r->num_rows > 0) {
+                    $names[] = $r->fetch_assoc()['name'];
                 } else {
-                    $names[] = $id; // Fallback to ID if not found
+                    $names[] = (string)$id;
                 }
+                $s->close();
             }
         }
         return $names;
     }
-    
+
     // Function to get district/city names from IDs (table name is 'districts')
     function getDistrictNames($conn, $ids) {
         if (empty($ids) || $ids == '0') return ['Any'];
         $idArray = explode(',', $ids);
         $names = [];
         foreach ($idArray as $id) {
-            if ($id == '0') {
+            $id = intval($id);
+            if ($id === 0) {
                 $names[] = 'Any';
             } else {
-                $districtResult = $conn->query("SELECT name FROM districts WHERE id = '$id'");
-                if ($districtResult && $districtResult->num_rows > 0) {
-                    $districtRow = $districtResult->fetch_assoc();
-                    $names[] = $districtRow['name'];
+                $s = $conn->prepare("SELECT name FROM districts WHERE id = ?");
+                $s->bind_param("i", $id);
+                $s->execute();
+                $r = $s->get_result();
+                if ($r && $r->num_rows > 0) {
+                    $names[] = $r->fetch_assoc()['name'];
                 } else {
-                    $names[] = $id; // Fallback to ID if not found
+                    $names[] = (string)$id;
                 }
+                $s->close();
             }
         }
         return $names;

@@ -88,19 +88,31 @@ try {
     ";
 
     if ($type === "received") {
-        $sql .= " p.receiver_id = $user_id AND p.status = 'pending' ";
+        $sql .= " p.receiver_id = ? AND p.status = 'pending' ";
     } elseif ($type === "sent") {
-        $sql .= " p.sender_id = $user_id AND p.status = 'pending' ";
+        $sql .= " p.sender_id = ? AND p.status = 'pending' ";
     } else {
-        $sql .= " (p.sender_id = $user_id OR p.receiver_id = $user_id)
+        $sql .= " (p.sender_id = ? OR p.receiver_id = ?)
                   AND p.status IN ('accepted','rejected') ";
     }
 
     $sql .= " ORDER BY p.created_at DESC";
 
-    $result = $conn->query($sql);
-    if ($result === false) {
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
         throw new Exception($conn->error);
+    }
+
+    if ($type === "accepted") {
+        $stmt->bind_param("ii", $user_id, $user_id);
+    } else {
+        $stmt->bind_param("i", $user_id);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result === false) {
+        throw new Exception($stmt->error);
     }
 
     $data = [];
