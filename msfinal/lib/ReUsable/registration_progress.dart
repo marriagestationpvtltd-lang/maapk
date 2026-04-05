@@ -385,11 +385,14 @@ class RegistrationStepContainer extends StatelessWidget {
                               child: OutlinedButton(
                                 onPressed: isLoading
                                     ? null
-                                    : () => _handleRegistrationBack(
+                                    : () {
+                                        FocusScope.of(context).unfocus();
+                                        _handleRegistrationBack(
                                           context,
                                           model,
                                           onStepBack: onStepBack,
-                                        ),
+                                        );
+                                      },
                                 style: OutlinedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),
@@ -442,7 +445,12 @@ class RegistrationStepContainer extends StatelessWidget {
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: isLoading ? null : onContinue,
+                                  onTap: isLoading
+                                      ? null
+                                      : () {
+                                          FocusScope.of(context).unfocus();
+                                          onContinue?.call();
+                                        },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(

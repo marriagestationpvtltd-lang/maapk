@@ -156,6 +156,7 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
               child: IgnorePointer(
                 child: TextField(
                   controller: controller,
+                  readOnly: true,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
