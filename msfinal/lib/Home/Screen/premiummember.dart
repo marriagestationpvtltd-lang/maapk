@@ -79,7 +79,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
     );
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -128,7 +128,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/Api2/premiuimmember.php?user_id=${widget.userId}&page=$_currentPage'),
+        Uri.parse('https://digitallami.com/Api2/premiuimmember.php?user_id=${widget.userId}&page=$_currentPage'),
       );
 
       if (response.statusCode == 200) {
@@ -258,8 +258,8 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
     final isVerified = user['isVerified'] == 1;
     final profilePic = user['profile_picture'];
     final imageUrl = profilePic != null && profilePic.toString().isNotEmpty
-        ? 'http://192.168.1.9/Api2/$profilePic'
-        : '';
+        ? 'https://digitallami.com/Api2/$profilePic'
+        : 'https://via.placeholder.com/150?text=No+Image';
 
     final shouldBlurPhoto = usertye == 'free';
     final interests = (user['interests']?.toString() ?? '').split(',').take(2).toList();

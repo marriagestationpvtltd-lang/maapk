@@ -98,7 +98,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
+      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

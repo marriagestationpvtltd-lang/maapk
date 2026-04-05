@@ -171,7 +171,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.9/app.php'),
+        Uri.parse('https://digitallami.com/app.php'),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -566,7 +566,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> updateFcmToken(String userId, String token) async {
     final response = await http.post(
-      Uri.parse("http://192.168.1.9/Api2/update_token.php"),
+      Uri.parse("https://digitallami.com/Api2/update_token.php"),
       body: {
         "user_id": userId,
         "fcm_token": token,

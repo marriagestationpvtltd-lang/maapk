@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class PageService {
-  static const String apiUrl = "http://192.168.1.9/Api2/get_page.php";
+  static const String apiUrl = "https://digitallami.com/Api2/get_page.php";
 
   static Future<int?> getPageNo(int userId) async {
     try {

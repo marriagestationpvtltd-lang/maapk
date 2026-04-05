@@ -103,7 +103,7 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
   void initState() {
     super.initState();
     _detailService = UserPersonalDetailService(
-      baseUrl: 'http://192.168.1.9/Api2/get_personal_detail.php', // Use same endpoint
+      baseUrl: 'https://digitallami.com/Api2/get_personal_detail.php', // Use same endpoint
     );
     if (widget.initialData != null && widget.initialData!.isNotEmpty) {
       _populateFormWithData(widget.initialData!);
@@ -1098,7 +1098,7 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
       // Create save service instance (different URL for save)
       final saveService = UserPersonalDetailService(
-        baseUrl: 'http://192.168.1.9/Api2/save_personal_detail.php',
+        baseUrl: 'https://digitallami.com/Api2/save_personal_detail.php',
       );
 
       final result = await saveService.saveUserPersonalDetail(

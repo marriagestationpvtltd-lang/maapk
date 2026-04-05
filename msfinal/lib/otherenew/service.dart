@@ -8,7 +8,7 @@ import '../pushnotification/pushservice.dart';
 import '../otherenew/modelfile.dart';
 
 class ProfileService {
-  static const String baseUrl = 'http://192.168.1.9/Api2';
+  static const String baseUrl = 'https://digitallami.com/Api2';
 
   /// Fetch profile data from API
   Future<ProfileResponse> fetchProfile({
