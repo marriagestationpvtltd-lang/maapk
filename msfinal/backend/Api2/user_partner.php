@@ -84,7 +84,7 @@ if ($check->num_rows > 0) {
         otherexpectation=?
         WHERE userid=?");
     $stmt->bind_param(
-        "ssssssssssssssssssssssssssssi",
+        "ssssssssssssssssssssssssssssi", // 28 strings + 1 integer (userid)
         $minage, $maxage,
         $minheight, $maxheight,
         $maritalstatus,
@@ -123,7 +123,7 @@ if ($check->num_rows > 0) {
         bodytype,otherexpectation
     ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $stmt->bind_param(
-        "isssssssssssssssssssssssssss",
+        "isssssssssssssssssssssssssss", // 1 integer (userid) + 28 strings
         $userid,
         $minage, $maxage,
         $minheight, $maxheight,
