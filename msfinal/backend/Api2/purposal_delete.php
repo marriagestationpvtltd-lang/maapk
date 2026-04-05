@@ -48,3 +48,5 @@ if ($stmt_delete->execute()) {
 } else {
     echo json_encode(["status" => "error", "message" => "Failed to delete proposal"]);
 }
+$stmt_delete->close();
+$conn->close();
