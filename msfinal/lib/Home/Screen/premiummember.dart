@@ -259,7 +259,7 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
     final profilePic = user['profile_picture'];
     final imageUrl = profilePic != null && profilePic.toString().isNotEmpty
         ? 'https://digitallami.com/Api2/$profilePic'
-        : 'https://via.placeholder.com/150?text=No+Image';
+        : '';
 
     final shouldBlurPhoto = usertye == 'free';
     final interests = (user['interests']?.toString() ?? '').split(',').take(2).toList();

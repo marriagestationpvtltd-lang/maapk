@@ -500,7 +500,7 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
 
   Widget _buildProfileImage() {
     final imageUrl =
-        widget.data.profilePicture ?? "https://via.placeholder.com/150";
+        widget.data.profilePicture ?? '';
     final type = widget.data.requestType ?? 'Request';
     final typeColor = _getTypeColor(type);
 
@@ -983,14 +983,14 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
                   : "User $otherUserId",
               receiverImage: otherUserImage.isNotEmpty
                   ? otherUserImage
-                  : 'https://via.placeholder.com/150',
+                  : '',
               currentUserId: currentUserIdStr,
               currentUserName: currentUserName.isNotEmpty
                   ? currentUserName
                   : "User $currentUserIdStr",
               currentUserImage: currentUserImage.isNotEmpty
                   ? currentUserImage
-                  : 'https://via.placeholder.com/150',
+                  : '',
             ),
           ),
         );

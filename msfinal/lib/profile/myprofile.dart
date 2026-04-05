@@ -250,7 +250,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   String _getFullImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
-      return 'https://via.placeholder.com/150?text=No+Image';
+      return '';
     }
 
     String baseUrl;
@@ -911,9 +911,9 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                           image: DecorationImage(
-                            image: NetworkImage(
-                              _getFullImageUrl(personalDetail['profile_picture']),
-                            ),
+                            image: _getFullImageUrl(personalDetail['profile_picture']).isNotEmpty
+                                ? NetworkImage(_getFullImageUrl(personalDetail['profile_picture'])) as ImageProvider
+                                : const AssetImage('assets/images/user1.png'),
                             fit: BoxFit.cover,
                           ),
                         ),
