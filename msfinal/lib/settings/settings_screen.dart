@@ -43,9 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _currentPrivacy = 'Private';
   bool _loadingPrivacy = true;
 
-  final String _baseUrl = 'http://10.0.2.2/Api2';
-  final String _privacyGetUrl = 'http://10.0.2.2/Api3/get_privacy.php';
-  final String _privacyUpdateUrl = 'http://10.0.2.2/Api3/privacy.php';
+  final String _baseUrl = 'http://192.168.1.9/Api2';
+  final String _privacyGetUrl = 'http://192.168.1.9/Api3/get_privacy.php';
+  final String _privacyUpdateUrl = 'http://192.168.1.9/Api3/privacy.php';
 
   @override
   void initState() {

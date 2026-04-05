@@ -60,7 +60,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
       final userId = userData["id"].toString();
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2/Api2/user_package.php?userid=$userId'),
+        Uri.parse('http://192.168.1.9/Api2/user_package.php?userid=$userId'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -83,7 +83,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   Future<void> fetchPackages() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2/Api2/packagelist.php'),
+        Uri.parse('http://192.168.1.9/Api2/packagelist.php'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

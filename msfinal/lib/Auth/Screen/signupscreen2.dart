@@ -176,7 +176,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage>
       }
 
       final service = UserPersonalDetailService(
-        baseUrl: 'http://10.0.2.2/Api2/save_personal_detail.php',
+        baseUrl: 'http://192.168.1.9/Api2/save_personal_detail.php',
       );
 
       final result = await service.saveUserPersonalDetail(

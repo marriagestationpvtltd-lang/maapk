@@ -1544,7 +1544,7 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
 
       // Send POST request with better error handling
       final response = await http.post(
-        Uri.parse("http://10.0.2.2/Api2/user_astrologic.php"),
+        Uri.parse("http://192.168.1.9/Api2/user_astrologic.php"),
         body: postData,
       ).timeout(const Duration(seconds: 30));
 

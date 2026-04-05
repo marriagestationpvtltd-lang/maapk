@@ -91,7 +91,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2/Api2/myprofile.php?userid=${userId}'),
+        Uri.parse('http://192.168.1.9/Api2/myprofile.php?userid=${userId}'),
       );
 
       if (response.statusCode == 200) {
@@ -177,7 +177,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchDocumentStatus(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2/Api2/check_marital_document_status.php'),
+        Uri.parse('http://192.168.1.9/Api2/check_marital_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': int.parse(userId)}),
       );
@@ -206,7 +206,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchActivePackage(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2/Api2/user_package.php?userid=$userId'),
+        Uri.parse('http://192.168.1.9/Api2/user_package.php?userid=$userId'),
       );
 
       if (response.statusCode != 200) {
@@ -257,7 +257,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     if (imagePath.startsWith('http')) {
       baseUrl = imagePath;
     } else {
-      baseUrl = 'http://10.0.2.2/Api2/$imagePath';
+      baseUrl = 'http://192.168.1.9/Api2/$imagePath';
     }
 
     // Add timestamp to prevent caching
@@ -429,7 +429,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     String currentPrivacy = 'Private';
     try {
       final Uri getUrl = Uri.parse(
-          'http://10.0.2.2/Api3/get_privacy.php?userid=$userId');
+          'http://192.168.1.9/Api3/get_privacy.php?userid=$userId');
       final response = await http.get(getUrl);
 
       if (response.statusCode == 200) {
@@ -539,7 +539,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     // Step 4: Call update_privacy API
                     try {
                       final Uri updateUrl = Uri.parse(
-                          'http://10.0.2.2/Api3/privacy.php?userid=$userId&privacy=$privacyValue');
+                          'http://192.168.1.9/Api3/privacy.php?userid=$userId&privacy=$privacyValue');
                       final response = await http.get(updateUrl);
 
                       if (response.statusCode == 200) {
@@ -2401,7 +2401,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         ),
       );
 
-      final uri = Uri.parse('http://10.0.2.2/Api2/profile_picture.php');
+      final uri = Uri.parse('http://192.168.1.9/Api2/profile_picture.php');
 
       final request = http.MultipartRequest('POST', uri)
         ..fields['userid'] = userId.toString()
@@ -2465,7 +2465,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://10.0.2.2/Api2/aboutme.php"),
+        Uri.parse("http://192.168.1.9/Api2/aboutme.php"),
         body: {
           "userid": userId.toString(),
           "aboutMe": aboutMe.trim(),

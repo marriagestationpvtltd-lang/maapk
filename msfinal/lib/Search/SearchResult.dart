@@ -85,7 +85,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
   Future<void> _checkDocumentStatus(int userId) async {
     try {
       final response = await http.post(
-        Uri.parse("http://10.0.2.2/Api2/check_document_status.php"),
+        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -114,7 +114,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
       final myId = userData["id"].toString();
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2/Api2/get_blocked_users.php'),
+        Uri.parse('http://192.168.1.9/Api2/get_blocked_users.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'my_id': myId}),
       );
@@ -144,7 +144,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
       });
 
       String baseUrl =
-          'http://10.0.2.2/Api2/search_opposite_gender.php?user_id=$userId';
+          'http://192.168.1.9/Api2/search_opposite_gender.php?user_id=$userId';
 
       // Quick search by phone / id / email / name
       if (widget.quickSearchType != null &&

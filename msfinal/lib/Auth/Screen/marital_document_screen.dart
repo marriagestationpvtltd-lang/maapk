@@ -116,7 +116,7 @@ class _MaritalDocumentUploadScreenState
 
       final response = await http.post(
         Uri.parse(
-            'http://10.0.2.2/Api2/check_marital_document_status.php'),
+            'http://192.168.1.9/Api2/check_marital_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -150,7 +150,7 @@ class _MaritalDocumentUploadScreenState
       final userId = int.tryParse(userData['id'].toString());
 
       final uri = Uri.parse(
-          'http://10.0.2.2/Api2/upload_marital_document.php');
+          'http://192.168.1.9/Api2/upload_marital_document.php');
       final request = http.MultipartRequest('POST', uri);
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;

@@ -897,7 +897,7 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
       final userDataString = prefs.getString('user_data');
       final userData = jsonDecode(userDataString!);
       final userId = int.tryParse(userData["id"].toString());
-      var url = Uri.parse("http://10.0.2.2/Api2/educationcareer.php"); // replace with your PHP URL
+      var url = Uri.parse("http://192.168.1.9/Api2/educationcareer.php"); // replace with your PHP URL
       var response = await http.post(url, body: {
         "userid": userId.toString(), // your user ID variable
         "educationmedium": _selectedEducationMedium,

@@ -10,16 +10,16 @@ class ApiConfig {
   // static const String appUrl     = 'https://digitallami.com/app.php';
 
   // ── Android Emulator (10.0.2.2) ──────────────────────────────────────────
-  static const String baseUrl    = 'http://10.0.2.2/Api2';
-  static const String baseUrl3   = 'http://10.0.2.2/Api3';
-  static const String requestUrl = 'http://10.0.2.2/request';
-  static const String appUrl     = 'http://10.0.2.2/app.php';
+  // static const String baseUrl    = 'http://10.0.2.2/Api2';
+  // static const String baseUrl3   = 'http://10.0.2.2/Api3';
+  // static const String requestUrl = 'http://10.0.2.2/request';
+  // static const String appUrl     = 'http://10.0.2.2/app.php';
 
-  // ── Physical Phone (USB) — आफ्नो PC को IP राख्नुस् ─────────────────────
-  // static const String baseUrl    = 'http://<YOUR_PC_IP>/Api2';
-  // static const String baseUrl3   = 'http://<YOUR_PC_IP>/Api3';
-  // static const String requestUrl = 'http://<YOUR_PC_IP>/request';
-  // static const String appUrl     = 'http://<YOUR_PC_IP>/app.php';
+  // ── Physical Phone (USB/WiFi) — PC IP: 192.168.1.9 ──────────────────────
+  static const String baseUrl    = 'http://192.168.1.9/Api2';
+  static const String baseUrl3   = 'http://192.168.1.9/Api3';
+  static const String requestUrl = 'http://192.168.1.9/request';
+  static const String appUrl     = 'http://192.168.1.9/app.php';
 }
 
 class AgoraConstants {
