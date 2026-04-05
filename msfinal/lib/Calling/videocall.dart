@@ -81,6 +81,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   Timer? _qualityUpdateTimer;
 
   // Ringtone state
+  final _ringtonePlayer = FlutterRingtonePlayer();
   bool _isPlayingRingtone = false;
 
   // PiP (local video preview) draggable offset (from top-right)
@@ -120,7 +121,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     try {
       await _stopRingtone();
 
-      await FlutterRingtonePlayer().play(
+      await _ringtonePlayer.play(
         android: AndroidSounds.ringtone,
         ios: IosSounds.triTone,
         looping: true,
@@ -138,7 +139,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
 
   Future<void> _stopRingtone() async {
     try {
-      await FlutterRingtonePlayer().stop();
+      await _ringtonePlayer.stop();
 
       if (!mounted) return;
       setState(() => _isPlayingRingtone = false);

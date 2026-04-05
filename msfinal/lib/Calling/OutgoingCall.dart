@@ -69,6 +69,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   Duration _duration = Duration.zero;
 
   // Ringtone state
+  final _ringtonePlayer = FlutterRingtonePlayer();
   bool _isPlayingRingtone = false;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
@@ -239,7 +240,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     try {
       await _stopRingtone();
 
-      await FlutterRingtonePlayer().play(
+      await _ringtonePlayer.play(
         android: AndroidSounds.ringtone,
         ios: IosSounds.triTone,
         looping: true,
@@ -260,7 +261,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   // ================= STOP RINGTONE =================
   Future<void> _stopRingtone() async {
     try {
-      await FlutterRingtonePlayer().stop();
+      await _ringtonePlayer.stop();
 
       if (!mounted) return;
 
