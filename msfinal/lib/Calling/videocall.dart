@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -81,7 +81,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   Timer? _qualityUpdateTimer;
 
   // Ringtone state
-  final _ringtonePlayer = FlutterRingtonePlayer();
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
   bool _isPlayingRingtone = false;
 
   // PiP (local video preview) draggable offset (from top-right)
@@ -121,19 +121,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     try {
       await _stopRingtone();
 
-      await _ringtonePlayer.play(
-        android: AndroidSounds.ringtone,
-        ios: IosSounds.triTone,
-        looping: true,
-        asAlarm: true,
-      );
+      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
 
       if (mounted) {
         setState(() => _isPlayingRingtone = true);
       }
-      debugPrint('Started playing ringtone');
+      debugPrint('Started playing calling tone');
     } catch (e) {
-      debugPrint('Error playing ringtone: $e');
+      debugPrint('Error playing calling tone: $e');
     }
   }
 
@@ -144,7 +140,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       if (!mounted) return;
       setState(() => _isPlayingRingtone = false);
     } catch (e) {
-      debugPrint('Error stopping ringtone: $e');
+      debugPrint('Error stopping calling tone: $e');
     }
   }
 

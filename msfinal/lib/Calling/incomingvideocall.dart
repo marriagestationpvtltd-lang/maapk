@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -55,7 +55,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Duration _duration = Duration.zero;
   StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
 
-  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  final _ringtonePlayer = FlutterRingtonePlayer();
 
   // Network quality tracking
   int _networkQuality = 0; // 0=unknown, 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
@@ -100,8 +100,12 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   Future<void> _playRingtone() async {
     try {
-      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
-      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
+      await _ringtonePlayer.play(
+        android: AndroidSounds.ringtone,
+        ios: IosSounds.electronic,
+        looping: true,
+        asAlarm: true,
+      );
       debugPrint('✅ Incoming video call ringtone started');
     } catch (e) {
       debugPrint('Error playing incoming video call ringtone: $e');

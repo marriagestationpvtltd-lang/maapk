@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -51,7 +51,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   Duration _duration = Duration.zero;
   StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
 
-  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  final _ringtonePlayer = FlutterRingtonePlayer();
 
   // Call history tracking
   String? _callHistoryId;
@@ -91,8 +91,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   Future<void> _playRingtone() async {
     try {
-      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
-      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
+      await _ringtonePlayer.play(
+        android: AndroidSounds.ringtone,
+        ios: IosSounds.electronic,
+        looping: true,
+        asAlarm: true,
+      );
       debugPrint('✅ Incoming call ringtone started');
     } catch (e) {
       debugPrint('Error playing incoming call ringtone: $e');

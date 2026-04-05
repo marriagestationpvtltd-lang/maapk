@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -69,7 +69,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   Duration _duration = Duration.zero;
 
   // Ringtone state
-  final _ringtonePlayer = FlutterRingtonePlayer();
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
   bool _isPlayingRingtone = false;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
@@ -240,19 +240,15 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     try {
       await _stopRingtone();
 
-      await _ringtonePlayer.play(
-        android: AndroidSounds.ringtone,
-        ios: IosSounds.triTone,
-        looping: true,
-        asAlarm: true,
-      );
+      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringtonePlayer.play(AssetSource('images/outcall.mp3'));
 
       if (mounted) {
         setState(() => _isPlayingRingtone = true);
       }
-      debugPrint('Started playing ringtone');
+      debugPrint('Started playing calling tone');
     } catch (e) {
-      debugPrint('Error playing ringtone: $e');
+      debugPrint('Error playing calling tone: $e');
     }
   }
 
