@@ -15,7 +15,7 @@ class ApiConfig {
   // static const String requestUrl = 'http://10.0.2.2/request';
   // static const String appUrl     = 'http://10.0.2.2/app.php';
 
-  // ── Physical Phone (USB) — आफ्नो PC को IP राख्नुस् ─────────────────────
+  // ── Physical Phone (USB/WiFi) — PC IP: 192.168.1.9 ──────────────────────
   static const String baseUrl    = 'http://192.168.1.9/Api2';
   static const String baseUrl3   = 'http://192.168.1.9/Api3';
   static const String requestUrl = 'http://192.168.1.9/request';
