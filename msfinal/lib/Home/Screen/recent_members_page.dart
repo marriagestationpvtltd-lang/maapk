@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Auth/Screen/signupscreen10.dart';
 import '../../main.dart';
 import '../../ReUsable/loading_widgets.dart';
+import '../../utils/privacy_utils.dart';
 
 class RecentMembersPage extends StatefulWidget {
   final int userId;
@@ -317,8 +318,11 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
     final privacy = profile['privacy']?.toString().toLowerCase() ?? '';
     final photoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
 
-    // Determine if we should show clear image
-    final shouldShowClearImage = privacy == 'free' || photoRequest == 'accepted';
+    // Use PrivacyUtils for consistent privacy enforcement
+    final shouldShowClearImage = PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
 
     return GestureDetector(
       onTap: () async {
@@ -373,37 +377,25 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
                             ),
                           ),
                         )
-                      : Stack(
-                          children: [
-                            Image.network(
-                              imageUrl,
-                              width: double.infinity,
+                      : ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                            sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                          ),
+                          child: Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
                               height: 180,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 180,
-                                color: AppColors.background,
-                                child: const Center(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 60, color: AppColors.textHint),
-                                ),
+                              color: AppColors.background,
+                              child: const Center(
+                                child: Icon(Icons.person_rounded,
+                                    size: 60, color: AppColors.textHint),
                               ),
                             ),
-                            Container(
-                              width: double.infinity,
-                              height: 180,
-                              decoration: BoxDecoration(
-                                color: AppColors.black.withOpacity(0.25),
-                              ),
-                              child: BackdropFilter(
-                                filter:
-                                    ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                                child: Container(
-                                  color: AppColors.black.withOpacity(0.05),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                 ),
                 // New member badge

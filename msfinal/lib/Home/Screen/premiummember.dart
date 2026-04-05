@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Models/masterdata.dart';
 import '../../main.dart';
 import '../../ReUsable/loading_widgets.dart';
+import '../../utils/privacy_utils.dart';
 
 class PaidUsersListPage extends StatefulWidget {
   final int userId;
@@ -261,7 +262,13 @@ class _PaidUsersListPageState extends State<PaidUsersListPage> {
         ? 'https://digitallami.com/Api2/$profilePic'
         : 'https://via.placeholder.com/150?text=No+Image';
 
-    final shouldBlurPhoto = usertye == 'free';
+    // Use profile owner's privacy setting, not viewer's subscription
+    final privacy = user['privacy']?.toString().toLowerCase() ?? '';
+    final photoRequest = user['photo_request']?.toString().toLowerCase() ?? '';
+    final shouldBlurPhoto = !PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
     final interests = (user['interests']?.toString() ?? '').split(',').take(2).toList();
 
     return Container(

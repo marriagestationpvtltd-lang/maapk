@@ -34,9 +34,9 @@ try {
     $norm = strtolower(trim($rawGender));
     $opposite = ($norm === 'male') ? 'female' : 'male';
 
-    // FETCH OPPOSITE GENDER + PAID + INCLUDE isVerified + AGE + CITY
+    // FETCH OPPOSITE GENDER + PAID + INCLUDE isVerified + AGE + CITY + PRIVACY
     $sql = "
-        SELECT 
+        SELECT
             u.id,
             u.firstName,
             u.lastName,
@@ -45,6 +45,7 @@ try {
             u.usertype,
             u.isVerified,
             u.profile_picture,
+            u.privacy,
             ud.birthDate,
             TIMESTAMPDIFF(YEAR, ud.birthDate, CURDATE()) AS age,
             pa.city
@@ -64,6 +65,31 @@ try {
     ]);
 
     $rows = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+    // Add photo_request status for each user
+    foreach ($rows as &$row) {
+        $stmtPhoto = $pdo->prepare("
+            SELECT status
+            FROM proposals
+            WHERE request_type = 'Photo'
+            AND (
+                (sender_id = :me AND receiver_id = :other)
+                OR
+                (sender_id = :other AND receiver_id = :me)
+            )
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $stmtPhoto->execute([
+            ":me" => $userId,
+            ":other" => $row['id']
+        ]);
+        $photo_request = "not sent";
+        if ($r = $stmtPhoto->fetch(PDO::FETCH_ASSOC)) {
+            $photo_request = ($r['status'] === 'accepted') ? 'accepted' : 'pending';
+        }
+        $row['photo_request'] = $photo_request;
+    }
 
     echo json_encode([
         "success" => true,
