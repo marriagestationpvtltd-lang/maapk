@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:audioplayers/audioplayers.dart'; // Add this import
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -68,11 +68,9 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   Timer? _callTimer;
   Duration _duration = Duration.zero;
 
-  // Audio player for ringtone
-  late AudioPlayer _ringtonePlayer;
+  // Ringtone state
+  final _ringtonePlayer = FlutterRingtonePlayer();
   bool _isPlayingRingtone = false;
-  StreamSubscription? _ringtonePlayerStateSubscription;
-  StreamSubscription? _ringtonePlayerCompleteSubscription;
   StreamSubscription<Map<String, dynamic>>? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _connectionStatus;
@@ -90,35 +88,9 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _ringtonePlayer = AudioPlayer();
-    _setupAudioPlayer();
     _listenForCallResponse();
     _startCall();
     _listenConnectivity();
-  }
-
-  // ================= SETUP AUDIO PLAYER =================
-// ================= SETUP AUDIO PLAYER =================
-  void _setupAudioPlayer() {
-    // Listen for player state changes
-    _ringtonePlayerStateSubscription = _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
-      if (!mounted) return;
-
-      setState(() {
-        _isPlayingRingtone = state == PlayerState.playing;
-      });
-    });
-
-
-    // Handle errors (new way in audioplayers ^5.4.2)
-    _ringtonePlayerCompleteSubscription = _ringtonePlayer.onPlayerComplete.listen((_) {
-      // When ringtone completes (won't happen with loop, but good to have)
-      debugPrint('Ringtone playback completed');
-    });
-
-    // For error handling in newer versions
-
-
   }
 
   bool _callDeclined = false; // true when remote explicitly rejected
@@ -268,15 +240,16 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     try {
       await _stopRingtone();
 
-      // 🔥 PLAY FIRST (important for iOS)
       await _ringtonePlayer.play(
-        AssetSource('images/outcall.mp3'),
-        volume: _speakerOn ? 1.0 : 0.8,
+        android: AndroidSounds.ringtone,
+        ios: IosSounds.triTone,
+        looping: true,
+        asAlarm: true,
       );
 
-      // 🔥 THEN enable looping
-      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
-
+      if (mounted) {
+        setState(() => _isPlayingRingtone = true);
+      }
       debugPrint('Started playing ringtone');
     } catch (e) {
       debugPrint('Error playing ringtone: $e');
@@ -289,7 +262,6 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   Future<void> _stopRingtone() async {
     try {
       await _ringtonePlayer.stop();
-      await _ringtonePlayer.release(); // 🔥 important for iOS
 
       if (!mounted) return;
 
@@ -588,15 +560,6 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     setState(() => _speakerOn = !_speakerOn);
     if (_engineInitialized) {
       await _engine.setEnableSpeakerphone(_speakerOn);
-    }
-
-    // Update ringtone volume based on speaker mode
-    if (_isPlayingRingtone) {
-      if (_speakerOn) {
-        await _ringtonePlayer.setVolume(1.0); // Louder for speaker
-      } else {
-        await _ringtonePlayer.setVolume(0.8); // Softer for earpiece
-      }
     }
   }
 
@@ -1067,9 +1030,6 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     _callTimer?.cancel();
     _responseSubscription?.cancel();
     _connectivitySubscription?.cancel();
-    _ringtonePlayerStateSubscription?.cancel();
-    _ringtonePlayerCompleteSubscription?.cancel();
-    _ringtonePlayer.dispose();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
       unawaited(_releaseEngineAsync());

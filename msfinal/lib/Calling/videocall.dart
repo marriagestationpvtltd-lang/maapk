@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:audioplayers/audioplayers.dart'; // Add this import
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Chat/call_overlay_manager.dart';
 import '../navigation/app_navigation.dart';
@@ -73,9 +73,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
 
   StreamSubscription? _responseSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
-  StreamSubscription? _ringtonePlayerStateSubscription;
-  StreamSubscription? _ringtonePlayerCompleteSubscription;
-  StreamSubscription? _ringtonePlayerLogSubscription;
   String? _connectionStatus;
 
   // Network quality tracking
@@ -83,8 +80,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   String _networkQualityText = 'Unknown';
   Timer? _qualityUpdateTimer;
 
-  // Audio player for ringtone
-  late AudioPlayer _ringtonePlayer;
+  // Ringtone state
+  final _ringtonePlayer = FlutterRingtonePlayer();
   bool _isPlayingRingtone = false;
 
   // PiP (local video preview) draggable offset (from top-right)
@@ -111,38 +108,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _ringtonePlayer = AudioPlayer();
-    _setupAudioPlayer();
     _startCall();
     _listenForCallResponse();
     _listenConnectivity();
     _scheduleControlsHide();
-  }
-
-  // ================= SETUP AUDIO PLAYER =================
-  void _setupAudioPlayer() {
-    // Listen for player state changes
-    _ringtonePlayerStateSubscription = _ringtonePlayer.onPlayerStateChanged.listen((PlayerState state) {
-      debugPrint('Player state changed: $state');
-      if (!mounted) return;
-      if (state == PlayerState.playing) {
-        setState(() => _isPlayingRingtone = true);
-      } else {
-        setState(() => _isPlayingRingtone = false);
-      }
-    });
-
-    // Listen for playback completion
-    _ringtonePlayerCompleteSubscription = _ringtonePlayer.onPlayerComplete.listen((_) {
-      debugPrint('Ringtone playback completed');
-    });
-
-    // Log listener
-    _ringtonePlayerLogSubscription = _ringtonePlayer.onLog.listen((log) {
-      if (log == null) {
-        debugPrint('Audio player error: ${log}');
-      }
-    });
   }
 
   // ================= PLAY RINGTONE =================
@@ -153,12 +122,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       await _stopRingtone();
 
       await _ringtonePlayer.play(
-        AssetSource('images/outcall.mp3'),
-        volume: _speakerOn ? 1.0 : 0.8,
+        android: AndroidSounds.ringtone,
+        ios: IosSounds.triTone,
+        looping: true,
+        asAlarm: true,
       );
 
-      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
-
+      if (mounted) {
+        setState(() => _isPlayingRingtone = true);
+      }
+      debugPrint('Started playing ringtone');
     } catch (e) {
       debugPrint('Error playing ringtone: $e');
     }
@@ -167,7 +140,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   Future<void> _stopRingtone() async {
     try {
       await _ringtonePlayer.stop();
-      await _ringtonePlayer.release(); // important
 
       if (!mounted) return;
       setState(() => _isPlayingRingtone = false);
@@ -652,15 +624,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     if (_engineInitialized) {
       await _engine.setEnableSpeakerphone(_speakerOn);
     }
-
-    // Update ringtone volume based on speaker mode
-    if (_isPlayingRingtone) {
-      if (_speakerOn) {
-        await _ringtonePlayer.setVolume(1.0); // Louder for speaker
-      } else {
-        await _ringtonePlayer.setVolume(0.8); // Softer for earpiece
-      }
-    }
   }
 
   // ================= CONNECTIVITY =================
@@ -1098,10 +1061,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     _responseSubscription?.cancel();
     _connectivitySubscription?.cancel();
     _controlsHideTimer?.cancel();
-    _ringtonePlayerStateSubscription?.cancel();
-    _ringtonePlayerCompleteSubscription?.cancel();
-    _ringtonePlayerLogSubscription?.cancel();
-    _ringtonePlayer.dispose();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {
       unawaited(_releaseEngineAsync());
