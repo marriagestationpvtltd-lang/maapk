@@ -107,6 +107,12 @@ class _PaymentPageState extends State<PaymentPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.primary,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white),
           onPressed: () {

@@ -133,6 +133,12 @@ class _ServiceChatPageState extends State<ServiceChatPage> {
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

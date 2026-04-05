@@ -560,6 +560,12 @@ class _MatrimonyNotificationPageState
         title: const Text('Notifications', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         backgroundColor: Colors.red,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         actions: [
           IconButton(
             icon: Icon(_showSettings ? Icons.settings : Icons.settings_outlined),

@@ -170,6 +170,12 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.primary,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemStatusBarContrastEnforced: false,
+      ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white, size: 22),
         onPressed: () => Navigator.of(context).pop(),

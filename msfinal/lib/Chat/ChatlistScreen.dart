@@ -945,6 +945,12 @@ class _ChatListScreenState extends State<ChatListScreen>
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemStatusBarContrastEnforced: false,
+        ),
         title: Row(
           children: [
             const Text('Chats', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),

@@ -417,6 +417,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       elevation: 0,
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemStatusBarContrastEnforced: false,
+      ),
       flexibleSpace: FlexibleSpaceBar(
         titlePadding:
             const EdgeInsets.only(left: 56, bottom: 16),
