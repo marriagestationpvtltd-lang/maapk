@@ -180,7 +180,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   static const Duration _kActiveChatPresenceWindow = Duration(seconds: 30);
 
   static const LinearGradient _primaryGradient = LinearGradient(
-    colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
+    colors: [Color(0xFFF90E18), Color(0xFFD00D15)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -189,7 +189,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
-  static const Color _accentColor = Color(0xFFDB2777);
+  static const Color _accentColor = Color(0xFFF90E18);
   static const Color _backgroundColor = Color(0xFFF8FAFC);
   static const Color _textColor = Color(0xFF1F2937);
   static const Color _lightTextColor = Color(0xFF6B7280);
@@ -866,6 +866,82 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (mounted) setState(() { _isSending = false; });
     }
   }
+
+  bool _isSendingImage = false;
+
+  Future<void> _pickAndSendImage() async {
+    if (_isBlocked || _isSendingImage) return;
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _isSendingImage = true);
+    try {
+      final messageId = _uuid.v4();
+      final file = File(picked.path);
+      final ref = _storage.ref().child('chat_images/${widget.chatRoomId}/$messageId.jpg');
+      await ref.putFile(file);
+      final imageUrl = await ref.getDownloadURL();
+
+      final timestamp = DateTime.now();
+      final bool receiverViewingThisChat = _isReceiverViewingThisChat;
+      final messageData = {
+        'messageId': messageId,
+        'senderId': widget.currentUserId,
+        'receiverId': widget.receiverId,
+        'message': imageUrl,
+        'messageType': 'image',
+        'timestamp': timestamp,
+        'isRead': receiverViewingThisChat,
+        'isDelivered': receiverViewingThisChat,
+        'isDeletedForSender': false,
+        'isDeletedForReceiver': false,
+      };
+
+      _forceScrollToBottom = true;
+      _scrollToBottom();
+
+      await _firestore
+          .collection('chatRooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .doc(messageId)
+          .set(messageData);
+
+      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
+        'lastMessage': '📷 Photo',
+        'lastMessageType': 'image',
+        'lastMessageTime': timestamp,
+        'lastMessageSenderId': widget.currentUserId,
+        'unreadCount.${widget.receiverId}':
+            receiverViewingThisChat ? 0 : FieldValue.increment(1),
+      });
+
+      if (!receiverViewingThisChat) {
+        await NotificationService.sendChatNotification(
+          recipientUserId: widget.receiverId.toString(),
+          senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
+          senderId: widget.currentUserId.toString(),
+          message: '📷 Photo',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSendingImage = false);
+    }
+  }
+
   Future<void> _editMessage() async {
     if (editingMessage == null || _editController.text.trim().isEmpty) return;
 
@@ -1500,7 +1576,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     Text(
                       time,
                       style: TextStyle(
-                        color: isMine ? Colors.white70 : _lightTextColor,
+                        color: _lightTextColor,
                         fontSize: 12,
                       ),
                     ),
@@ -1971,6 +2047,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              if (!isEditing)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6, bottom: 4),
+                  child: _isSendingImage
+                      ? const SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: _pickAndSendImage,
+                          icon: const Icon(Icons.image_outlined, size: 24),
+                          color: _accentColor,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        ),
+                ),
               Expanded(
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 46),
