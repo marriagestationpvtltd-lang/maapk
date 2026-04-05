@@ -451,9 +451,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       await _engine.enableAudio();
       await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
 
-      // Enable network quality monitoring (updates every 2 seconds)
-      await _engine.enableNetworkQuality(enabled: true, quality: QualityType.qualityUnknown);
-
       // Configure video encoder with adaptive bitrate support
       await _engine.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(

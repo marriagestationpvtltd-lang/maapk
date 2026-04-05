@@ -310,9 +310,6 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         print('📹 Enabling video...');
         await _engine.enableVideo();
 
-        // Enable network quality monitoring (updates every 2 seconds)
-        await _engine.enableNetworkQuality(enabled: true, quality: QualityType.qualityUnknown);
-
         // Configure video encoder with adaptive bitrate support
         await _engine.setVideoEncoderConfiguration(const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 640, height: 480),
