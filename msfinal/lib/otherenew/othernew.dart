@@ -32,7 +32,7 @@ ProfileScreen({super.key, required this.userId,});
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const String _requestBaseUrl = 'https://digitallami.com/request';
+  static const String _requestBaseUrl = 'http://192.168.1.9/request';
 
   bool _isBlocked = false;
   bool _isLoadingBlock = false;

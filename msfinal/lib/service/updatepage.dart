@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class UpdateService {
-  static const String baseUrl = "http://digitallami.com/Api2"; // change to your domain
+  static const String baseUrl = "http://192.168.1.9/Api2"; // change to your domain
 
   // Reusable function to update page number
   static Future<bool> updatePageNumber({

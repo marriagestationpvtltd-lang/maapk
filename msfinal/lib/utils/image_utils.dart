@@ -1,4 +1,4 @@
-const String _apiBaseUrl = 'https://digitallami.com/Api2';
+const String _apiBaseUrl = 'http://192.168.1.9/Api2';
 
 /// Resolves a raw image path returned by the PHP API into a full URL.
 ///

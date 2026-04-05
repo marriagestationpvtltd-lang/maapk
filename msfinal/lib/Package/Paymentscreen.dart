@@ -50,7 +50,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _fetchVatSettings() async {
     try {
       final response = await http.get(
-        Uri.parse('https://digitallami.com/Api2/app_settings.php'),
+        Uri.parse('http://192.168.1.9/Api2/app_settings.php'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -960,7 +960,7 @@ class _PaymentPageState extends State<PaymentPage> {
     }
 
     final Uri url = Uri.parse(
-        "https://digitallami.com/Api3/purchase_package.php"
+        "http://192.168.1.9/Api3/purchase_package.php"
     ).replace(queryParameters: queryParams);
 
     try {
@@ -988,7 +988,7 @@ class _PaymentPageState extends State<PaymentPage> {
     required int packageId,
   }) async {
     final Uri url = Uri.parse(
-        "https://digitallami.com/Api3/cancel_payment.php"
+        "http://192.168.1.9/Api3/cancel_payment.php"
     ).replace(queryParameters: {
       "userid": userId.toString(),
       "paidby": paidBy,

@@ -57,7 +57,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
       final userId = int.tryParse(userData["id"].toString());
 
       final response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
+        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -105,7 +105,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
       _userCreatedDate = userData["created_at"] ?? "";
 
       final url = Uri.parse(
-          'https://digitallami.com/Api2/search_opposite_gender.php?user_id=$userid&sort_by=recent&limit=${_perPage * _currentPage}');
+          'http://192.168.1.9/Api2/search_opposite_gender.php?user_id=$userid&sort_by=recent&limit=${_perPage * _currentPage}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -133,7 +133,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
             final rawImage = member['profile_picture'] ?? '';
             final imageUrl = rawImage.startsWith('http')
                 ? rawImage
-                : 'https://digitallami.com/Api2/$rawImage';
+                : 'http://192.168.1.9/Api2/$rawImage';
 
             return {
               'userId': member['userid'] ?? member['id'],

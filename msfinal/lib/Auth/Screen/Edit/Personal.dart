@@ -796,7 +796,7 @@ class _PersonalDetailsPageEditState extends State<PersonalDetailsPageEdit> {
       final userId = int.tryParse(userData["id"].toString());
       // Call the reusable service
       final service = UserPersonalDetailService(
-        baseUrl: 'https://digitallami.com/Api2/save_personal_detail.php',
+        baseUrl: 'http://192.168.1.9/Api2/save_personal_detail.php',
       );
 
       final result = await service.saveUserPersonalDetail(

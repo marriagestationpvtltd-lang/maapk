@@ -1,4 +1,17 @@
 // lib/constants/agora_constants.dart
+
+/// Central API configuration.
+/// Switch [baseUrl] / [baseUrl3] between environments as needed:
+///   Live server  : https://digitallami.com/Api2
+///   Android Emu  : http://10.0.2.2/Api2
+///   Physical USB : http://192.168.1.9/Api2  ← current (local PC IP)
+class ApiConfig {
+  static const String baseUrl = 'http://192.168.1.9/Api2';
+  static const String baseUrl3 = 'http://192.168.1.9/Api3';
+  static const String requestUrl = 'http://192.168.1.9/request';
+  static const String appUrl = 'http://192.168.1.9/app.php';
+}
+
 class AgoraConstants {
   // Replace these with your actual Agora credentials
   static const String appId = 'a82d7e84e3d34290bea0577ae96c45ae';
