@@ -27,7 +27,7 @@ if ($typeResult && $typeResult->num_rows > 0) {
         $typeId = intval($typeRow['id']);
 
         // Fetch all educations that belong to this type
-        $eduQuery = "
+        $eduStmt = $conn->prepare("
             SELECT 
                 id,
                 name,
@@ -40,10 +40,12 @@ if ($typeResult && $typeResult->num_rows > 0) {
                 createdBy,
                 modifiedBy
             FROM education
-            WHERE educationTypeId = $typeId
-        ";
-
-        $eduResult = $conn->query($eduQuery);
+            WHERE educationTypeId = ?
+        ");
+        $eduStmt->bind_param("i", $typeId);
+        $eduStmt->execute();
+        $eduResult = $eduStmt->get_result();
+        $eduStmt->close();
         $educations = [];
 
         if ($eduResult && $eduResult->num_rows > 0) {

@@ -53,8 +53,9 @@ try {
         "data" => $user
     ]);
 } catch (Exception $e) {
+    error_log('get_privacy.php Exception: ' . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => $e->getMessage()
+        "message" => "Failed to fetch user data"
     ]);
 }

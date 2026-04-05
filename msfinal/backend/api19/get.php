@@ -13,7 +13,15 @@ if (!isset($_GET['userid'])) {
     exit;
 }
 
-$userid = $_GET['userid'];
+$userid = isset($_GET['userid']) ? intval($_GET['userid']) : 0;
+
+if (!$userid) {
+    echo json_encode([
+        "status" => false,
+        "message" => "userid is required"
+    ]);
+    exit;
+}
 
 $sql = "
 SELECT 
@@ -28,7 +36,7 @@ LIMIT 1
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $userid);
+$stmt->bind_param("i", $userid);
 $stmt->execute();
 
 $result = $stmt->get_result();

@@ -62,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($httpCode === 200) {
             $result = json_decode($response, true);
             if ($result['success']) {
-                echo '<script>Swal.fire("Success", "' . $result['message'] . '", "success");</script>';
+                echo '<script>Swal.fire("Success", ' . json_encode($result['message'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ', "success");</script>';
             } else {
-                echo '<script>Swal.fire("Error", "' . ($result['message'] ?? 'Action failed') . '", "error");</script>';
+                echo '<script>Swal.fire("Error", ' . json_encode($result['message'] ?? 'Action failed', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ', "error");</script>';
             }
         } else {
             echo '<script>Swal.fire("Error", "Server error", "error");</script>';
@@ -158,11 +158,11 @@ $rejectedDocs = array_filter($documents, fn($doc) => $doc['status'] === 'rejecte
                                         <!-- Action Buttons -->
                                         <div class="action-buttons d-flex gap-2">
                                             <button class="btn btn-success flex-fill" 
-                                                    onclick="approveDocument(<?php echo $doc['user_id']; ?>)">
+                                                    onclick="approveDocument(<?php echo intval($doc['user_id']); ?>)">
                                                 <i class="fas fa-check me-2"></i> Approve
                                             </button>
                                             <button class="btn btn-danger flex-fill" 
-                                                    onclick="rejectDocument(<?php echo $doc['user_id']; ?>, '<?php echo htmlspecialchars($doc['firstName'] . ' ' . $doc['lastName']); ?>')">
+                                                    onclick="rejectDocument(<?php echo intval($doc['user_id']); ?>, '<?php echo htmlspecialchars($doc['firstName'] . ' ' . $doc['lastName']); ?>')">
                                                 <i class="fas fa-times me-2"></i> Reject
                                             </button>
                                         </div>

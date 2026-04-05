@@ -80,12 +80,14 @@ try {
 
 } catch (PDOException $e) {
     http_response_code(500);
-    $resp['message'] = 'Database error: ' . $e->getMessage();
+    error_log('masterdata.php PDOException: ' . $e->getMessage());
+    $resp['message'] = 'Database error';
     echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     exit;
 } catch (Throwable $t) {
     http_response_code(500);
-    $resp['message'] = 'Server error: ' . $t->getMessage();
+    error_log('masterdata.php Throwable: ' . $t->getMessage());
+    $resp['message'] = 'Server error';
     echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     exit;
 }

@@ -14,92 +14,151 @@ if (!$data) {
     die(json_encode(["status"=>"error","message"=>"Invalid JSON"]));
 }
 
-function esc($v,$c){ return $c->real_escape_string($v ?? ''); }
+$userid           = isset($data["userid"]) ? intval($data["userid"]) : 0;
+$minage           = $data["minage"] ?? '';
+$maxage           = $data["maxage"] ?? '';
+$minheight        = $data["minheight"] ?? '';
+$maxheight        = $data["maxheight"] ?? '';
+$maritalstatus    = $data["maritalstatus"] ?? '';
+$profilewithchild = $data["profilewithchild"] ?? '';
+$familytype       = $data["familytype"] ?? '';
+$religion         = $data["religion"] ?? '';
+$caste            = $data["caste"] ?? '';
+$subcaste         = $data["subcaste"] ?? '';
+$mothertoungue    = $data["mothertoungue"] ?? '';
+$herscopeblief    = $data["herscopeblief"] ?? '';
+$manglik          = $data["manglik"] ?? '';
+$country          = $data["country"] ?? '';
+$state            = $data["state"] ?? '';
+$city             = $data["city"] ?? '';
+$qualification    = $data["qualification"] ?? '';
+$educationmedium  = $data["educationmedium"] ?? '';
+$proffession      = $data["proffession"] ?? '';
+$workingwith      = $data["workingwith"] ?? '';
+$annualincome     = $data["annualincome"] ?? '';
+$diet             = $data["diet"] ?? '';
+$smokeaccept      = $data["smokeaccept"] ?? '';
+$drinkaccept      = $data["drinkaccept"] ?? '';
+$disabilityaccept = $data["disabilityaccept"] ?? '';
+$complexion       = $data["complexion"] ?? '';
+$bodytype         = $data["bodytype"] ?? '';
+$otherexpectation = $data["otherexpectation"] ?? '';
 
-$userid            = esc($data["userid"],$conn);
-$minage            = esc($data["minage"],$conn);
-$maxage            = esc($data["maxage"],$conn);
-$minheight         = esc($data["minheight"],$conn);
-$maxheight         = esc($data["maxheight"],$conn);
-$maritalstatus     = esc($data["maritalstatus"],$conn);
-$profilewithchild  = esc($data["profilewithchild"],$conn);
-$familytype        = esc($data["familytype"],$conn);
-$religion          = esc($data["religion"],$conn);
-$caste             = esc($data["caste"],$conn);
-$subcaste          = esc($data["subcaste"],$conn);
-$mothertoungue     = esc($data["mothertoungue"],$conn);
-$herscopeblief     = esc($data["herscopeblief"],$conn);
-$manglik           = esc($data["manglik"],$conn);
-$country           = esc($data["country"],$conn);
-$state             = esc($data["state"],$conn);
-$city              = esc($data["city"],$conn);
-$qualification     = esc($data["qualification"],$conn);
-$educationmedium   = esc($data["educationmedium"],$conn);
-$proffession       = esc($data["proffession"],$conn);
-$workingwith       = esc($data["workingwith"],$conn);
-$annualincome      = esc($data["annualincome"],$conn);
-$diet              = esc($data["diet"],$conn);
-$smokeaccept       = esc($data["smokeaccept"],$conn);
-$drinkaccept       = esc($data["drinkaccept"],$conn);
-$disabilityaccept  = esc($data["disabilityaccept"],$conn);
-$complexion        = esc($data["complexion"],$conn);
-$bodytype          = esc($data["bodytype"],$conn);
-$otherexpectation  = esc($data["otherexpectation"],$conn);
-
-if(!$userid){
+if ($userid <= 0) {
     die(json_encode(["status"=>"error","message"=>"userid required"]));
 }
 
-$check = $conn->query("SELECT id FROM user_partner WHERE userid='$userid'");
+$check = $conn->prepare("SELECT id FROM user_partner WHERE userid = ?");
+$check->bind_param("i", $userid);
+$check->execute();
+$check->store_result();
 
-if($check->num_rows>0){
-    $sql = "UPDATE user_partner SET
-        minage='$minage', maxage='$maxage',
-        minheight='$minheight', maxheight='$maxheight',
-        maritalstatus='$maritalstatus',
-        profilewithchild='$profilewithchild',
-        familytype='$familytype',
-        religion='$religion',
-        caste='$caste',
-        subcaste='$subcaste',
-        mothertoungue='$mothertoungue',
-        herscopeblief='$herscopeblief',
-        manglik='$manglik',
-        country='$country',
-        state='$state',
-        city='$city',
-        qualification='$qualification',
-        educationmedium='$educationmedium',
-        proffession='$proffession',
-        workingwith='$workingwith',
-        annualincome='$annualincome',
-        diet='$diet',
-        smokeaccept='$smokeaccept',
-        drinkaccept='$drinkaccept',
-        disabilityaccept='$disabilityaccept',
-        complexion='$complexion',
-        bodytype='$bodytype',
-        otherexpectation='$otherexpectation'
-        WHERE userid='$userid'";
-}else{
-    $sql="INSERT INTO user_partner(
+if ($check->num_rows > 0) {
+    $check->close();
+    $stmt = $conn->prepare("UPDATE user_partner SET
+        minage=?, maxage=?,
+        minheight=?, maxheight=?,
+        maritalstatus=?,
+        profilewithchild=?,
+        familytype=?,
+        religion=?,
+        caste=?,
+        subcaste=?,
+        mothertoungue=?,
+        herscopeblief=?,
+        manglik=?,
+        country=?,
+        state=?,
+        city=?,
+        qualification=?,
+        educationmedium=?,
+        proffession=?,
+        workingwith=?,
+        annualincome=?,
+        diet=?,
+        smokeaccept=?,
+        drinkaccept=?,
+        disabilityaccept=?,
+        complexion=?,
+        bodytype=?,
+        otherexpectation=?
+        WHERE userid=?");
+    $stmt->bind_param(
+        "ssssssssssssssssssssssssssssi", // 28 strings + 1 integer (userid last)
+        $minage, $maxage,
+        $minheight, $maxheight,
+        $maritalstatus,
+        $profilewithchild,
+        $familytype,
+        $religion,
+        $caste,
+        $subcaste,
+        $mothertoungue,
+        $herscopeblief,
+        $manglik,
+        $country,
+        $state,
+        $city,
+        $qualification,
+        $educationmedium,
+        $proffession,
+        $workingwith,
+        $annualincome,
+        $diet,
+        $smokeaccept,
+        $drinkaccept,
+        $disabilityaccept,
+        $complexion,
+        $bodytype,
+        $otherexpectation,
+        $userid
+    );
+} else {
+    $check->close();
+    $stmt = $conn->prepare("INSERT INTO user_partner(
         userid,minage,maxage,minheight,maxheight,maritalstatus,profilewithchild,
         familytype,religion,caste,subcaste,mothertoungue,herscopeblief,manglik,
         country,state,city,qualification,educationmedium,proffession,workingwith,
         annualincome,diet,smokeaccept,drinkaccept,disabilityaccept,complexion,
         bodytype,otherexpectation
-    ) VALUES(
-        '$userid','$minage','$maxage','$minheight','$maxheight','$maritalstatus',
-        '$profilewithchild','$familytype','$religion','$caste','$subcaste',
-        '$mothertoungue','$herscopeblief','$manglik','$country','$state','$city',
-        '$qualification','$educationmedium','$proffession','$workingwith',
-        '$annualincome','$diet','$smokeaccept','$drinkaccept','$disabilityaccept',
-        '$complexion','$bodytype','$otherexpectation'
-    )";
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param(
+        "isssssssssssssssssssssssssss", // 1 integer (userid) + 28 strings
+        $userid,
+        $minage, $maxage,
+        $minheight, $maxheight,
+        $maritalstatus,
+        $profilewithchild,
+        $familytype,
+        $religion,
+        $caste,
+        $subcaste,
+        $mothertoungue,
+        $herscopeblief,
+        $manglik,
+        $country,
+        $state,
+        $city,
+        $qualification,
+        $educationmedium,
+        $proffession,
+        $workingwith,
+        $annualincome,
+        $diet,
+        $smokeaccept,
+        $drinkaccept,
+        $disabilityaccept,
+        $complexion,
+        $bodytype,
+        $otherexpectation
+    );
 }
 
-if($conn->query($sql)){
+if ($stmt->execute()) {
     echo json_encode(["status"=>"success"]);
-}else{
-    echo json_encode(["status"=>"error","message"=>$conn->error]);
+} else {
+    error_log('user_partner.php execute error: ' . $stmt->error);
+    echo json_encode(["status"=>"error","message"=>"Failed to save partner preferences"]);
 }
+$stmt->close();
+$conn->close();

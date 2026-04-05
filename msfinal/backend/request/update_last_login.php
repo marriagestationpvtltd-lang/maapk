@@ -59,8 +59,9 @@ try {
     ]);
 
 } catch (PDOException $e) {
+    error_log('update_last_login.php PDOException: ' . $e->getMessage());
     echo json_encode([
         "status" => false,
-        "message" => $e->getMessage()
+        "message" => "Database error"
     ]);
 }

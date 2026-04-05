@@ -1,22 +1,11 @@
 <?php
-// Enable debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-echo "<!-- DASHBOARD DEBUG START -->\n";
-echo "<!-- Session ID: " . session_id() . " -->\n";
-echo "<!-- Session Data: " . print_r($_SESSION, true) . " -->\n";
-echo "<!-- DASHBOARD DEBUG END -->\n";
-
 // Check if logged in
 if (!isset($_SESSION['admin_id']) || $_SESSION['admin_id'] <= 0) {
-    echo "<!-- Not logged in, redirecting -->\n";
     header('Location: index.php');
     exit;
 }
@@ -67,11 +56,7 @@ $admin = [
                         <a href="logout.php" class="btn btn-danger">Logout</a>
                     </div>
                     
-                    <div class="mt-4">
-                        <h5>Debug Info:</h5>
-                        <pre>Session ID: <?php echo session_id(); ?></pre>
-                        <pre>Session Data: <?php print_r($_SESSION); ?></pre>
-                    </div>
+
                 </div>
             </div>
         </div>

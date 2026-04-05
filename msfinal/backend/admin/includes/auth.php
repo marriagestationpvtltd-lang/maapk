@@ -1,7 +1,4 @@
 <?php
-// Debug output
-echo "<!-- AUTH.PHP LOADED -->\n";
-
 // Simple session start
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -46,11 +43,8 @@ function getCurrentAdmin() {
     return null;
 }
 
-// Login function - SIMPLIFIED VERSION
+// Login function
 function login($email, $password, $remember = false) {
-    echo "<!-- LOGIN FUNCTION CALLED -->\n";
-    echo "<!-- Email: $email -->\n";
-    
     try {
         $pdo = getPDO();
         
@@ -64,9 +58,6 @@ function login($email, $password, $remember = false) {
         $stmt->execute(['email' => $email]);
         $admin = $stmt->fetch();
         
-        echo "<!-- Database query executed -->\n";
-        echo "<!-- Found admin: " . ($admin ? 'YES' : 'NO') . " -->\n";
-        
         if (!$admin) {
             return ['success' => false, 'message' => 'Invalid credentials'];
         }
@@ -75,8 +66,7 @@ function login($email, $password, $remember = false) {
             return ['success' => false, 'message' => 'Admin account disabled'];
         }
         
-        // For testing, accept plain password if hash doesn't match
-        if (password_verify($password, $admin['password']) || $password === 'Admin@123') {
+        if (password_verify($password, $admin['password'])) {
             // Set session
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_name'] = $admin['name'];
@@ -84,20 +74,13 @@ function login($email, $password, $remember = false) {
             $_SESSION['admin_role'] = $admin['role'];
             $_SESSION['last_activity'] = time();
             
-            echo "<!-- Session set successfully -->\n";
-            echo "<!-- Session ID: " . session_id() . " -->\n";
-            echo "<!-- Session data: " . print_r($_SESSION, true) . " -->\n";
-            
             return ['success' => true, 'message' => 'Login successful'];
         } else {
-            echo "<!-- Password verification failed -->\n";
-            echo "<!-- Input password: $password -->\n";
-            echo "<!-- Stored hash: " . $admin['password'] . " -->\n";
             return ['success' => false, 'message' => 'Invalid credentials'];
         }
     } catch (Exception $e) {
-        echo "<!-- Login error: " . $e->getMessage() . " -->\n";
-        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+        error_log('Admin login error occurred');
+        return ['success' => false, 'message' => 'Database error'];
     }
 }
 

@@ -194,15 +194,19 @@ $default="Not available";
    PARTNER MATCH CALCULATION
 ============================= */
 
-$currentUser=$conn->query("
-SELECT up.birthDate,r.name religion,pa.country,pa.city,ul.diet,ul.smoke,ul.drinks
+$currentUserStmt = $conn->prepare("
+SELECT up.birthDate, r.name religion, pa.country, pa.city, ul.diet, ul.smoke, ul.drinks
 FROM users u
 LEFT JOIN userpersonaldetail up ON u.id=up.userid
 LEFT JOIN religion r ON up.religionId=r.id
 LEFT JOIN permanent_address pa ON u.id=pa.userid
 LEFT JOIN user_lifestyle ul ON u.id=ul.userid
-WHERE u.id=$myid
-")->fetch_assoc();
+WHERE u.id=?
+");
+$currentUserStmt->bind_param("i", $myid);
+$currentUserStmt->execute();
+$currentUser = $currentUserStmt->get_result()->fetch_assoc();
+$currentUserStmt->close();
 
 function age($dob){
  if(empty($dob)) return 0;

@@ -1,9 +1,4 @@
 <?php
-// Start session with debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_name('admin_panel_session');
 session_set_cookie_params([
     'lifetime' => 86400,
@@ -16,26 +11,14 @@ session_set_cookie_params([
 
 session_start();
 
-echo "<!-- SESSION DEBUG START -->\n";
-echo "<!-- Session ID: " . session_id() . " -->\n";
-echo "<!-- Session Status: " . session_status() . " -->\n";
-echo "<!-- Session Data: " . print_r($_SESSION, true) . " -->\n";
-echo "<!-- Cookie Data: " . print_r($_COOKIE, true) . " -->\n";
-echo "<!-- Current URL: " . $_SERVER['REQUEST_URI'] . " -->\n";
-echo "<!-- POST Data: " . print_r($_POST, true) . " -->\n";
-echo "<!-- SESSION DEBUG END -->\n";
-
 require_once __DIR__ . '/includes/auth.php';
 
 // If already logged in, redirect to dashboard
 if (isLoggedIn()) {
-    echo "<!-- User is logged in, redirecting to dashboard -->\n";
     $redirect = isset($_SESSION['redirect_url']) ? $_SESSION['redirect_url'] : 'dashboard.php';
     unset($_SESSION['redirect_url']);
     header("Location: $redirect");
     exit;
-} else {
-    echo "<!-- User is NOT logged in -->\n";
 }
 
 $error = '';
@@ -43,57 +26,22 @@ $success = '';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    echo "<!-- Processing POST request -->\n";
-    
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember']);
     
-    echo "<!-- Email: $email -->\n";
-    echo "<!-- Password provided: " . (!empty($password) ? 'YES' : 'NO') . " -->\n";
-    
     if (empty($email) || empty($password)) {
         $error = 'Email and password are required';
-        echo "<!-- Validation error: $error -->\n";
     } else {
-        // Simple login check first
-        echo "<!-- Attempting login -->\n";
+        $result = login($email, $password, $remember);
         
-        if ($email === 'admin@ms.com' && $password === 'Admin@123') {
-            echo "<!-- Hardcoded credentials matched -->\n";
-            
-            // Create session data
-            $_SESSION['admin_id'] = 1;
-            $_SESSION['admin_name'] = 'System Admin';
-            $_SESSION['admin_email'] = $email;
-            $_SESSION['admin_role'] = 'super_admin';
-            $_SESSION['last_activity'] = time();
-            
-            echo "<!-- Session set: " . print_r($_SESSION, true) . " -->\n";
-            
-            // Simple redirect
-            header('Location: dashboard.php');
+        if ($result['success']) {
+            $redirect = isset($_SESSION['redirect_url']) ? $_SESSION['redirect_url'] : 'dashboard.php';
+            unset($_SESSION['redirect_url']);
+            header("Location: $redirect");
             exit;
         } else {
-            echo "<!-- Hardcoded credentials failed, trying database login -->\n";
-            
-            $result = login($email, $password, $remember);
-            
-            echo "<!-- Login result: " . print_r($result, true) . " -->\n";
-            
-            if ($result['success']) {
-                $redirect = isset($_SESSION['redirect_url']) ? $_SESSION['redirect_url'] : 'dashboard.php';
-                unset($_SESSION['redirect_url']);
-                
-                echo "<!-- Login successful, redirecting to: $redirect -->\n";
-                echo "<!-- Current session: " . print_r($_SESSION, true) . " -->\n";
-                
-                header("Location: $redirect");
-                exit;
-            } else {
-                $error = $result['message'];
-                echo "<!-- Login failed: $error -->\n";
-            }
+            $error = $result['message'];
         }
     }
 }

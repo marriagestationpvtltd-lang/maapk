@@ -88,19 +88,33 @@ try {
     ";
 
     if ($type === "received") {
-        $sql .= " p.receiver_id = $user_id AND p.status = 'pending' ";
+        $sql .= " p.receiver_id = ? AND p.status = 'pending' ";
     } elseif ($type === "sent") {
-        $sql .= " p.sender_id = $user_id AND p.status = 'pending' ";
+        $sql .= " p.sender_id = ? AND p.status = 'pending' ";
     } else {
-        $sql .= " (p.sender_id = $user_id OR p.receiver_id = $user_id)
+        $sql .= " (p.sender_id = ? OR p.receiver_id = ?)
                   AND p.status IN ('accepted','rejected') ";
     }
 
     $sql .= " ORDER BY p.created_at DESC";
 
-    $result = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log('proposals_api prepare error');
+        throw new Exception('Database error');
+    }
+
+    if ($type === "accepted") {
+        $stmt->bind_param("ii", $user_id, $user_id);
+    } else {
+        $stmt->bind_param("i", $user_id);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result === false) {
-        throw new Exception($conn->error);
+        error_log('proposals_api.php stmt error: ' . $stmt->error);
+        throw new Exception("Failed to fetch proposals");
     }
 
     $data = [];
@@ -139,10 +153,10 @@ try {
     ]);
 
 } catch (Exception $e) {
+    error_log('proposals_api.php Exception: ' . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => "Server error",
-        "debug" => $e->getMessage()
+        "message" => "Server error"
     ]);
 }
 

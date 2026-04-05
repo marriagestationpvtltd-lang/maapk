@@ -17,8 +17,7 @@ if ($conn->connect_error) {
     exit;
 }
 
-// POST DATA
-$user_id   = $_POST['user_id'] ?? '';
+$user_id   = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 $fcm_token = $_POST['fcm_token'] ?? '';
 
 if (empty($user_id) || empty($fcm_token)) {
