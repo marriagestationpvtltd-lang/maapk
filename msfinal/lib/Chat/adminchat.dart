@@ -1260,7 +1260,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     Icon(Icons.flag, color: Colors.white, size: 16),
                     SizedBox(width: 6),
                     Text(
-                      'प्रोफाइल रिपोर्ट',
+                      'Profile Report',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -1277,7 +1277,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                   children: [
                     if (reportedUserName.isNotEmpty)
                       Text(
-                        'रिपोर्ट गरिएको: $reportedUserName (ID: $reportedUserId)',
+                        'Reported: $reportedUserName (ID: $reportedUserId)',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade700,
@@ -1286,7 +1286,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                       ),
                     if (reportedUserName.isNotEmpty) const SizedBox(height: 4),
                     Text(
-                      'कारण: $reportReason',
+                      'Reason: $reportReason',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF4A3000),

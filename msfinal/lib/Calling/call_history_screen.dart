@@ -44,7 +44,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
     if (_currentUserId.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('कल हिस्ट्री'),
+          title: const Text('Call History'),
           backgroundColor: const Color(0xFFF90E18),
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -54,7 +54,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'कल हिस्ट्री',
+          'Call History',
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFFF90E18),
@@ -75,11 +75,11 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
                 children: [
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('त्रुटि: ${snapshot.error}'),
+                  Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => setState(() {}),
-                    child: const Text('पुनः प्रयास गर्नुहोस्'),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -97,7 +97,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
                       size: 80, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    'कुनै कल हिस्ट्री छैन',
+                    'No call history',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[600],
@@ -106,7 +106,7 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'तपाईंको कल हिस्ट्री यहाँ देखिनेछ',
+                    'Your call history will appear here',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
@@ -265,13 +265,13 @@ class _CallHistoryScreenState extends State<CallHistoryScreen> {
 
     if (difference.inDays == 0) {
       // Today - show time
-      return 'आज ${DateFormat('HH:mm').format(dateTime)}';
+      return 'Today ${DateFormat('HH:mm').format(dateTime)}';
     } else if (difference.inDays == 1) {
       // Yesterday
-      return 'हिजो ${DateFormat('HH:mm').format(dateTime)}';
+      return 'Yesterday ${DateFormat('HH:mm').format(dateTime)}';
     } else if (difference.inDays < 7) {
       // Within a week - show day name
-      final dayNames = ['आइत', 'सोम', 'मंगल', 'बुध', 'बिहि', 'शुक्र', 'शनि'];
+      final dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return dayNames[dateTime.weekday % 7];
     } else {
       // Older - show date
