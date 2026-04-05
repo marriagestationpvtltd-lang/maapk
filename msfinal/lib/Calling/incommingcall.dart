@@ -42,6 +42,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   bool _speakerOn = true;
   bool _processing = false;
   bool _foregroundServiceStarted = false;
+  bool _ending = false;
+  bool _connecting = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
@@ -60,7 +62,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     super.initState();
     WakelockPlus.enable();
     _parseData();
-    _localUid = Random().nextInt(999999);
+    _localUid = Random().nextInt(999998) + 1;
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
@@ -209,18 +211,28 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
-            _joined = true;
+            if (mounted) setState(() => _joined = true);
             unawaited(_startForegroundService());
           },
           onUserJoined: (_, uid, __) {
-            _remoteUid = uid;
+            if (mounted) {
+              setState(() {
+                _remoteUid = uid;
+                _callActive = true;
+                _connecting = false;
+              });
+            }
             _startCallTimer();
+            _syncOverlayState();
           },
           onUserOffline: (_, __, ___) {
             _endCall();
           },
           onError: (c, m) {
             debugPrint('Agora error $c $m');
+            if (_remoteUid == null && !_ending) {
+              _endCall();
+            }
           },
         ),
       );
@@ -239,7 +251,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         ),
       );
 
-      if (mounted) setState(() => _callActive = true);
+      if (mounted) setState(() => _connecting = true);
       _initializeOverlay();
     } catch (e) {
       debugPrint('Accept error $e');
@@ -333,6 +345,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
 
   // ================= END =================
   Future<void> _endCall() async {
+    if (_ending) return;
+    _ending = true;
     _callTimer?.cancel();
 
     if (_callActive) {
@@ -402,6 +416,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         if (_callActive) {
           // If call is active, minimize it
           await _minimizeCall();
+        } else if (_connecting) {
+          // If still connecting, end the call
+          await _endCall();
         } else {
           // If call is not yet accepted, reject it
           await _rejectCall();
@@ -438,13 +455,41 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                     ),
                   ),
                 Expanded(
-                  child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
+                  child: _callActive
+                      ? _buildActiveCallUI()
+                      : (_connecting ? _buildConnectingUI() : _buildIncomingCallUI()),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildConnectingUI() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.phone_in_talk, color: Colors.white, size: 80),
+        const SizedBox(height: 30),
+        Text(
+          _callerName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        const CircularProgressIndicator(color: Colors.white70, strokeWidth: 3),
+        const SizedBox(height: 20),
+        const Text(
+          'Connecting...',
+          style: TextStyle(color: Colors.white70, fontSize: 18),
+        ),
+      ],
     );
   }
 

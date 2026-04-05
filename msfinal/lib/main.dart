@@ -17,6 +17,7 @@ import 'Calling/call_state_recovery_manager.dart';
 import 'Calling/unified_call_manager.dart';
 import 'Chat/call_overlay_manager.dart';
 import 'Chat/ChatdetailsScreen.dart';
+import 'Chat/adminchat.dart';
 import 'Chat/screen_state_manager.dart';
 import 'Startup/SplashScreen.dart';
 import 'Auth/SuignupModel/signup_model.dart';
@@ -120,10 +121,13 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
   // Standard notifications (Type 3 & 4): Chat messages, requests, etc.
   // Show notification for all other types when in background
+  // Admin messages are handled silently – no system notification stored.
   if (type == 'chat_message' || type == 'chat' ||
       type == 'request' || type == 'request_accepted' ||
       type == 'request_rejected' || type == 'profile_view') {
-    await _displayStandardNotification(message);
+    if (!_isAdminMessage(data)) {
+      await _displayStandardNotification(message);
+    }
   }
 }
 
@@ -278,6 +282,58 @@ Future<void> _displayStandardNotification(RemoteMessage message) async {
     details,
     payload: json.encode(data),
   );
+}
+
+// Returns true when the notification was sent by the admin (senderId == '1').
+// Admin messages should be handled silently – navigate to AdminChatScreen
+// instead of showing a persistent system notification.
+// NOTE: '1' matches AdminChatScreen._adminUserId which is a fixed constant in this app.
+bool _isAdminMessage(Map<String, dynamic> data) {
+  const adminUserId = '1'; // Same constant as AdminChatScreen._adminUserId
+  final senderId = data['senderId']?.toString() ??
+      data['sender_id']?.toString() ??
+      '';
+  return senderId == adminUserId;
+}
+
+// Navigate to AdminChatScreen when an admin-sent message notification arrives.
+Future<void> _navigateToAdminChatFromNotification(Map<String, dynamic> data) async {
+  debugPrint('🔔 Admin message notification – opening AdminChatScreen');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    if (userDataString == null) {
+      debugPrint('⚠️ Admin chat navigation: no user_data in prefs');
+      return;
+    }
+
+    final userData = json.decode(userDataString);
+    final currentUserId = userData['id']?.toString() ?? '';
+    if (currentUserId.isEmpty) {
+      debugPrint('⚠️ Admin chat navigation: currentUserId is empty');
+      return;
+    }
+
+    final firstName = userData['firstName']?.toString().trim() ?? '';
+    final lastName = userData['lastName']?.toString().trim() ?? '';
+    final currentUserName =
+        [firstName, lastName].where((s) => s.isNotEmpty).join(' ').trim();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentState = navigatorKey.currentState;
+      if (currentState != null) {
+        currentState.push(MaterialPageRoute(
+          builder: (context) => AdminChatScreen(
+            senderID: currentUserId,
+            userName: currentUserName.isEmpty ? 'User' : currentUserName,
+            isAdmin: false,
+          ),
+        ));
+      }
+    });
+  } catch (e) {
+    debugPrint('❌ Error navigating to admin chat from notification: $e');
+  }
 }
 
 // Create notification channels and configure actions
@@ -825,6 +881,12 @@ Future<void> setupFirebaseMessaging() async {
 
     // Type 3: Context-Aware Messages (Chat)
     if (type == 'chat_message' || type == 'chat') {
+      // Admin messages: navigate directly to AdminChatScreen – no notification banner.
+      if (_isAdminMessage(data)) {
+        debugPrint('🔔 Admin message received in foreground – opening AdminChatScreen');
+        _navigateToAdminChatFromNotification(data);
+        return;
+      }
       // Suppress chat notifications when the recipient is actively viewing that chat
       if (!shouldShowChatNotification(data)) {
         debugPrint('💬 Chat notification suppressed - user viewing this chat');
@@ -872,7 +934,11 @@ Future<void> setupFirebaseMessaging() async {
       } catch (_) {}
       await CallStateRecoveryManager().handleNotificationTap(data);
     } else if (data['type'] == 'chat_message' || data['type'] == 'chat') {
-      _navigateToChatFromMessageNotification(data);
+      if (_isAdminMessage(data)) {
+        _navigateToAdminChatFromNotification(data);
+      } else {
+        _navigateToChatFromMessageNotification(data);
+      }
     } else {
       _navigateToUserProfileFromNotification(data);
     }
@@ -895,7 +961,11 @@ Future<void> setupFirebaseMessaging() async {
         if (data['type'] == 'call' || data['type'] == 'video_call') {
           await CallStateRecoveryManager().handleNotificationTap(data);
         } else if (data['type'] == 'chat_message' || data['type'] == 'chat') {
-          _navigateToChatFromMessageNotification(data);
+          if (_isAdminMessage(data)) {
+            _navigateToAdminChatFromNotification(data);
+          } else {
+            _navigateToChatFromMessageNotification(data);
+          }
         } else {
           _navigateToUserProfileFromNotification(data);
         }

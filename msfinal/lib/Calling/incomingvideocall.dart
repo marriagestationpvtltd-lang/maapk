@@ -45,11 +45,19 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   bool _frontCamera = true;
   bool _processing = false;
   bool _foregroundServiceStarted = false;
+  bool _ending = false;
+  bool _remoteVideoStopped = false;
+  bool _connecting = false;
 
   Timer? _ringTimer;
   Timer? _callTimer;
   Duration _duration = Duration.zero;
   StreamSubscription<Map<String, dynamic>>? _cancelSubscription;
+
+  // Network quality tracking
+  int _networkQuality = 0; // 0=unknown, 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
+  String _networkQualityText = 'Unknown';
+  Timer? _qualityUpdateTimer;
 
   // Call history tracking
   String? _callHistoryId;
@@ -63,7 +71,7 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
     super.initState();
     WakelockPlus.enable();
     _parseData();
-    _localUid = Random().nextInt(999999);
+    _localUid = Random().nextInt(999998) + 1;
     _ringTimer = Timer(const Duration(seconds: 60), _missedCall);
     _loadUserDataAndLogCall();
     _listenForCallCancelled();
@@ -234,10 +242,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           },
           onUserJoined: (connection, remoteUid, elapsed) {
             print('👤 Remote user joined: $remoteUid');
-            setState(() {
-              _remoteUid = remoteUid;
-            });
+            if (mounted) {
+              setState(() {
+                _remoteUid = remoteUid;
+                _callActive = true;
+                _remoteVideoStopped = false;
+                _connecting = false;
+              });
+            }
             _startCallTimer();
+            _syncOverlayState();
           },
           onUserOffline: (connection, remoteUid, reason) {
             print('👤 Remote user offline: $remoteUid, reason: $reason');
@@ -245,24 +259,47 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
           },
           onRemoteVideoStateChanged: (connection, remoteUid, state, reason, elapsed) {
             print('📹 Remote video state changed: uid=$remoteUid, state=$state, reason=$reason');
-            // Handle video state changes
             if (state == RemoteVideoState.remoteVideoStateStopped ||
                 state == RemoteVideoState.remoteVideoStateFailed) {
               print('❌ Remote video stopped/failed');
-              setState(() {
-                if (_remoteUid == remoteUid) {
-                  _remoteUid = null;
-                }
-              });
+              if (mounted) setState(() => _remoteVideoStopped = true);
             } else if (state == RemoteVideoState.remoteVideoStateDecoding) {
               print('✅ Remote video started decoding');
-              setState(() {
-                _remoteUid = remoteUid;
-              });
+              if (mounted) {
+                setState(() {
+                  _remoteUid = remoteUid;
+                  _remoteVideoStopped = false;
+                });
+              }
             }
           },
           onError: (errorCode, errorMsg) {
             print('❌ Agora error $errorCode $errorMsg');
+            if (_remoteUid == null && !_ending) {
+              _endCall();
+            }
+          },
+          onNetworkQuality: (connection, remoteUid, txQuality, rxQuality) {
+            // Track network quality for adaptive bitrate
+            final quality = max(txQuality.index, rxQuality.index);
+            if (mounted && quality != _networkQuality) {
+              setState(() {
+                _networkQuality = quality;
+                _networkQualityText = _getQualityText(quality);
+              });
+              _adaptVideoQuality(quality);
+            }
+          },
+          onConnectionStateChanged: (connection, state, reason) {
+            debugPrint('Connection state: $state, reason: $reason');
+            // Handle reconnection scenarios - call stays active during network switches
+            if (state == ConnectionStateType.connectionStateReconnecting) {
+              debugPrint('📶 Reconnecting to call...');
+            } else if (state == ConnectionStateType.connectionStateConnected) {
+              debugPrint('📶 Connected to call');
+            } else if (state == ConnectionStateType.connectionStateFailed) {
+              debugPrint('❌ Connection failed');
+            }
           },
         ),
       );
@@ -272,10 +309,16 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       if (_isVideoCall) {
         print('📹 Enabling video...');
         await _engine.enableVideo();
+
+        // Configure video encoder with adaptive bitrate support
         await _engine.setVideoEncoderConfiguration(const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 640, height: 480),
           frameRate: 15,
-          bitrate: 0,
+          bitrate: 0, // 0 = let SDK determine based on resolution
+          minBitrate: -1, // -1 = SDK default minimum
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced, // Balance quality and framerate
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
         ));
         await _engine.startPreview();
         print('✅ Video enabled and preview started');
@@ -296,8 +339,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         ),
       );
 
-      print('✅ Call active');
-      setState(() => _callActive = true);
+      print('✅ Joined channel, waiting for remote user...');
+      if (mounted) setState(() => _connecting = true);
       _initializeOverlay();
     } catch (e) {
       print('❌ Accept error: $e');
@@ -404,6 +447,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
 
   // ================= END =================
   Future<void> _endCall() async {
+    if (_ending) return;
+    _ending = true;
     _callTimer?.cancel();
 
     if (_callActive) {
@@ -493,6 +538,9 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
         if (_callActive) {
           // If call is active, minimize it
           await _minimizeCall();
+        } else if (_connecting) {
+          // If still connecting, end the call
+          await _endCall();
         } else {
           // If call is not yet accepted, reject it
           await _rejectCall();
@@ -501,7 +549,40 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: _callActive ? _buildActiveCallUI() : _buildIncomingCallUI(),
+          child: _callActive
+              ? _buildActiveCallUI()
+              : (_connecting ? _buildConnectingUI() : _buildIncomingCallUI()),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectingUI() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.videocam, color: Colors.white, size: 80),
+            const SizedBox(height: 30),
+            Text(
+              _callerName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(color: Colors.white70, strokeWidth: 3),
+            const SizedBox(height: 20),
+            const Text(
+              'Connecting...',
+              style: TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+          ],
         ),
       ),
     );
@@ -694,8 +775,8 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   Widget _buildActiveCallUI() {
     return Stack(
       children: [
-        // Remote video (when active)
-        if (_remoteUid != null && _isVideoCall)
+        // Remote video (when active and video not stopped)
+        if (_remoteUid != null && _isVideoCall && !_remoteVideoStopped)
           AgoraVideoView(
             controller: VideoViewController.remote(
               rtcEngine: _engine,
@@ -968,11 +1049,80 @@ class _IncomingVideoCallScreenState extends State<IncomingVideoCallScreen> {
   String _format(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
+  // ================= ADAPTIVE VIDEO QUALITY =================
+  String _getQualityText(int quality) {
+    switch (quality) {
+      case 0: return 'Unknown';
+      case 1: return 'Excellent';
+      case 2: return 'Good';
+      case 3: return 'Poor';
+      case 4: return 'Bad';
+      case 5: return 'Very Bad';
+      case 6: return 'Disconnected';
+      default: return 'Unknown';
+    }
+  }
+
+  Future<void> _adaptVideoQuality(int quality) async {
+    if (!_engineInitialized || !_joined || !_isVideoCall) return;
+
+    try {
+      // Adaptive bitrate based on network quality
+      // Quality: 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=down
+      VideoEncoderConfiguration config;
+
+      if (quality <= 2) {
+        // Excellent or Good - HD quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 640, height: 480),
+          frameRate: 15,
+          bitrate: 0, // SDK determines optimal
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced,
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Maintaining HD video (640x480@15fps)');
+      } else if (quality == 3) {
+        // Poor - Reduce to standard quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 480, height: 360),
+          frameRate: 12,
+          bitrate: 0,
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainBalanced,
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Reducing to standard video (480x360@12fps)');
+      } else if (quality >= 4) {
+        // Bad or Very Bad - Reduce to low quality
+        config = const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 320, height: 240),
+          frameRate: 10,
+          bitrate: 0,
+          minBitrate: -1,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainFramerate, // Prioritize smooth video
+          mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+        );
+        debugPrint('📶 Network quality $quality: Reducing to low video (320x240@10fps)');
+      } else {
+        return; // Unknown quality
+      }
+
+      await _engine.setVideoEncoderConfiguration(config);
+    } catch (e) {
+      debugPrint('Error adapting video quality: $e');
+    }
+  }
+
   @override
   void dispose() {
     WakelockPlus.disable();
     _ringTimer?.cancel();
     _callTimer?.cancel();
+    _qualityUpdateTimer?.cancel();
     _cancelSubscription?.cancel();
     // Release Agora engine if not already released by _endCall
     if (_engineInitialized) {

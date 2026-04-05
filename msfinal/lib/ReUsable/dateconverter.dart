@@ -36,20 +36,20 @@ class NepaliDateConverter {
     2032: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
   };
 
-  // Nepali month names in Nepali and English
+  // Nepali month names in Bikram Sambat (BS) transliteration
   static final List<String> nepaliMonthsNepali = [
-    'बैशाख',
-    'जेठ',
-    'असार',
-    'श्रावण',
-    'भदौ',
-    'असोज',
-    'कार्तिक',
-    'मंसिर',
-    'पुष',
-    'माघ',
-    'फाल्गुन',
-    'चैत'
+    'Baisakh',
+    'Jestha',
+    'Ashadh',
+    'Shrawan',
+    'Bhadra',
+    'Ashwin',
+    'Kartik',
+    'Mangsir',
+    'Poush',
+    'Magh',
+    'Falgun',
+    'Chaitra'
   ];
 
   static final List<String> nepaliMonthsEnglish = [

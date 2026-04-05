@@ -278,12 +278,12 @@ class _YourDetailsPageState extends State<YourDetailsPage>
 
       // Minimum age validation (21 years)
       if (actualAge < 21) {
-        return 'तपाईं विवाह गर्नको लागि योग्य उमेर हुनुभएको छैन';
+        return 'You are not of eligible age for marriage';
       }
 
       // Maximum age validation (80 years)
       if (actualAge > 80) {
-        return 'तपाईंको उमेर ८० वर्षभन्दा बढी छ';
+        return 'Your age is over 80 years';
       }
     } catch (e) {
       return 'Invalid date';

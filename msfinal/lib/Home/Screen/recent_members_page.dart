@@ -205,7 +205,7 @@ class _RecentMembersPageState extends State<RecentMembersPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'हालसालै रजिस्टर भएका',
+          'Recently Registered',
           style: AppTextStyles.heading3,
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(

@@ -23,6 +23,7 @@ class CallManager {
   void triggerIncomingCall(Map<String, dynamic> data) {
     print('📱 CallManager: Incoming call triggered: $data');
     _currentCallData = data;
+    _callScreenShowing = false; // reset for new incoming call
     _incomingCallController.add(data);
 
     // Auto-reject after 60 seconds if not answered
@@ -60,10 +61,16 @@ class CallManager {
     _currentCallData = null;
     _callTimeoutTimer?.cancel();
     _callTimeoutTimer = null;
+    _callScreenShowing = false;
   }
 
   // Check if there's an active incoming call
   bool hasActiveIncomingCall() => _currentCallData != null;
+
+  // Track whether the call screen is already being shown to prevent duplicate pushes
+  bool _callScreenShowing = false;
+  bool get isCallScreenShowing => _callScreenShowing;
+  set isCallScreenShowing(bool value) => _callScreenShowing = value;
 
   void dispose() {
     _incomingCallController.close();

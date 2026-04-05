@@ -1753,7 +1753,7 @@ class _MaritalDocumentUploadScreenState
                   Expanded(
                     child: Text(
                       // "Scanned information may be incorrect. Please verify before confirming."
-                      'स्क्यान भएको जानकारी गलत हुन सक्छ। कृपया जाँच गरेर पुष्टि गर्नुहोस्।',
+                      'Scanned information may be incorrect. Please verify before confirming.',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[800],
