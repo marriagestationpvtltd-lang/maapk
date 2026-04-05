@@ -76,20 +76,20 @@ class _AstrologicDetailsPageState extends State<AstrologicDetailsPage>
   bool _isLoadingCountries = false;
   bool _isLoadingStates    = false;
 
-  // Zodiac data with symbols and Nepali names (राशि नाम)
+  // Zodiac data with symbols and names
   final List<Map<String, String>> _zodiacData = [
-    {'name': 'Aries',       'nepali': 'मेष',    'symbol': '♈', 'dates': 'Mar 21–Apr 19'},
-    {'name': 'Taurus',      'nepali': 'वृष',    'symbol': '♉', 'dates': 'Apr 20–May 20'},
-    {'name': 'Gemini',      'nepali': 'मिथुन',  'symbol': '♊', 'dates': 'May 21–Jun 20'},
-    {'name': 'Cancer',      'nepali': 'कर्क',   'symbol': '♋', 'dates': 'Jun 21–Jul 22'},
-    {'name': 'Leo',         'nepali': 'सिंह',   'symbol': '♌', 'dates': 'Jul 23–Aug 22'},
-    {'name': 'Virgo',       'nepali': 'कन्या',  'symbol': '♍', 'dates': 'Aug 23–Sep 22'},
-    {'name': 'Libra',       'nepali': 'तुला',   'symbol': '♎', 'dates': 'Sep 23–Oct 22'},
-    {'name': 'Scorpio',     'nepali': 'वृश्चिक','symbol': '♏', 'dates': 'Oct 23–Nov 21'},
-    {'name': 'Sagittarius', 'nepali': 'धनु',    'symbol': '♐', 'dates': 'Nov 22–Dec 21'},
-    {'name': 'Capricorn',   'nepali': 'मकर',    'symbol': '♑', 'dates': 'Dec 22–Jan 19'},
-    {'name': 'Aquarius',    'nepali': 'कुम्भ',  'symbol': '♒', 'dates': 'Jan 20–Feb 18'},
-    {'name': 'Pisces',      'nepali': 'मीन',    'symbol': '♓', 'dates': 'Feb 19–Mar 20'},
+    {'name': 'Aries',       'nepali': 'Mesh',      'symbol': '♈', 'dates': 'Mar 21–Apr 19'},
+    {'name': 'Taurus',      'nepali': 'Vrishabh',  'symbol': '♉', 'dates': 'Apr 20–May 20'},
+    {'name': 'Gemini',      'nepali': 'Mithun',    'symbol': '♊', 'dates': 'May 21–Jun 20'},
+    {'name': 'Cancer',      'nepali': 'Karka',     'symbol': '♋', 'dates': 'Jun 21–Jul 22'},
+    {'name': 'Leo',         'nepali': 'Simha',     'symbol': '♌', 'dates': 'Jul 23–Aug 22'},
+    {'name': 'Virgo',       'nepali': 'Kanya',     'symbol': '♍', 'dates': 'Aug 23–Sep 22'},
+    {'name': 'Libra',       'nepali': 'Tula',      'symbol': '♎', 'dates': 'Sep 23–Oct 22'},
+    {'name': 'Scorpio',     'nepali': 'Vrishchika','symbol': '♏', 'dates': 'Oct 23–Nov 21'},
+    {'name': 'Sagittarius', 'nepali': 'Dhanu',     'symbol': '♐', 'dates': 'Nov 22–Dec 21'},
+    {'name': 'Capricorn',   'nepali': 'Makar',     'symbol': '♑', 'dates': 'Dec 22–Jan 19'},
+    {'name': 'Aquarius',    'nepali': 'Kumbha',    'symbol': '♒', 'dates': 'Jan 20–Feb 18'},
+    {'name': 'Pisces',      'nepali': 'Meen',      'symbol': '♓', 'dates': 'Feb 19–Mar 20'},
   ];
 
   @override
