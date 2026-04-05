@@ -21,6 +21,9 @@ import '../Calling/OutgoingCall.dart';
 import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
+import '../Calling/callmanager.dart';
+import '../Calling/incommingcall.dart';
+import '../Calling/incomingvideocall.dart';
 import '../otherprofile/otherprofileview.dart';
 import '../otherenew/othernew.dart';
 import '../otherenew/service.dart';
@@ -133,6 +136,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   List<CallHistory> _callHistory = [];
   bool _showCallHistory = false;
   StreamSubscription? _callHistorySubscription;
+
+  // Backup incoming call listener (mirrors AdminChatScreen logic)
+  StreamSubscription<Map<String, dynamic>>? _callListenerSubscription;
 
   // Messages stream subscription (replaces StreamBuilder to prevent rebuild-on-setState)
   StreamSubscription? _messagesSubscription;
@@ -260,6 +266,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
     // Start listening to receiver's online status
     _startReceiverStatusListener();
+
+    // Backup incoming call listener so calls ring while typing on this screen.
+    // The global CallOverlayWrapper is the primary handler; this ensures the
+    // call UI still appears if the global handler's frame callback is delayed
+    // (e.g. keyboard open with no pending frames).
+    _setupCallListener();
   }
 
   void _onMessageTextChanged() {
@@ -529,6 +541,48 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }).catchError((_) {}); // ignore if doc doesn't exist yet
   }
 
+  // Backup incoming call listener so calls ring while the user is typing on
+  // this screen.  The global CallOverlayWrapper is the primary handler; this
+  // ensures the call UI still appears if its frame callback is delayed
+  // (e.g. keyboard open with no frames being rendered).
+  void _setupCallListener() {
+    _callListenerSubscription?.cancel();
+    _callListenerSubscription = NotificationService.incomingCalls.listen((data) {
+      final isVideoCall =
+          data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+      // Dismiss keyboard so it does not block the call screen.
+      FocusManager.instance.primaryFocus?.unfocus();
+      // Schedule a frame first so the postFrameCallback below fires immediately,
+      // even when the app is idle (no frames being scheduled, e.g. keyboard open).
+      WidgetsBinding.instance.scheduleFrame();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // isCallScreenShowing is set by whichever listener fires first (usually
+        // CallOverlayWrapper).  Skip if the screen is already being shown.
+        if (CallManager().isCallScreenShowing) return;
+        CallManager().isCallScreenShowing = true;
+        try {
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: activeCallRouteName),
+                  fullscreenDialog: true,
+                  builder: (_) => isVideoCall
+                      ? IncomingVideoCallScreen(callData: data)
+                      : IncomingCallScreen(callData: data),
+                ),
+              )
+              .whenComplete(() {
+            CallManager().isCallScreenShowing = false;
+          });
+        } catch (_) {
+          // Reset the flag if push fails so future calls are not blocked.
+          CallManager().isCallScreenShowing = false;
+        }
+      });
+    });
+  }
+
   Future<void> _setActiveChatPresence({required bool isActive}) async {
     try {
       final userRef = _firestore.collection('users').doc(widget.currentUserId);
@@ -628,6 +682,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _typingSubscription?.cancel();
     _otherUserStatusSub?.cancel();
     _callHistorySubscription?.cancel();
+    _callListenerSubscription?.cancel();
     _messagesSubscription?.cancel();
     _clearTyping(); // Remove our typing entry on exit
     super.dispose();

@@ -518,6 +518,10 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     _incomingCallSubscription = NotificationService.incomingCalls.listen((data) {
       final isVideoCall =
           data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+      FocusManager.instance.primaryFocus?.unfocus();
+      // Schedule a frame first so the postFrameCallback below fires immediately,
+      // even when the app is idle (e.g. keyboard open, no frames being rendered).
+      WidgetsBinding.instance.scheduleFrame();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         // Dart's event loop is single-threaded, so the check-and-set below is
