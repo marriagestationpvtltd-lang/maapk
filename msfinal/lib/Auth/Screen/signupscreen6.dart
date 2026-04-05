@@ -845,7 +845,7 @@ class _EducationCareerPageState extends State<EducationCareerPage> with SingleTi
       print("Sending request: $requestBody");
 
       var response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/educationcareer.php"),
+        Uri.parse("http://192.168.1.9/Api2/educationcareer.php"),
         body: requestBody,
       ).timeout(const Duration(seconds: 30));
 

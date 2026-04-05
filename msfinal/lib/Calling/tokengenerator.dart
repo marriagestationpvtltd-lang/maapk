@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AgoraTokenService {
-  static const String tokenUrl = 'https://digitallami.com/Api2/test_token.php';
+  static const String tokenUrl = 'http://192.168.1.9/Api2/test_token.php';
   static const String appId = '7750d283e6794eebba06e7d021e8a01c'; // Your Agora App ID
 
   /// Fetches an Agora token from your PHP server.

@@ -14,7 +14,7 @@ class OnlineStatusService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final String _apiUrl =
-      "https://digitallami.com/request/update_last_login.php";
+      "http://192.168.1.9/request/update_last_login.php";
 
   /// 🔥 Start tracking (call on app start / app resume)
   void start() {

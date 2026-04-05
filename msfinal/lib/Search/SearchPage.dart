@@ -118,7 +118,7 @@ class _SearchPageState extends State<SearchPage>
   Future<void> _checkDocumentStatus(int userId) async {
     try {
       final response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
+        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -147,7 +147,7 @@ class _SearchPageState extends State<SearchPage>
       final myId = userData["id"].toString();
 
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/get_blocked_users.php'),
+        Uri.parse('http://192.168.1.9/Api2/get_blocked_users.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'my_id': myId}),
       );
@@ -177,7 +177,7 @@ class _SearchPageState extends State<SearchPage>
         _errorMessage = '';
       });
 
-      final url = Uri.parse('https://digitallami.com/Api2/match.php?userid=$userId');
+      final url = Uri.parse('http://192.168.1.9/Api2/match.php?userid=$userId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -277,7 +277,7 @@ class _SearchPageState extends State<SearchPage>
     }
     try {
       final url = Uri.parse(
-          'https://digitallami.com/Api2/search_opposite_gender.php?user_id=$_currentUserId');
+          'http://192.168.1.9/Api2/search_opposite_gender.php?user_id=$_currentUserId');
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -373,7 +373,7 @@ class _SearchPageState extends State<SearchPage>
         };
         final queryString = Uri(queryParameters: params).query;
         final url = Uri.parse(
-            'https://digitallami.com/Api2/search_opposite_gender.php?$queryString');
+            'http://192.168.1.9/Api2/search_opposite_gender.php?$queryString');
         final response = await http.get(url);
         if (response.statusCode == 200) {
           final result = jsonDecode(response.body);
@@ -1329,7 +1329,7 @@ class _SearchPageState extends State<SearchPage>
     final profession = profile['designation']?.toString() ?? '–';
     final city = profile['city']?.toString() ?? '';
     final location = city.isNotEmpty ? city : 'Nepal';
-    final baseImageUrl = 'https://digitallami.com/Api2/';
+    final baseImageUrl = 'http://192.168.1.9/Api2/';
     final profilePicture = profile['profile_picture']?.toString() ?? '';
     final imageUrl = profilePicture.isNotEmpty
         ? baseImageUrl + profilePicture

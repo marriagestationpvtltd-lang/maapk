@@ -83,7 +83,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://digitallami.com/Api2/check_document_status.php"),
+        Uri.parse("http://192.168.1.9/Api2/check_document_status.php"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -126,7 +126,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final url = Uri.parse(
-          'http://digitallami.com/Api2/likelist.php?user_id=$userId');
+          'http://192.168.1.9/Api2/likelist.php?user_id=$userId');
 
       final response = await http.get(url);
 
@@ -166,7 +166,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
     try {
       final url = Uri.parse(
-          'https://digitallami.com/Api2/likelist.php?user_id=$userId&action=delete&receiver_id=$receiverId');
+          'http://192.168.1.9/Api2/likelist.php?user_id=$userId&action=delete&receiver_id=$receiverId');
 
       final response = await http.get(url);
 
@@ -210,7 +210,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
       print('Request data (JSON): $requestData');
 
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/send_request.php'),
+        Uri.parse('http://192.168.1.9/Api2/send_request.php'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -956,7 +956,7 @@ class _FavoritePeoplePageState extends State<FavoritePeoplePage> {
 
   Future<UserMasterData> fetchUserMasterData(String userId) async {
     final url = Uri.parse(
-      "https://digitallami.com/Api2/masterdata.php?userid=$userId",
+      "http://192.168.1.9/Api2/masterdata.php?userid=$userId",
     );
 
     final response = await http.get(url);

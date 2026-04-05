@@ -1,4 +1,27 @@
 // lib/constants/agora_constants.dart
+
+/// Central API configuration.
+/// तल तीन option छन् — जुन चाहिन्छ त्यो uncomment गर्नुस्, बाकी comment राख्नुस्।
+class ApiConfig {
+  // ── Live Server ──────────────────────────────────────────────────────────
+  // static const String baseUrl    = 'https://digitallami.com/Api2';
+  // static const String baseUrl3   = 'https://digitallami.com/Api3';
+  // static const String requestUrl = 'https://digitallami.com/request';
+  // static const String appUrl     = 'https://digitallami.com/app.php';
+
+  // ── Android Emulator (10.0.2.2) ──────────────────────────────────────────
+  // static const String baseUrl    = 'http://10.0.2.2/Api2';
+  // static const String baseUrl3   = 'http://10.0.2.2/Api3';
+  // static const String requestUrl = 'http://10.0.2.2/request';
+  // static const String appUrl     = 'http://10.0.2.2/app.php';
+
+  // ── Physical Phone (USB) — आफ्नो PC को IP राख्नुस् ─────────────────────
+  static const String baseUrl    = 'http://192.168.1.9/Api2';
+  static const String baseUrl3   = 'http://192.168.1.9/Api3';
+  static const String requestUrl = 'http://192.168.1.9/request';
+  static const String appUrl     = 'http://192.168.1.9/app.php';
+}
+
 class AgoraConstants {
   // Replace these with your actual Agora credentials
   static const String appId = 'a82d7e84e3d34290bea0577ae96c45ae';

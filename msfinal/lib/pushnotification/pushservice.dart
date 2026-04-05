@@ -42,7 +42,7 @@ class NotificationService {
 
 
   // Your existing PHP API endpoint
-  static const String _notificationUrl = 'https://digitallami.com/Api2/send_notification.php';
+  static const String _notificationUrl = 'http://192.168.1.9/Api2/send_notification.php';
 
   // Stream for call responses (listen in outgoing call screen)
   static void triggerCallResponse(Map<String, dynamic> data) {
