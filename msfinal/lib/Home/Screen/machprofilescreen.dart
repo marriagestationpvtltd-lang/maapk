@@ -185,7 +185,7 @@ class _MatchedProfilesPageeState extends State<MatchedProfilesPagee> {
     final profilePicture = profile['profile_picture'] ?? '';
     final imageUrl = profilePicture.isNotEmpty
         ? baseImageUrl + profilePicture
-        : 'https://via.placeholder.com/300x200?text=No+Image';
+        : '';
 
     // Check if should show clear image
     final shouldShowClearImage = privacy == 'free' || photoRequestStatus == 'accepted';
