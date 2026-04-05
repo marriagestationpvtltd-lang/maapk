@@ -1,0 +1,382 @@
+import 'dart:async';
+
+import 'package:adminmrz/users/service/userservice.dart';
+import 'package:adminmrz/users/userdetails/detailmodel.dart';
+import 'package:adminmrz/users/userdetails/userdetailservice.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+
+import 'model/usermodel.dart';
+
+
+class UserProvider with ChangeNotifier {
+  final UserService _userService = UserService();
+  final UserDetailsService _userDetailsService = UserDetailsService();
+
+  List<User> _allUsers = [];
+  List<User> _filteredUsers = [];
+  Set<int> _selectedUserIds = {}; // Store selected user IDs
+  bool _isLoading = false;
+  String _error = '';
+  String _searchQuery = '';
+  String _statusFilter = 'all';
+  String _userTypeFilter = 'all';
+  bool _isSelectAll = false;
+
+  StreamSubscription<QuerySnapshot>? _presenceSub;
+  final Map<int, ActivityStats> _activityByUser = {};
+  final Set<int> _activityLoading = {};
+
+  // Getters
+  List<User> get filteredUsers => _filteredUsers;
+  List<User> get allUsers => _allUsers;
+  bool get isLoading => _isLoading;
+  String get error => _error;
+  int get totalCount => _allUsers.length;
+  int get filteredCount => _filteredUsers.length;
+  String get searchQuery => _searchQuery;
+  String get statusFilter => _statusFilter;
+  String get userTypeFilter => _userTypeFilter;
+  Set<int> get selectedUserIds => _selectedUserIds;
+  bool get isSelectAll => _isSelectAll;
+  int get selectedCount => _selectedUserIds.length;
+  ActivityStats? activityFor(int userId) => _activityByUser[userId];
+  bool isActivityLoading(int userId) => _activityLoading.contains(userId);
+
+  final Set<int> _photoActioning = {};
+  bool isPhotoActioning(int userId) => _photoActioning.contains(userId);
+
+  // Check if all filtered users are selected
+  bool get areAllFilteredSelected {
+    if (_filteredUsers.isEmpty) return false;
+    return _selectedUserIds.length == _filteredUsers.length &&
+        _filteredUsers.every((user) => _selectedUserIds.contains(user.id));
+  }
+
+  Future<void> fetchUsers() async {
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    try {
+      final response = await _userService.getUsers();
+      _allUsers = response.data;
+      _applyFilters();
+      // Start (or restart) the real-time presence listener now that _allUsers is
+      // populated so the initial Firestore snapshot can immediately apply to it.
+      _startPresenceListener();
+      _activityByUser.clear();
+      _activityLoading.clear();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Real-time Firestore listener: fires the instant any user's isOnline field
+  // changes in the 'users' collection (written by the user-side app).
+  void _startPresenceListener() {
+    _presenceSub?.cancel();
+    _presenceSub = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((snapshot) {
+      bool changed = false;
+      for (final change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.removed) continue;
+        final data = change.doc.data();
+        if (data == null) continue;
+
+        final docId = change.doc.id;
+        final isOnline = (data['isOnline'] as bool? ?? false) ? 1 : 0;
+
+        for (final user in _allUsers) {
+          if (user.id.toString() == docId) {
+            if (user.isOnline != isOnline) {
+              user.isOnline = isOnline;
+              changed = true;
+            }
+            break; // IDs are unique; no need to scan further
+          }
+        }
+      }
+      if (changed) _applyFilters();
+    }, onError: (e) {
+      debugPrint('UserProvider presence error: $e');
+    });
+  }
+
+  @override
+  void dispose() {
+    _presenceSub?.cancel();
+    super.dispose();
+  }
+
+  // Selection methods
+  void toggleUserSelection(int userId) {
+    if (_selectedUserIds.contains(userId)) {
+      _selectedUserIds.remove(userId);
+    } else {
+      _selectedUserIds.add(userId);
+    }
+    _updateSelectAllState();
+    notifyListeners();
+  }
+
+  void selectAllUsers() {
+    if (areAllFilteredSelected) {
+      // Deselect all filtered users
+      _selectedUserIds.removeAll(_filteredUsers.map((user) => user.id));
+    } else {
+      // Select all filtered users
+      _selectedUserIds.addAll(_filteredUsers.map((user) => user.id));
+    }
+    _updateSelectAllState();
+    notifyListeners();
+  }
+
+  void _updateSelectAllState() {
+    _isSelectAll = areAllFilteredSelected;
+  }
+
+  void clearSelection() {
+    _selectedUserIds.clear();
+    _isSelectAll = false;
+    notifyListeners();
+  }
+
+  Future<void> preloadActivity(int userId) async {
+    if (_activityByUser.containsKey(userId) || _activityLoading.contains(userId)) {
+      return;
+    }
+    _activityLoading.add(userId);
+    // Schedule the loading-state notification for after the current build frame
+    // so that notifyListeners() is never called synchronously during a build,
+    // which can cause a "Cannot read properties of undefined" error in Flutter web.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_activityLoading.contains(userId)) notifyListeners();
+    });
+    try {
+      final stats = await _userDetailsService.getUserActivity(userId);
+      _activityByUser[userId] = stats;
+    } catch (_) {
+      // Ignore quietly; UI will show fallback values.
+    } finally {
+      _activityLoading.remove(userId);
+      notifyListeners();
+    }
+  }
+
+  bool isUserSelected(int userId) {
+    return _selectedUserIds.contains(userId);
+  }
+
+  /// Approve or reject a user's profile photo from the member list card.
+  Future<bool> approvePhoto(int userId, String action, {String? reason}) async {
+    _photoActioning.add(userId);
+    notifyListeners();
+    try {
+      final ok = await _userDetailsService.handleProfilePhotoRequest(
+        userId: userId,
+        action: action,
+        reason: reason,
+      );
+      if (ok) {
+        for (final u in _allUsers) {
+          if (u.id == userId) {
+            u.status = action == 'approve' ? 'approved' : 'rejected';
+            break;
+          }
+        }
+        _applyFilters();
+      }
+      return ok;
+    } catch (_) {
+      return false;
+    } finally {
+      _photoActioning.remove(userId);
+      notifyListeners();
+    }
+  }
+
+  // Action methods
+  Future<void> suspendSelectedUsers(BuildContext context) async {
+    if (_selectedUserIds.isEmpty) return;
+
+    final confirmed = await _showConfirmationDialog(
+        context,
+        'Suspend Users',
+        'Are you sure you want to suspend ${_selectedUserIds.length} user(s)?'
+    );
+
+    if (confirmed) {
+      _isLoading = true;
+      notifyListeners();
+
+      // TODO: Implement API call to suspend users
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+
+      // Update local state (for demo)
+      for (var user in _allUsers) {
+        if (_selectedUserIds.contains(user.id)) {
+          // Update user status to indicate suspended
+          // This is just for demo - implement your actual API logic
+        }
+      }
+
+      clearSelection();
+      _isLoading = false;
+      notifyListeners();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_selectedUserIds.length} user(s) suspended successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteSelectedUsers(BuildContext context) async {
+    if (_selectedUserIds.isEmpty) return;
+
+    final confirmed = await _showConfirmationDialog(
+        context,
+        'Delete Users',
+        'Are you sure you want to delete ${_selectedUserIds.length} user(s)? This action cannot be undone.'
+    );
+
+    if (confirmed) {
+      _isLoading = true;
+      notifyListeners();
+
+      // TODO: Implement API call to delete users
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+
+      // Update local state (for demo)
+      _allUsers.removeWhere((user) => _selectedUserIds.contains(user.id));
+      _applyFilters();
+
+      clearSelection();
+      _isLoading = false;
+      notifyListeners();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_selectedUserIds.length} user(s) deleted successfully'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<bool> _showConfirmationDialog(BuildContext context, String title, String message) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: title.contains('Delete') ? Colors.red : Colors.orange,
+            ),
+            child: Text(title.contains('Delete') ? 'Delete' : 'Suspend'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query.toLowerCase();
+    _applyFilters();
+  }
+
+  void setStatusFilter(String status) {
+    _statusFilter = status;
+    _applyFilters();
+  }
+
+  void setUserTypeFilter(String userType) {
+    _userTypeFilter = userType;
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    List<User> filtered = List<User>.from(_allUsers);
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((user) {
+        final name = user.fullName.toLowerCase();
+        final email = user.email.toLowerCase();
+        final id = user.id.toString();
+        final phone = (user.phone ?? '').toLowerCase();
+        return name.contains(_searchQuery) ||
+            email.contains(_searchQuery) ||
+            id.contains(_searchQuery) ||
+            phone.contains(_searchQuery);
+      }).toList();
+    }
+
+    // Apply status filter
+    if (_statusFilter != 'all') {
+      filtered = filtered.where((user) => user.status == _statusFilter).toList();
+    }
+
+    // Apply user type filter
+    if (_userTypeFilter != 'all') {
+      filtered = filtered.where((user) => user.usertype == _userTypeFilter).toList();
+    }
+
+    _filteredUsers = filtered;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _searchQuery = '';
+    _statusFilter = 'all';
+    _userTypeFilter = 'all';
+    _applyFilters();
+  }
+
+  Map<String, int> getStatusStats() {
+    Map<String, int> stats = {
+      'approved': 0,
+      'pending': 0,
+      'rejected': 0,
+      'not_uploaded': 0,
+    };
+
+    for (var user in _allUsers) {
+      if (stats.containsKey(user.status)) {
+        stats[user.status] = stats[user.status]! + 1;
+      }
+    }
+
+    return stats;
+  }
+
+  Map<String, int> getUserTypeStats() {
+    Map<String, int> stats = {
+      'paid': 0,
+      'free': 0,
+    };
+
+    for (var user in _allUsers) {
+      stats[user.usertype] = stats[user.usertype]! + 1;
+    }
+
+    return stats;
+  }
+}
