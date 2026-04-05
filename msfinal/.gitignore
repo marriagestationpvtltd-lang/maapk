@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Service account keys and other secrets - NEVER commit these
+**/service-account-key.json
+**/*-service-account*.json
+**/google-services-private*.json
