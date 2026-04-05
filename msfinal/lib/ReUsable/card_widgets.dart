@@ -1,9 +1,11 @@
 // Professional Card Widgets
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../constant/app_colors.dart';
 import '../constant/app_dimensions.dart';
 import '../constant/app_text_styles.dart';
+import '../utils/privacy_utils.dart';
 
 // Base Card Widget
 class AppCard extends StatelessWidget {
@@ -56,6 +58,8 @@ class ProfileCard extends StatelessWidget {
   final String? location;
   final String? profession;
   final String? height;
+  final String? privacy;
+  final String? photoRequest;
   final bool? isPremium;
   final bool? isVerified;
   final bool? isOnline;
@@ -71,6 +75,8 @@ class ProfileCard extends StatelessWidget {
     this.location,
     this.profession,
     this.height,
+    this.privacy,
+    this.photoRequest,
     this.isPremium,
     this.isVerified,
     this.isOnline,
@@ -81,70 +87,149 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shouldShowClear = PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
     return AppCard(
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image Section
+          // Image Section with Privacy
           Stack(
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppDimensions.radiusMD),
                 ),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
+                child: SizedBox(
                   height: 200,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 200,
-                    color: AppColors.borderLight,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
+                  child: shouldShowClear
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          height: 200,
+                          color: AppColors.borderLight,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          height: 200,
+                          color: AppColors.borderLight,
+                          child: const Icon(
+                            Icons.person,
+                            size: 64,
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                      )
+                    : ImageFiltered(
+                        imageFilter: ui.ImageFilter.blur(
+                          sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                          sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                        ),
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            height: 200,
+                            color: AppColors.borderLight,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 200,
+                            color: AppColors.borderLight,
+                            child: const Icon(
+                              Icons.person,
+                              size: 64,
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                        ),
+                      ),
+                ),
+              ),
+              // Lock overlay for blurred images
+              if (!shouldShowClear)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppDimensions.radiusMD),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.5),
+                        ],
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    color: AppColors.borderLight,
-                    child: const Icon(
-                      Icons.person,
-                      size: 64,
-                      color: AppColors.textHint,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          color: AppColors.white,
+                          size: 50,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          PrivacyUtils.getPhotoRequestStatusLabel(photoRequest),
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-              // Badges
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Row(
-                  children: [
-                    if (isPremium == true) ...[
-                      _Badge(
-                        icon: Icons.workspace_premium,
-                        color: AppColors.premium,
-                        label: 'Premium',
-                      ),
-                      AppSpacing.horizontalXS,
+              // Badges - only show if image is clear
+              if (shouldShowClear)
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Row(
+                    children: [
+                      if (isPremium == true) ...[
+                        _Badge(
+                          icon: Icons.workspace_premium,
+                          color: AppColors.premium,
+                          label: 'Premium',
+                        ),
+                        AppSpacing.horizontalXS,
+                      ],
+                      if (isVerified == true)
+                        _Badge(
+                          icon: Icons.verified,
+                          color: AppColors.verified,
+                          label: 'Verified',
+                        ),
                     ],
-                    if (isVerified == true)
-                      _Badge(
-                        icon: Icons.verified,
-                        color: AppColors.verified,
-                        label: 'Verified',
-                      ),
-                  ],
+                  ),
                 ),
-              ),
-              // Online Status
-              if (isOnline == true)
+              // Online Status - only show if image is clear
+              if (shouldShowClear && isOnline == true)
                 Positioned(
                   top: 12,
                   right: 12,

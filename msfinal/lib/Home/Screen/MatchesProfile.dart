@@ -8,10 +8,12 @@
 //   onSendRequest: (profile) { /* handle send request */ },
 // )
 
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:ms2026/constant/app_colors.dart';
 import 'package:ms2026/constant/app_dimensions.dart';
 import 'package:ms2026/constant/app_text_styles.dart';
+import 'package:ms2026/utils/privacy_utils.dart';
 
 typedef SendRequestCallback = void Function(Map<String, dynamic> profile);
 
@@ -78,6 +80,14 @@ class MatchedProfileCard extends StatelessWidget {
     final location = _getString((profile['city'] != null ? profile['city'] + (profile['country'] != null ? ', ' + profile['country'] : '') : profile['location']) ?? '');
     final imageUrl = _getString(profile['profile_picture'] ?? profile['image']);
 
+    // Privacy fields
+    final privacy = _getString(profile['privacy']);
+    final photoRequest = _getString(profile['photo_request']);
+    final shouldShowClear = PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
+
     return Container(
       padding: const EdgeInsets.all(AppDimensions.spacingXS),
       height: 280,
@@ -97,89 +107,151 @@ class MatchedProfileCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Image + name overlay
+          // Image + name overlay with privacy enforcement
           Stack(
             children: [
               SizedBox(
                 height: 140,
                 child: imageUrl.isNotEmpty
-                    ? Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (c, e, s) => _placeholder(),
-                )
+                    ? shouldShowClear
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (c, e, s) => _placeholder(),
+                        )
+                      : ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                            sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                          ),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (c, e, s) => _placeholder(),
+                          ),
+                        )
                     : _placeholder(),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  color: Colors.black.withOpacity(0.55),
-                  child: Text(
-                    name,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
+              // Lock overlay for blurred images
+              if (!shouldShowClear)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.5),
+                        ],
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          color: AppColors.white,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          PrivacyUtils.getPhotoRequestStatusLabel(photoRequest),
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              // Name overlay - only show if image is clear
+              if (shouldShowClear)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    color: Colors.black.withOpacity(0.55),
+                    child: Text(
+                      name,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
             ],
           ),
 
-          // Info section
+          // Info section - show full details only if image is clear
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingSM, vertical: AppDimensions.spacingSM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Age ${age.isEmpty ? '-' : age} yrs, ${height.isEmpty ? '-' : height} cm',
-                  style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
+                if (shouldShowClear) ...[
+                  Text(
+                    'Age ${age.isEmpty ? '-' : age} yrs, ${height.isEmpty ? '-' : height} cm',
+                    style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
 
-                Row(
-                  children: [
-                    Icon(Icons.work_outline, size: 13, color: AppColors.textSecondary),
-                    const SizedBox(width: AppDimensions.spacingXS),
-                    Expanded(
-                      child: Text(
-                        profession.isEmpty ? '-' : profession,
-                        style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Icon(Icons.work_outline, size: 13, color: AppColors.textSecondary),
+                      const SizedBox(width: AppDimensions.spacingXS),
+                      Expanded(
+                        child: Text(
+                          profession.isEmpty ? '-' : profession,
+                          style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: 4),
+                  const SizedBox(height: 4),
 
-                Row(
-                  children: [
-                    Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
-                    const SizedBox(width: AppDimensions.spacingXS),
-                    Expanded(
-                      child: Text(
-                        location.isEmpty ? '-' : location,
-                        style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
+                      const SizedBox(width: AppDimensions.spacingXS),
+                      Expanded(
+                        child: Text(
+                          location.isEmpty ? '-' : location,
+                          style: AppTextStyles.captionSmall.copyWith(color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: AppDimensions.spacingSM),
+                  const SizedBox(height: AppDimensions.spacingSM),
+                ] else ...[
+                  // When photo is blurred, show minimal info
+                  const Text(
+                    'Photo Protected - Send Request to View',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: AppDimensions.spacingSM),
+                ],
 
                 // Send Request Button (now reacts to currentStatus)
                 SizedBox(
