@@ -62,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($httpCode === 200) {
             $result = json_decode($response, true);
             if ($result['success']) {
-                echo '<script>Swal.fire("Success", ' . htmlspecialchars(json_encode($result['message'] ?? ''), ENT_QUOTES, 'UTF-8') . ', "success");</script>';
+                echo '<script>Swal.fire("Success", ' . json_encode($result['message'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ', "success");</script>';
             } else {
-                echo '<script>Swal.fire("Error", ' . htmlspecialchars(json_encode($result['message'] ?? 'Action failed'), ENT_QUOTES, 'UTF-8') . ', "error");</script>';
+                echo '<script>Swal.fire("Error", ' . json_encode($result['message'] ?? 'Action failed', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ', "error");</script>';
             }
         } else {
             echo '<script>Swal.fire("Error", "Server error", "error");</script>';
