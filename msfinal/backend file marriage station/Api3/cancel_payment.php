@@ -32,19 +32,7 @@ if (!$userid || !$packageid) {
 }
 
 try {
-    // Log the cancellation (optional audit table – falls back gracefully if missing)
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS payment_cancellations (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            userid INT NOT NULL,
-            packageid INT NOT NULL,
-            paidby VARCHAR(50) DEFAULT NULL,
-            status VARCHAR(50) DEFAULT 'cancelled',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX (userid)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-
+    // Log the cancellation (table is created via ms.sql schema migration)
     $stmt = $pdo->prepare(
         "INSERT INTO payment_cancellations (userid, packageid, paidby, status) VALUES (?, ?, ?, ?)"
     );

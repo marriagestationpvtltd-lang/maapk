@@ -37,12 +37,17 @@ if ($userid <= 0) {
 
 // Handle file upload
 $photoPath = null;
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
 if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
     $folder = "uploads/user_marital_documents/";
     if (!is_dir($folder)) {
-        mkdir($folder, 0777, true);
+        mkdir($folder, 0755, true);
     }
-    $ext      = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+    $ext = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, $allowedExtensions, true)) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Allowed: jpg, jpeg, png, pdf']);
+        exit;
+    }
     $filename = "marital_" . $userid . "_" . time() . "." . $ext;
     $filepath = $folder . $filename;
     if (move_uploaded_file($_FILES['photo']['tmp_name'], $filepath)) {

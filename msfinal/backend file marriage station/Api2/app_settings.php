@@ -22,30 +22,7 @@ try {
 }
 
 try {
-    // Ensure app_settings table exists
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS app_settings (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            `key` VARCHAR(100) NOT NULL UNIQUE,
-            `value` TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX (`key`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-
-    // Insert defaults if table is empty
-    $count = $pdo->query("SELECT COUNT(*) FROM app_settings")->fetchColumn();
-    if ($count == 0) {
-        $pdo->exec("
-            INSERT INTO app_settings (`key`, `value`) VALUES
-            ('vat_enabled', '0'),
-            ('vat_rate', '13'),
-            ('currency', 'NPR'),
-            ('app_name', 'Marriage Station')
-        ");
-    }
-
-    // Fetch all settings
+    // Fetch all settings; table is created via ms.sql schema migration
     $rows = $pdo->query("SELECT `key`, `value` FROM app_settings")->fetchAll();
     $settings = [];
     foreach ($rows as $row) {
