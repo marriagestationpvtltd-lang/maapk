@@ -11,7 +11,9 @@ class AppConstants {
     'Other',
   ];
 
-  static String conversationId(String a, String b) {
-    return (a.compareTo(b) < 0) ? '${a}_$b' : '${b}_$a';
+  static String conversationId(String userId1, String userId2) {
+    return (userId1.compareTo(userId2) < 0)
+        ? '${userId1}_$userId2'
+        : '${userId2}_$userId1';
   }
 }
