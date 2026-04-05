@@ -130,9 +130,12 @@ class CallForegroundService : Service() {
             .setSmallIcon(icon)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(contentIntent)
             .setAutoCancel(false)
+            .setSound(null)
+            .setVibrate(null)
+            .setSilent(true)
 
         // Add action buttons for incoming calls
         if (isIncoming) {
@@ -192,10 +195,12 @@ class CallForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Call Service"
             val descriptionText = "Keeps call active in background"
-            val importance = NotificationManager.IMPORTANCE_HIGH
+            val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
                 setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
 
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
