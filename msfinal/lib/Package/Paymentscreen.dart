@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../Home/Screen/HomeScreenPage.dart';
+import '../Startup/MainControllere.dart';
 import '../constant/design_system.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -1084,12 +1085,12 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
   void _restartApp(BuildContext context) {
-    // Clear navigation stack and restart home screen
+    // Clear navigation stack and restart main controller (includes bottom navbar)
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (context) => PopScope(
           canPop: false,
-          child: const MatrimonyHomeScreen(),
+          child: const MainControllerScreen(),
         ),
       ),
           (route) => false,
