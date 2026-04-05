@@ -100,7 +100,8 @@ try {
 
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
-        throw new Exception($conn->error);
+        error_log('proposals_api prepare error');
+        throw new Exception('Database error');
     }
 
     if ($type === "accepted") {

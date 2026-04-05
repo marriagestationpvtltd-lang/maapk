@@ -79,7 +79,7 @@ function login($email, $password, $remember = false) {
             return ['success' => false, 'message' => 'Invalid credentials'];
         }
     } catch (Exception $e) {
-        error_log('Admin login error: ' . $e->getMessage());
+        error_log('Admin login error occurred');
         return ['success' => false, 'message' => 'Database error'];
     }
 }
