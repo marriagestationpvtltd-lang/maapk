@@ -552,6 +552,13 @@ class _CallOverlayWrapperState extends State<CallOverlayWrapper>
         print('📱 CallOverlayWrapper: Incoming call received: $data');
         final isVideoCall =
             data['type'] == 'video_call' || data['isVideoCall'] == 'true';
+        // Dismiss keyboard so the call screen is not hidden behind it.
+        FocusManager.instance.primaryFocus?.unfocus();
+        // When the app is idle (e.g. keyboard open in chat with no frames
+        // being scheduled), Flutter stops rendering and addPostFrameCallback
+        // never fires until the user interacts with the screen.  Schedule a
+        // frame first so the callback below executes immediately.
+        WidgetsBinding.instance.scheduleFrame();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _pushCallScreen(data, isVideoCall);
         });
