@@ -21,12 +21,12 @@ class AppConstants {
 
   /// Matrimonial profile report reasons shown in the report bottom sheet.
   static const List<String> reportReasons = [
-    'नक्कली प्रोफाइल (Fake Profile)',
-    'अश्लील वा आपत्तिजनक सामग्री (Inappropriate/Obscene Content)',
-    'विवाहित भएर एकल भनेको (Married but claiming to be Single)',
-    'आर्थिक ठगी वा धोखाधडी (Financial Fraud or Deception)',
-    'गलत उमेर वा व्यक्तिगत जानकारी (False Age or Personal Details)',
-    'उत्पीडन वा दुर्व्यवहार (Harassment or Abuse)',
-    'अनुचित सम्पर्क व्यवहार (Inappropriate Contact Behavior)',
+    'Fake Profile',
+    'Inappropriate/Obscene Content',
+    'Married but claiming to be Single',
+    'Financial Fraud or Deception',
+    'False Age or Personal Details',
+    'Harassment or Abuse',
+    'Inappropriate Contact Behavior',
   ];
 }

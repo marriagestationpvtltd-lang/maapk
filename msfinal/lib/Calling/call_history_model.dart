@@ -113,14 +113,14 @@ class CallHistory {
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  // Get status text in Nepali
+  // Get call status text
   String getStatusText(String userId) {
     if (status == CallStatus.missed) {
-      return isIncoming(userId) ? 'छुटेको' : 'जवाफ दिएन';
+      return isIncoming(userId) ? 'Missed' : 'No Answer';
     } else if (status == CallStatus.declined) {
-      return isIncoming(userId) ? 'अस्वीकार गरियो' : 'अस्वीकृत';
+      return isIncoming(userId) ? 'Declined' : 'Rejected';
     } else if (status == CallStatus.cancelled) {
-      return 'रद्द गरियो';
+      return 'Cancelled';
     } else {
       return getFormattedDuration();
     }

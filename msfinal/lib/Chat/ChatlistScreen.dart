@@ -971,7 +971,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           actions: [
             IconButton(
               icon: const Icon(Icons.call),
-              tooltip: 'कल हिस्ट्री',
+              tooltip: 'Call History',
               onPressed: () {
                 Navigator.push(
                   context,

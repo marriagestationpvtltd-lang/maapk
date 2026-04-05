@@ -1872,7 +1872,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             Icon(Icons.block, color: Colors.red.shade400, size: 18),
             const SizedBox(width: 8),
             Text(
-              'तपाईंले यो प्रयोगकर्तालाई ब्लक गर्नुभएको छ',
+              'You have blocked this user',
               style: TextStyle(
                 color: Colors.red.shade400,
                 fontSize: 14,
@@ -2435,7 +2435,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'कल हिस्ट्री',
+                      'Call History',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -2495,7 +2495,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 padding: const EdgeInsets.only(top: 8),
                 child: Center(
                   child: Text(
-                    '... र ${_callHistory.length - 10} थप कलहरू',
+                    '... and ${_callHistory.length - 10} more calls',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 12,
@@ -2568,7 +2568,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        isIncoming ? 'आगमन कल' : 'बहिर्गमन कल',
+                        isIncoming ? 'Incoming Call' : 'Outgoing Call',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -2632,11 +2632,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final difference = now.difference(dateTime);
 
     if (difference.inDays == 0) {
-      return 'आज ${DateFormat('HH:mm').format(dateTime)}';
+      return 'Today ${DateFormat('HH:mm').format(dateTime)}';
     } else if (difference.inDays == 1) {
-      return 'हिजो ${DateFormat('HH:mm').format(dateTime)}';
+      return 'Yesterday ${DateFormat('HH:mm').format(dateTime)}';
     } else if (difference.inDays < 7) {
-      final dayNames = ['आइत', 'सोम', 'मंगल', 'बुध', 'बिहि', 'शुक्र', 'शनि'];
+      final dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return '${dayNames[dateTime.weekday % 7]} ${DateFormat('HH:mm').format(dateTime)}';
     } else {
       return DateFormat('yyyy/MM/dd HH:mm').format(dateTime);
@@ -2987,7 +2987,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         Icon(Icons.flag, color: Colors.orange, size: 24),
                         SizedBox(width: 8),
                         Text(
-                          'प्रोफाइल रिपोर्ट गर्नुहोस्',
+                          'Report Profile',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -3000,7 +3000,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'रिपोर्टको कारण छान्नुहोस्:',
+                      'Select reason for report:',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ),
@@ -3024,7 +3024,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                           child: OutlinedButton(
                             onPressed: () =>
                                 Navigator.of(sheetContext).pop(),
-                            child: const Text('रद्द गर्नुहोस्'),
+                            child: const Text('Cancel'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -3041,7 +3041,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                               backgroundColor: Colors.red,
                             ),
                             child: const Text(
-                              'रिपोर्ट गर्नुहोस्',
+                              'Report',
                               style: TextStyle(color: Colors.white),
                             ),
                           ),
@@ -3062,7 +3062,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     try {
       final adminUserId = AppConstants.adminUserId;
       final reportMessage =
-          'मैले यो प्रोफाइल रिपोर्ट गरेको छु।\n\nकारण: $reason\n\nरिपोर्ट गरिएको प्रोफाइल ID: ${widget.receiverId}';
+          'I have reported this profile.\n\nReason: $reason\n\nReported Profile ID: ${widget.receiverId}';
 
       await _firestore.collection('adminchat').add({
         'message': reportMessage,
@@ -3081,14 +3081,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           AppConstants.conversationId(widget.currentUserId, adminUserId);
       await _firestore.collection('conversations').doc(conversationId).set({
         'participants': [widget.currentUserId, adminUserId],
-        'lastMessage': 'प्रोफाइल रिपोर्ट: $reason',
+        'lastMessage': 'Profile Report: $reason',
         'lastTimestamp': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('प्रोफाइल सफलतापूर्वक रिपोर्ट गरियो!'),
+            content: Text('Profile reported successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -3096,7 +3096,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('रिपोर्ट गर्न असफल: $e')),
+          SnackBar(content: Text('Failed to report: $e')),
         );
       }
     }

@@ -988,7 +988,7 @@ String usertye = '';
                                 MaterialPageRoute(
                                     builder: (_) =>
                                         RecentMembersPage(userId: userid))),
-                            child: _buildSectionHeader('हालसालै रजिस्टर भएका',
+                            child: _buildSectionHeader('Recently Registered',
                                 showSeeAll: true),
                           ),
                         ),

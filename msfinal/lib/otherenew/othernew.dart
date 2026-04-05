@@ -259,7 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Icon(Icons.flag, color: Colors.orange, size: 24),
                         SizedBox(width: 8),
                         Text(
-                          'प्रोफाइल रिपोर्ट गर्नुहोस्',
+                          'Report Profile',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -272,7 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'रिपोर्टको कारण छान्नुहोस्:',
+                      'Select reason for report:',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ),
@@ -296,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: OutlinedButton(
                             onPressed: () =>
                                 Navigator.of(sheetContext).pop(),
-                            child: const Text('रद्द गर्नुहोस्'),
+                            child: const Text('Cancel'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -313,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               backgroundColor: Colors.red,
                             ),
                             child: const Text(
-                              'रिपोर्ट गर्नुहोस्',
+                              'Report',
                               style: TextStyle(color: Colors.white),
                             ),
                           ),
@@ -345,7 +345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           userProfile.name.isNotEmpty ? userProfile.name : 'Unknown';
 
       final reportMessage =
-          'मैले यो प्रोफाइल रिपोर्ट गरेको छु।\n\nकारण: $reason\n\nरिपोर्ट गरिएको प्रोफाइल ID: ${widget.userId}';
+          'I have reported this profile.\n\nReason: $reason\n\nReported Profile ID: ${widget.userId}';
 
       await FirebaseFirestore.instance.collection('adminchat').add({
         'message': reportMessage,
@@ -366,14 +366,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .doc(conversationId)
           .set({
         'participants': [currentUserId, adminUserId],
-        'lastMessage': 'प्रोफाइल रिपोर्ट: $reason',
+        'lastMessage': 'Profile Report: $reason',
         'lastTimestamp': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('प्रोफाइल सफलतापूर्वक रिपोर्ट गरियो!'),
+            content: Text('Profile reported successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -381,7 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('रिपोर्ट गर्न असफल: $e')),
+          SnackBar(content: Text('Failed to report: $e')),
         );
       }
     }
