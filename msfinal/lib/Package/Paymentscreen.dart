@@ -107,7 +107,7 @@ class _PaymentPageState extends State<PaymentPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.primary,
-        systemOverlayStyle: const SystemUiOverlayStyle(
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.white,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
