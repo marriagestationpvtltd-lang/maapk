@@ -325,25 +325,23 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
     final sentences = <String>[];
 
-    // Intro sentence
+    // Intro sentence (without name for privacy)
     final introParts = <String>[];
-    if (name.isNotEmpty) introParts.add(name);
     if (age > 0) introParts.add('$age years old');
-    final locationStr = [city, country].where((s) => s.isNotEmpty).join(', ');
-    if (locationStr.isNotEmpty) introParts.add('based in $locationStr');
+    if (designation.isNotEmpty) introParts.add(designation);
     if (introParts.isNotEmpty) {
-      sentences.add('I am ${introParts.join(', ')}.');
+      sentences.add('A ${introParts.join(', ')} looking for a suitable match.');
+    } else {
+      sentences.add('Looking for a suitable match.');
     }
 
     if (marital.isNotEmpty) sentences.add('My marital status is $marital.');
 
-    // Work sentence — only build when it produces grammatical output
-    if (designation.isNotEmpty && company.isNotEmpty) {
-      sentences.add('I work as a $designation at $company.');
-    } else if (designation.isNotEmpty) {
-      sentences.add('I work as a $designation.');
-    } else if (company.isNotEmpty) {
+    // Work sentence — only add company if not already mentioned designation
+    if (company.isNotEmpty && designation.isEmpty) {
       sentences.add('I am employed at $company.');
+    } else if (company.isNotEmpty) {
+      sentences.add('Currently working at $company.');
     }
     if (degree.isNotEmpty) sentences.add('I hold a degree in $degree.');
 
@@ -448,6 +446,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
                     ),
 
                     const SizedBox(height: 25),
+
+                    // Basic Information Section
+                    _buildSectionHeader("Basic Information", Icons.person_outline),
 
                     // Marital Status
                     _buildSectionTitle("Marital Status*"),
@@ -715,6 +716,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
                     const SizedBox(height: 25),
                     _buildDivider(),
 
+                    // Physical Attributes Section
+                    _buildSectionHeader("Physical Attributes", Icons.accessibility_new),
+
                     // Any Disability Section
                     _buildSectionTitle("Any Disability"),
                     const SizedBox(height: 8),
@@ -828,6 +832,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
                     const SizedBox(height: 20),
 
+                    // About Me Section
+                    _buildSectionHeader("About Me", Icons.info_outline),
+
                     // About Yourself
                     _buildSectionTitle("About Yourself"),
                     const SizedBox(height: 8),
@@ -927,6 +934,40 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
         fontSize: 15,
         fontWeight: FontWeight.w600,
         color: Colors.black87,
+      ),
+    );
+  }
+
+  // New section header widget for better organization
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(top: 20, bottom: 15),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE64B37).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE64B37).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: const Color(0xFFE64B37),
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFE64B37),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1122,6 +1163,22 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     if (_selectedBodyType == null) {
       _showError("Please select body type");
       return;
+    }
+
+    // Conditional validation for child status
+    if (_selectedMaritalStatus == 'Divorced' ||
+        _selectedMaritalStatus == 'Widowed' ||
+        _selectedMaritalStatus == 'Waiting Divorce') {
+      if (_ChildStatus.isEmpty) {
+        _showError("Please select children status");
+        return;
+      }
+
+      if ((_ChildStatus == 'One' || _ChildStatus == 'Two +') &&
+          _Childlivewith.isEmpty) {
+        _showError("Please select who the children live with");
+        return;
+      }
     }
 
     // Show loading

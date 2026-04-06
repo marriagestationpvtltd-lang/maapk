@@ -59,6 +59,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   bool _isCheckingConnectivity = false;
   bool? _lastConnectivityState;
   ConnectivityService? _connectivityService;
+  int? _backendProfileCompletion; // Backend-calculated completion percentage
 
   // User contact information
   String? _userEmail;
@@ -121,6 +122,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             profileData = data['data'];
             isProfileVerified = profileData?['personalDetail']?['isVerified'] == 1;
             memberType = _getMemberType(profileData?['personalDetail']?['usertype'] ?? 'free');
+            // Store backend-calculated completion percentage
+            _backendProfileCompletion = data['profileCompletion'];
             isLoading = false;
           });
           _fetchActivePackage(userId.toString());
@@ -851,7 +854,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     Map<String, dynamic> familyDetail,
   ) {
     final model = context.read<SignupModel>();
-    final completion = _calculateProfileCompletion(
+    // Use backend completion if available, otherwise calculate locally
+    final completion = _backendProfileCompletion ?? _calculateProfileCompletion(
       personalDetail: personalDetail,
       familyDetail: familyDetail,
       lifestyle: lifestyle,
@@ -1631,7 +1635,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     required Map<String, dynamic> lifestyle,
     required Map<String, dynamic> partner,
   }) {
-    final completion = _calculateProfileCompletion(
+    // Use backend completion if available, otherwise calculate locally
+    final completion = _backendProfileCompletion ?? _calculateProfileCompletion(
       personalDetail: personalDetail,
       familyDetail: familyDetail,
       lifestyle: lifestyle,

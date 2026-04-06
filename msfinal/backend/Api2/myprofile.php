@@ -190,9 +190,52 @@ if ($result->num_rows > 0) {
         ]
     ];
 
+    // Calculate profile completion percentage
+    $requiredFields = [
+        $row['firstName'],
+        $row['lastName'],
+        $row['birthDate'],
+        $row['height_name'],
+        $row['maritalStatusName'],
+        $row['motherTongue'],
+        $row['city'],
+        $row['country'],
+        $row['religionName'],
+        $row['communityName'],
+        $row['degree'],
+        $row['ec_designation'],
+        $row['ec_annualincome'],
+        $row['aboutMe'],
+        $row['familytype'],
+        $row['familybackground'],
+        $row['fatheroccupation'],
+        $row['motheroccupation'],
+        $row['familyorigin'],
+        $row['diet'],
+        $row['smoke'],
+        $row['drinks'],
+        $row['minage'],
+        $row['maxage'],
+        $row['maritalstatus'],
+        $row['partnerReligion'],
+        $row['partnerQualification'],
+        $row['partnerProfession']
+    ];
+
+    $filledCount = 0;
+    foreach ($requiredFields as $field) {
+        if (!empty($field) && $field !== null && strtolower($field) !== 'null' && trim($field) !== '') {
+            $filledCount++;
+        }
+    }
+
+    $totalFields = count($requiredFields);
+    $completionPercentage = ($totalFields > 0) ? round(($filledCount / $totalFields) * 100) : 0;
+
     echo json_encode([
         "status" => "success",
-        "data" => $data
+        "data" => $data,
+        "profileCompletion" => $completionPercentage
     ]);
 
 } else {
