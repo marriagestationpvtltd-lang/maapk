@@ -26,6 +26,13 @@ class _FilterPageState extends State<FilterPage> {
   String smoking = "No";
   String drinking = "No";
 
+  // New filter options
+  bool _hasPhotoOnly = false;
+  String _membershipType = "All"; // All, Paid, Free
+  bool _verifiedOnly = false;
+  String _newlyRegistered = "All"; // All, Last 7 days, Last 15 days, Last 30 days
+  bool _advancedFiltersExpanded = false;
+
   // Add these variables for real-time count
   int _matchesCount = 0;
   int _initialTotalCount = 0; // Store initial total count without filters
@@ -146,8 +153,15 @@ class _FilterPageState extends State<FilterPage> {
     bool smokingChanged = smoking != "No";
     bool drinkingChanged = drinking != "No";
 
+    // New filters
+    bool hasPhotoChanged = _hasPhotoOnly;
+    bool membershipChanged = _membershipType != "All";
+    bool verifiedChanged = _verifiedOnly;
+    bool newlyRegisteredChanged = _newlyRegistered != "All";
+
     return ageChanged || heightChanged || religionChanged ||
-        educationChanged || incomeChanged || smokingChanged || drinkingChanged;
+        educationChanged || incomeChanged || smokingChanged || drinkingChanged ||
+        hasPhotoChanged || membershipChanged || verifiedChanged || newlyRegisteredChanged;
   }
 
   // Build filter parameters map
@@ -171,6 +185,30 @@ class _FilterPageState extends State<FilterPage> {
       final religionId = _getReligionId(religion);
       if (religionId != null) {
         params['religion'] = religionId;
+      }
+    }
+
+    // New filters - only add if changed from defaults
+    if (_hasPhotoOnly) {
+      params['has_photo'] = '1';
+    }
+
+    if (_membershipType != "All") {
+      params['usertype'] = _membershipType.toLowerCase(); // 'paid' or 'free'
+    }
+
+    if (_verifiedOnly) {
+      params['is_verified'] = '1';
+    }
+
+    if (_newlyRegistered != "All") {
+      // Extract days from string like "Last 7 days"
+      if (_newlyRegistered.contains("7")) {
+        params['days_since_registration'] = '7';
+      } else if (_newlyRegistered.contains("15")) {
+        params['days_since_registration'] = '15';
+      } else if (_newlyRegistered.contains("30")) {
+        params['days_since_registration'] = '30';
       }
     }
 
@@ -267,6 +305,13 @@ class _FilterPageState extends State<FilterPage> {
       income = "5 To 10 Lakh";
       smoking = "No";
       drinking = "No";
+
+      // Clear new filters
+      _hasPhotoOnly = false;
+      _membershipType = "All";
+      _verifiedOnly = false;
+      _newlyRegistered = "All";
+      _advancedFiltersExpanded = false;
     });
 
     // After clearing, show initial total count
@@ -302,6 +347,11 @@ class _FilterPageState extends State<FilterPage> {
                       const SizedBox(height: 10),
                       _buildFilterTitle(),
                       const SizedBox(height: 20),
+
+                      // Quick Filters Section
+                      _buildQuickFiltersSection(),
+                      const SizedBox(height: 20),
+
                       _buildLabel("Looking For"),
                       _buildDropdown(lookingFor, ["Single", "Married", "Widow"], (v) {
                         setState(() => lookingFor = v!);
@@ -616,6 +666,251 @@ class _FilterPageState extends State<FilterPage> {
           ),
         )
       ],
+    );
+  }
+
+  // Build Quick Filters Section with engaging design
+  Widget _buildQuickFiltersSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xffFFF5F5), Color(0xffFFE8E8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xffFFD0D0), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.flash_on, color: Color(0xffFF1500), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                "Quick Filters",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xffFF1500),
+                ),
+              ),
+              const Spacer(),
+              if (_hasPhotoOnly || _verifiedOnly || _membershipType != "All" || _newlyRegistered != "All")
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffFF1500),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    "Active",
+                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Photo Filter - Checkbox with icon
+          _buildCheckboxFilter(
+            icon: Icons.photo_camera,
+            label: "With Photos Only",
+            subtitle: "फोटो सहितका प्रोफाइल मात्र",
+            value: _hasPhotoOnly,
+            onChanged: (val) {
+              setState(() => _hasPhotoOnly = val!);
+              _handleFilterChange();
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Verified Filter
+          _buildCheckboxFilter(
+            icon: Icons.verified_user,
+            label: "Verified Members",
+            subtitle: "प्रमाणित सदस्यहरू मात्र",
+            value: _verifiedOnly,
+            onChanged: (val) {
+              setState(() => _verifiedOnly = val!);
+              _handleFilterChange();
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Membership Type Filter - Chip style
+          const Text(
+            "Membership Type",
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildChipFilter("All", _membershipType == "All", () {
+                setState(() => _membershipType = "All");
+                _handleFilterChange();
+              }),
+              const SizedBox(width: 8),
+              _buildChipFilter("Paid", _membershipType == "Paid", () {
+                setState(() => _membershipType = "Paid");
+                _handleFilterChange();
+              }),
+              const SizedBox(width: 8),
+              _buildChipFilter("Free", _membershipType == "Free", () {
+                setState(() => _membershipType = "Free");
+                _handleFilterChange();
+              }),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Newly Registered Filter
+          const Text(
+            "Registration Date",
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black12),
+            ),
+            child: DropdownButton<String>(
+              value: _newlyRegistered,
+              underline: const SizedBox(),
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, color: Color(0xffFF1500)),
+              items: const [
+                DropdownMenuItem(value: "All", child: Text("All Members")),
+                DropdownMenuItem(value: "Last 7 days", child: Text("Last 7 days")),
+                DropdownMenuItem(value: "Last 15 days", child: Text("Last 15 days")),
+                DropdownMenuItem(value: "Last 30 days", child: Text("Last 30 days")),
+              ],
+              onChanged: (val) {
+                setState(() => _newlyRegistered = val!);
+                _handleFilterChange();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build checkbox filter item
+  Widget _buildCheckboxFilter({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required bool value,
+    required Function(bool?) onChanged,
+  }) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: value ? const Color(0xffFF1500).withOpacity(0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: value ? const Color(0xffFF1500) : Colors.black12,
+            width: value ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: value ? const Color(0xffFF1500) : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: value ? Colors.white : Colors.grey.shade600,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: value ? FontWeight.w600 : FontWeight.w500,
+                      color: value ? const Color(0xffFF1500) : Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Transform.scale(
+              scale: 1.1,
+              child: Checkbox(
+                value: value,
+                onChanged: onChanged,
+                activeColor: const Color(0xffFF1500),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build chip filter
+  Widget _buildChipFilter(String label, bool isSelected, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xffFF1500) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? const Color(0xffFF1500) : Colors.black26,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
