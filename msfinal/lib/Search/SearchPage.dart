@@ -704,11 +704,14 @@ class _SearchPageState extends State<SearchPage>
               return Expanded(
                 child: GestureDetector(
                   onTap: () {
+                    _quickSearchFocus.unfocus();
                     setState(() {
                       _selectedSearchType = type;
                       _quickSearchController.clear();
                     });
-                    _quickSearchFocus.requestFocus();
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      _quickSearchFocus.requestFocus();
+                    });
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
