@@ -810,6 +810,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     partner: partner,
                   ),
                   _buildDocumentStatusSection(personalDetail),
+                  if (_docStatus == 'approved')
+                    _buildVerifiedInformationSection(personalDetail, model),
                   _buildMemberTypeSection(),
                   _buildPackageDetailsSection(),
                   _buildProfileInfo(personalDetail),
@@ -2225,19 +2227,226 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     return sentences.join(' ').trim();
   }
 
+  Widget _buildVerifiedInformationSection(
+    Map<String, dynamic> personalDetail,
+    SignupModel model,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF2E7D32).withOpacity(0.08),
+                  const Color(0xFF43A047).withOpacity(0.05),
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.verified_user, color: Color(0xFF2E7D32), size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Verified Information',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      Text(
+                        'Cannot be changed after verification',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock,
+                    color: Color(0xFF2E7D32),
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Info Banner
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF2E7D32),
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'तपाईंको कागजात प्रमाणित भइसकेको छ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'यी फिल्डहरू अब परिवर्तन गर्न सकिँदैन। यदि तपाईंलाई कुनै जानकारी परिवर्तन गर्न आवश्यक छ भने, कृपया सहयोगसँग सम्पर्क गर्नुहोस्।',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[700],
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Locked Fields
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Column(
+              children: [
+                _buildLockedDetailRow('Full Name', '${_displayValue(personalDetail['firstName'], fallback: '')} ${_displayValue(personalDetail['lastName'], fallback: '')}'),
+                _buildLockedDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
+                _buildLockedDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
+                _buildLockedDetailRow('Email', _displayValue(model.email, fallback: personalDetail['email']?.toString() ?? 'N/A')),
+                _buildLockedDetailRow('Phone Number', _displayValue(model.contactNo, fallback: personalDetail['contactNo']?.toString() ?? 'N/A')),
+                _buildLockedDetailRow('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLockedDetailRow(String label, String value) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 6,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.lock,
+                      size: 14,
+                      color: Color(0xFF2E7D32),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          color: Color(0xFF1A1A2E),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100),
+      ],
+    );
+  }
+
   Widget _buildPersonalDetails(
     Map<String, dynamic> personalDetail,
   ) {
     final model = context.read<SignupModel>();
+    final isVerified = _docStatus == 'approved';
+
     return _buildSection(
       title: 'Personal Details',
       icon: Icons.favorite_border,
       content: Column(
         children: [
-          _buildDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
-          _buildDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
-          _buildDetailRow('Gender', _displayValue(_firstFilled([personalDetail['gender'], model.gender]))),
-          _buildDetailRow('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
+          // Only show these fields if NOT verified (they're in the Verified section when verified)
+          if (!isVerified) ...[
+            _buildDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
+            _buildDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
+            _buildDetailRow('Gender', _displayValue(_firstFilled([personalDetail['gender'], model.gender]))),
+            _buildDetailRow('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
+          ],
           _buildDetailRow('Height', _displayValue(personalDetail['height_name'])),
           if (!_isMissing(personalDetail['weight_name']))
             _buildDetailRow('Weight', _displayValue(personalDetail['weight_name'])),
@@ -2658,11 +2867,74 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   void _editPersonalDetails() {
-    _openEditPage(
-      PersonalDetailsPagee(
-        initialData: _asMap(profileData?['personalDetail']),
-      ),
-    );
+    // Check if document is verified - show warning but still allow editing non-verified fields
+    if (_docStatus == 'approved') {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.info_outline, color: Color(0xFF2E7D32), size: 24),
+              SizedBox(width: 10),
+              Text(
+                'Information',
+                style: TextStyle(color: Color(0xFF2E7D32)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'तपाईंको कागजात प्रमाणित भइसकेको छ',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'तपाईंको नाम, जन्म मिति, उमेर, र वैवाहिक स्थिति प्रमाणित भइसकेको हुनाले यी फिल्डहरू परिवर्तन गर्न सकिँदैन।',
+                style: TextStyle(fontSize: 13),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'तर अन्य फिल्डहरू जस्तै उचाइ, तौल, रक्त समूह आदि अझै पनि परिवर्तन गर्न सकिन्छ।',
+                style: TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _openEditPage(
+                  PersonalDetailsPagee(
+                    initialData: _asMap(profileData?['personalDetail']),
+                    isVerified: true, // Pass verification status to edit screen
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2E7D32),
+              ),
+              child: Text('Continue', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _openEditPage(
+        PersonalDetailsPagee(
+          initialData: _asMap(profileData?['personalDetail']),
+        ),
+      );
+    }
   }
 
   void _editCommunityDetails() {
