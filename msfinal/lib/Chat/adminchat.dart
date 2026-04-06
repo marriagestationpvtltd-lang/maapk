@@ -154,7 +154,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
             _isFirstLoad = false;
           }
         });
-        if (firstLoad && newCache.isNotEmpty) {
+        if (firstLoad && streamDocs.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom(animate: false);
           });
