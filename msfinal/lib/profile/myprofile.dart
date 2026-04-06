@@ -1016,11 +1016,11 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.perm_identity, color: Colors.white, size: 14),
+                          const Icon(Icons.perm_identity, color: Colors.white, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             'ID: ${_userId}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
