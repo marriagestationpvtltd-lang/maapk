@@ -11,6 +11,7 @@ import 'dart:convert';
 
 import '../Notification/notification_inbox_service.dart';
 import '../pushnotification/pushservice.dart';
+import '../utils/privacy_utils.dart';
 import 'gallerysection.dart';
 import 'loadingerror.dart';
 import 'modelprofile.dart';
@@ -105,7 +106,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           _profileData = ProfileData.fromJson(profileResponse['data']);
         });
 
-        await _checkPhotoPrivacy();
+        _updatePhotoPrivacyStatus();
         await _fetchGalleryImages();
 
         setState(() {
@@ -125,11 +126,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  Future<void> _checkPhotoPrivacy() async {
-    final privacyData = await _profileService.checkPhotoPrivacy(_parsedUserId);
+  /// Calculate photo privacy status from profile data
+  /// Uses consistent logic: privacy == 'free' OR photo_request == 'accepted'
+  void _updatePhotoPrivacyStatus() {
+    if (_profileData == null) return;
+
+    final privacy = _profileData!.personalDetail['privacy']?.toString().toLowerCase();
+    final photoRequest = _profileData!.personalDetail['photo_request']?.toString().toLowerCase();
+
+    // Use PrivacyUtils for consistent logic across the app
+    final shouldShowClear = PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
+
+    // Check if user has already requested photo access
+    final hasRequested = photoRequest != null &&
+                        photoRequest.isNotEmpty &&
+                        photoRequest != 'null' &&
+                        photoRequest != 'not_sent';
+
     setState(() {
-      _showBlurredImage = privacyData['show_blur'] ?? true;
-      _hasRequestedPhoto = privacyData['has_requested'] ?? false;
+      _showBlurredImage = !shouldShowClear;
+      _hasRequestedPhoto = hasRequested;
     });
   }
 
