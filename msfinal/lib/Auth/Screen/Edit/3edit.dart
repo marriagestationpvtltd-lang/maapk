@@ -447,6 +447,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
                     const SizedBox(height: 25),
 
+                    // Basic Information Section
+                    _buildSectionHeader("Basic Information", Icons.person_outline),
+
                     // Marital Status
                     _buildSectionTitle("Marital Status*"),
 
@@ -713,6 +716,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
                     const SizedBox(height: 25),
                     _buildDivider(),
 
+                    // Physical Attributes Section
+                    _buildSectionHeader("Physical Attributes", Icons.accessibility_new),
+
                     // Any Disability Section
                     _buildSectionTitle("Any Disability"),
                     const SizedBox(height: 8),
@@ -826,6 +832,9 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
                     const SizedBox(height: 20),
 
+                    // About Me Section
+                    _buildSectionHeader("About Me", Icons.info_outline),
+
                     // About Yourself
                     _buildSectionTitle("About Yourself"),
                     const SizedBox(height: 8),
@@ -925,6 +934,40 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
         fontSize: 15,
         fontWeight: FontWeight.w600,
         color: Colors.black87,
+      ),
+    );
+  }
+
+  // New section header widget for better organization
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(top: 20, bottom: 15),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE64B37).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE64B37).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: const Color(0xFFE64B37),
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFE64B37),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1120,6 +1163,22 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     if (_selectedBodyType == null) {
       _showError("Please select body type");
       return;
+    }
+
+    // Conditional validation for child status
+    if (_selectedMaritalStatus == 'Divorced' ||
+        _selectedMaritalStatus == 'Widowed' ||
+        _selectedMaritalStatus == 'Waiting Divorce') {
+      if (_ChildStatus.isEmpty) {
+        _showError("Please select children status");
+        return;
+      }
+
+      if ((_ChildStatus == 'One' || _ChildStatus == 'Two +') &&
+          _Childlivewith.isEmpty) {
+        _showError("Please select who the children live with");
+        return;
+      }
     }
 
     // Show loading
