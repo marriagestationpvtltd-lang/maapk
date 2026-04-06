@@ -43,12 +43,7 @@ class _SearchPageState extends State<SearchPage>
   // ── Advanced Search (filter) state ──
   RangeValues _ageRange = const RangeValues(22, 60);
   RangeValues _heightRange = const RangeValues(121, 215);
-  String _lookingFor = "Single";
   String _religion = "Hindu";
-  String _education = "Bachelor";
-  String _income = "5 To 10 Lakh";
-  String _smoking = "No";
-  String _drinking = "No";
 
   // Quick filter state
   bool _hasPhotoOnly = false;
@@ -335,10 +330,6 @@ class _SearchPageState extends State<SearchPage>
         _heightRange.start != 121 ||
         _heightRange.end != 215 ||
         _religion != "Hindu" ||
-        _education != "Bachelor" ||
-        _income != "5 To 10 Lakh" ||
-        _smoking != "No" ||
-        _drinking != "No" ||
         _hasPhotoOnly ||
         _membershipType != "All" ||
         _verifiedOnly ||
@@ -438,12 +429,7 @@ class _SearchPageState extends State<SearchPage>
     setState(() {
       _ageRange = const RangeValues(22, 60);
       _heightRange = const RangeValues(121, 215);
-      _lookingFor = "Single";
       _religion = "Hindu";
-      _education = "Bachelor";
-      _income = "5 To 10 Lakh";
-      _smoking = "No";
-      _drinking = "No";
 
       // Clear quick filters
       _hasPhotoOnly = false;
@@ -1067,14 +1053,6 @@ class _SearchPageState extends State<SearchPage>
                 _buildQuickFiltersSection(),
                 const SizedBox(height: 24),
 
-                _buildFilterLabel('Looking For'),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                    _lookingFor, ['Single', 'Married', 'Widow'], (v) {
-                  setState(() => _lookingFor = v!);
-                  _handleFilterChange();
-                }),
-                const SizedBox(height: 20),
                 _buildFilterLabel('Age Range'),
                 _buildRangeSlider(_ageRange, 18, 70, (v) {
                   setState(() => _ageRange = v);
@@ -1094,54 +1072,6 @@ class _SearchPageState extends State<SearchPage>
                   setState(() => _religion = v!);
                   _handleFilterChange();
                 }),
-                const SizedBox(height: 20),
-                _buildFilterLabel('Education'),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                    _education, ['Bachelor', 'Master', 'PhD'], (v) {
-                  setState(() => _education = v!);
-                  _handleFilterChange();
-                }),
-                const SizedBox(height: 20),
-                _buildFilterLabel('Annual Income'),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                    _income, ['5 To 10 Lakh', '10 To 20 Lakh'], (v) {
-                  setState(() => _income = v!);
-                  _handleFilterChange();
-                }),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFilterLabel('Smoking'),
-                          const SizedBox(height: 8),
-                          _buildDropdown(_smoking, ['No', 'Yes'], (v) {
-                            setState(() => _smoking = v!);
-                            _handleFilterChange();
-                          }),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFilterLabel('Drinking'),
-                          const SizedBox(height: 8),
-                          _buildDropdown(_drinking, ['No', 'Yes'], (v) {
-                            setState(() => _drinking = v!);
-                            _handleFilterChange();
-                          }),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 32),
               ],
             ),
