@@ -6,7 +6,6 @@ import '../utils/time_utils.dart';
 
 class ProfileHeader extends StatelessWidget {
   final Map<String, dynamic> personalDetail;
-  final bool showBlurredImage;
   final bool hasRequestedPhoto;
   final Function onRequestPhotoAccess;
   final String id;
@@ -16,7 +15,6 @@ class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     Key? key,
     required this.personalDetail,
-    required this.showBlurredImage,
     required this.hasRequestedPhoto,
     required this.onRequestPhotoAccess,
     required this.id,
