@@ -26,10 +26,20 @@ function sendFCM($fcm_token, $title, $body, $data = [], $channel_id = 'general_n
     $projectId = "digitallami1";
     $url = "https://fcm.googleapis.com/v1/projects/$projectId/messages:send";
 
-    // Ensure all data values are strings (FCM v1 requirement)
+    // Ensure all data values are strings (FCM v1 requirement).
+    // Values that are already strings are passed through unchanged;
+    // numbers and booleans are converted via strval(); other types
+    // (arrays/objects) are JSON-encoded and a warning is logged.
     $string_data = [];
     foreach ($data as $k => $v) {
-        $string_data[$k] = is_string($v) ? $v : json_encode($v);
+        if (is_string($v)) {
+            $string_data[$k] = $v;
+        } elseif (is_int($v) || is_float($v) || is_bool($v)) {
+            $string_data[$k] = strval($v);
+        } else {
+            error_log("sendFCM: non-scalar value for key '$k' — encoding as JSON string");
+            $string_data[$k] = json_encode($v);
+        }
     }
 
     $android_notification = [

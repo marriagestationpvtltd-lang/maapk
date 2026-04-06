@@ -996,10 +996,9 @@ void main() async {
 
   // Sign in anonymously so Firestore security rules that require
   // request.auth != null are satisfied for chat and presence operations.
+  // signInAnonymously() returns the existing anonymous user when already signed in.
   try {
-    if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-    }
+    await FirebaseAuth.instance.signInAnonymously();
   } catch (e) {
     debugPrint('⚠️ Firebase anonymous sign-in failed: $e');
   }
