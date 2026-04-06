@@ -807,6 +807,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         final familyDetail = _asMap(profileData!['familyDetail']);
         final lifestyle = _asMap(profileData!['lifestyle']);
         final partner = _asMap(profileData!['partner']);
+        final model = context.read<SignupModel>();
 
         return KeyedSubtree(
           key: const ValueKey('my-profile-online'),

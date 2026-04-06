@@ -1039,6 +1039,7 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
           ],
         ),
       ),
+      ),
     );
   }
 
