@@ -134,20 +134,23 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     _msgSubscription = _messagesStream().listen(
       (snapshot) {
         if (!mounted) return;
-        final streamDocs = snapshot.docs.reversed.toList(); // chronological
-        final streamDocIds = streamDocs.map((d) => d.id).toSet();
-        final paginatedDocs =
-            _cachedMessages.where((d) => !streamDocIds.contains(d.id)).toList();
-        final newCache = [...paginatedDocs, ...streamDocs];
+        // Sort client-side in chronological order (no orderBy in Firestore query).
+        final streamDocs = List<DocumentSnapshot>.from(snapshot.docs)
+          ..sort((a, b) {
+            final aTs = (a.data() as Map<String, dynamic>)['timestamp'];
+            final bTs = (b.data() as Map<String, dynamic>)['timestamp'];
+            if (aTs == null && bTs == null) return 0;
+            if (aTs == null) return -1;
+            if (bTs == null) return 1;
+            return (aTs as Timestamp).compareTo(bTs as Timestamp);
+          });
         final firstLoad = _isFirstLoad;
         setState(() {
-          _cachedMessages = newCache;
+          _cachedMessages = streamDocs;
           _streamLoading = false;
-          _hasMoreMessages = snapshot.docs.length >= _messagePageSize;
-          if (_lastDocument == null && snapshot.docs.isNotEmpty) {
-            _lastDocument = snapshot.docs.last; // oldest (desc query → last)
-          }
-          if (firstLoad && newCache.isNotEmpty) {
+          // All messages are loaded by the stream; pagination is not used.
+          _hasMoreMessages = false;
+          if (firstLoad && streamDocs.isNotEmpty) {
             _isFirstLoad = false;
           }
         });
@@ -574,14 +577,17 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     }
   }
 
-// FIXED: Correct Firestore query for chat between two users
+// Firestore query for chat between two users.
+// orderBy is intentionally omitted to avoid requiring a composite index
+// (combination of whereIn on two fields + orderBy triggers failed-precondition).
+// Results are sorted client-side. A cap of 500 documents is applied to bound
+// network usage; admin-support chats are typically well below this limit.
   Stream<QuerySnapshot> _messagesStream() {
     return FirebaseFirestore.instance
         .collection('adminchat')
         .where('senderid', whereIn: [widget.senderID, _adminUserId])
         .where('receiverid', whereIn: [widget.senderID, _adminUserId])
-        .orderBy('timestamp', descending: true)
-        .limit(_messagePageSize)
+        .limit(500)
         .snapshots();
   }
 
@@ -601,7 +607,6 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           .collection('adminchat')
           .where('senderid', whereIn: [widget.senderID, _adminUserId])
           .where('receiverid', whereIn: [widget.senderID, _adminUserId])
-          .orderBy('timestamp', descending: true)
           .startAfterDocument(_lastDocument!)
           .limit(_messagePageSize)
           .get();
@@ -611,7 +616,15 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         return;
       }
 
-      final olderDocs = snap.docs.reversed.toList(); // chronological
+      final olderDocs = List<DocumentSnapshot>.from(snap.docs)
+        ..sort((a, b) {
+          final aTs = (a.data() as Map<String, dynamic>)['timestamp'];
+          final bTs = (b.data() as Map<String, dynamic>)['timestamp'];
+          if (aTs == null && bTs == null) return 0;
+          if (aTs == null) return -1;
+          if (bTs == null) return 1;
+          return (aTs as Timestamp).compareTo(bTs as Timestamp);
+        }); // chronological
       final prevOffset = _scrollController.hasClients
           ? _scrollController.position.pixels
           : 0.0;
@@ -719,6 +732,11 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       'replyto': _replyToID ?? '',
       'senderid': senderId,
       'receiverid': receiverId,
+      'chatroom_id': senderId.compareTo(receiverId) <= 0
+          ? '${senderId}_$receiverId'
+          : '${receiverId}_$senderId',
+      // chatroom_id (sorted sender+receiver) enables future single-field queries
+      // that don't require a composite Firestore index.
       'timestamp': FieldValue.serverTimestamp(),
       'type': type,
     };

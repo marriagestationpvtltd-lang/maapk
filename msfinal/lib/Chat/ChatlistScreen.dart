@@ -234,7 +234,8 @@ class _ChatListScreenState extends State<ChatListScreen>
         .collection('adminchat')
         .where('senderid', whereIn: [uid, _adminUserId])
         .where('receiverid', whereIn: [uid, _adminUserId])
-        .orderBy('timestamp', descending: true)
+        // orderBy omitted intentionally — avoids composite index requirement;
+        // we find the latest message by sorting client-side below.
         .snapshots()
         .listen((snapshot) {
       if (!mounted) return;
@@ -249,8 +250,19 @@ class _ChatListScreenState extends State<ChatListScreen>
         return;
       }
 
+      // Sort client-side to find the most-recent message.
+      final sortedDocs = List.from(snapshot.docs)
+        ..sort((a, b) {
+          final aTs = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
+          final bTs = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
+          if (aTs == null && bTs == null) return 0;
+          if (aTs == null) return 1;
+          if (bTs == null) return -1;
+          return bTs.compareTo(aTs); // descending
+        });
+
       final Map<String, dynamic> latestData =
-          snapshot.docs.first.data() as Map<String, dynamic>;
+          sortedDocs.first.data() as Map<String, dynamic>;
       final Timestamp? ts = latestData['timestamp'] as Timestamp?;
       final DateTime? latestTime = ts?.toDate();
       final String type = latestData['type']?.toString() ?? 'text';
