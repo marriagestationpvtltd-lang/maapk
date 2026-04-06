@@ -144,19 +144,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
             if (bTs == null) return 1;
             return (aTs as Timestamp).compareTo(bTs as Timestamp);
           });
-        final streamDocIds = streamDocs.map((d) => d.id).toSet();
-        final paginatedDocs =
-            _cachedMessages.where((d) => !streamDocIds.contains(d.id)).toList();
-        final newCache = [...paginatedDocs, ...streamDocs];
         final firstLoad = _isFirstLoad;
         setState(() {
-          _cachedMessages = newCache;
+          _cachedMessages = streamDocs;
           _streamLoading = false;
-          _hasMoreMessages = snapshot.docs.length >= _messagePageSize;
-          if (_lastDocument == null && snapshot.docs.isNotEmpty) {
-            _lastDocument = snapshot.docs.last;
-          }
-          if (firstLoad && newCache.isNotEmpty) {
+          // All messages are loaded by the stream; pagination is not used.
+          _hasMoreMessages = false;
+          if (firstLoad && streamDocs.isNotEmpty) {
             _isFirstLoad = false;
           }
         });
@@ -584,13 +578,16 @@ class _AdminChatScreenState extends State<AdminChatScreen>
   }
 
 // Firestore query for chat between two users.
-// orderBy is intentionally omitted to avoid requiring a composite index;
-// results are sorted client-side after retrieval.
+// orderBy is intentionally omitted to avoid requiring a composite index
+// (combination of whereIn on two fields + orderBy triggers failed-precondition).
+// Results are sorted client-side. A cap of 500 documents is applied to bound
+// network usage; admin-support chats are typically well below this limit.
   Stream<QuerySnapshot> _messagesStream() {
     return FirebaseFirestore.instance
         .collection('adminchat')
         .where('senderid', whereIn: [widget.senderID, _adminUserId])
         .where('receiverid', whereIn: [widget.senderID, _adminUserId])
+        .limit(500)
         .snapshots();
   }
 
@@ -738,6 +735,8 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       'chatroom_id': senderId.compareTo(receiverId) <= 0
           ? '${senderId}_$receiverId'
           : '${receiverId}_$senderId',
+      // chatroom_id (sorted sender+receiver) enables future single-field queries
+      // that don't require a composite Firestore index.
       'timestamp': FieldValue.serverTimestamp(),
       'type': type,
     };

@@ -4,8 +4,7 @@
       "collectionGroup": "adminchat",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "senderid", "order": "ASCENDING" },
-        { "fieldPath": "receiverid", "order": "ASCENDING" },
+        { "fieldPath": "chatroom_id", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
