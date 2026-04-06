@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: user is signed in (anonymous or regular)
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Chat rooms: readable/writable by any authenticated user
+    // (participant check is enforced by query filter in app code)
+    match /chatRooms/{chatRoomId} {
+      allow read, write: if isAuth();
+
+      // Messages sub-collection
+      match /messages/{messageId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // User presence / active chat status
+    match /users/{userId} {
+      allow read, write: if isAuth();
+    }
+
+    // Admin chat
+    match /adminchat/{docId} {
+      allow read, write: if isAuth();
+    }
+
+    // Profile shares
+    match /profile_shares/{docId} {
+      allow read, write: if isAuth();
+    }
+
+    // Call history
+    match /callHistory/{docId} {
+      allow read, write: if isAuth();
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
