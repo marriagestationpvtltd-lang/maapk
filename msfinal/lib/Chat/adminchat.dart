@@ -1844,9 +1844,12 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     final bool shouldBlurPhotoFallback = profileData['shouldBlurPhoto'] ?? true;
     final String privacy = profileData['privacy']?.toString() ?? '';
     final String photoRequest = profileData['photo_request']?.toString() ?? '';
-    // Determine visibility: use PrivacyUtils if privacy/photo_request fields are
-    // present, otherwise fall back to the legacy shouldBlurPhoto flag.
-    final bool shouldShowClear = (privacy.isNotEmpty || photoRequest.isNotEmpty)
+    // Determine visibility: use PrivacyUtils when either privacy or photo_request
+    // field is present in the data; otherwise fall back to the legacy
+    // shouldBlurPhoto flag that older messages or admin-shared profiles carry.
+    final bool hasPrivacyData = profileData.containsKey('privacy') ||
+        profileData.containsKey('photo_request');
+    final bool shouldShowClear = hasPrivacyData
         ? PrivacyUtils.shouldShowClearImage(
             privacy: privacy, photoRequest: photoRequest)
         : !shouldBlurPhotoFallback;
@@ -2308,6 +2311,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
   void _openPhotoViewer(
       BuildContext context, List<String> images, int initialIndex) {
     final PageController pageCtrl = PageController(initialPage: initialIndex);
+    final ValueNotifier<int> currentIndex = ValueNotifier<int>(initialIndex);
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -2319,77 +2323,77 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         child: child,
       ),
       pageBuilder: (ctx, _, __) {
-        int currentIndex = initialIndex;
-        return StatefulBuilder(builder: (ctx, setModalState) {
-          return GestureDetector(
-            onTap: () => Navigator.of(ctx).pop(),
-            child: Scaffold(
-              backgroundColor: Colors.transparent,
-              body: Stack(
-                children: [
-                  PageView.builder(
-                    controller: pageCtrl,
-                    itemCount: images.length,
-                    onPageChanged: (i) => setModalState(() => currentIndex = i),
-                    itemBuilder: (ctx, i) {
-                      return GestureDetector(
-                        // Prevent closing when tapping the image itself
-                        onTap: () {},
-                        child: Center(
-                          child: InteractiveViewer(
-                            child: Image.network(
-                              images[i],
-                              fit: BoxFit.contain,
-                              loadingBuilder: (_, child, progress) =>
-                                  progress == null
-                                      ? child
-                                      : const Center(
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white)),
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white54,
-                                  size: 64),
-                            ),
+        return GestureDetector(
+          onTap: () => Navigator.of(ctx).pop(),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Stack(
+              children: [
+                PageView.builder(
+                  controller: pageCtrl,
+                  itemCount: images.length,
+                  onPageChanged: (i) => currentIndex.value = i,
+                  itemBuilder: (ctx, i) {
+                    return GestureDetector(
+                      // Prevent closing when tapping the image itself
+                      onTap: () {},
+                      child: Center(
+                        child: InteractiveViewer(
+                          child: Image.network(
+                            images[i],
+                            fit: BoxFit.contain,
+                            loadingBuilder: (_, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const Center(
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white)),
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.broken_image,
+                                color: Colors.white54,
+                                size: 64),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  // Close button
-                  Positioned(
-                    top: MediaQuery.of(ctx).padding.top + 8,
-                    right: 12,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(ctx).pop(),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close,
-                            color: Colors.white, size: 22),
                       ),
+                    );
+                  },
+                ),
+                // Close button
+                Positioned(
+                  top: MediaQuery.of(ctx).padding.top + 8,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close,
+                          color: Colors.white, size: 22),
                     ),
                   ),
-                  // Page indicator
-                  if (images.length > 1)
-                    Positioned(
-                      bottom: MediaQuery.of(ctx).padding.bottom + 16,
-                      left: 0,
-                      right: 0,
-                      child: Row(
+                ),
+                // Page indicator (reactive via ValueListenableBuilder)
+                if (images.length > 1)
+                  Positioned(
+                    bottom: MediaQuery.of(ctx).padding.bottom + 16,
+                    left: 0,
+                    right: 0,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: currentIndex,
+                      builder: (ctx, idx, _) => Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(
                           images.length,
                           (i) => AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            width: i == currentIndex ? 18 : 7,
+                            width: i == idx ? 18 : 7,
                             height: 7,
                             margin: const EdgeInsets.symmetric(horizontal: 3),
                             decoration: BoxDecoration(
-                              color: i == currentIndex
+                              color: i == idx
                                   ? Colors.white
                                   : Colors.white38,
                               borderRadius: BorderRadius.circular(4),
@@ -2398,11 +2402,11 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-          );
-        });
+          ),
+        );
       },
     );
   }
