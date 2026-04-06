@@ -2443,17 +2443,17 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
 
         if (result["status"] == "success") {
           // Update page number
-            _showSuccess("Partner preferences saved successfully!");
-            // Navigate after a short delay
-Navigator.pop(context);
-          } else {
-            _showError("Failed to update progress");
-          }
+          _showSuccess("Partner preferences saved successfully!");
+          // Navigate after a short delay
+          Navigator.pop(context);
         } else {
-        final result = jsonDecode(response.body);
-          _showError(result["message"] ?? "Unknown error occurred");
+          _showError(result["message"] ?? "Failed to update progress");
         }
-      } on FormatException catch (e) {
+      } else {
+        final result = jsonDecode(response.body);
+        _showError(result["message"] ?? "Unknown error occurred");
+      }
+    } on FormatException catch (e) {
       print("JSON Format Error: $e");
       _showError("Server response format error. Please try again.");
     } on http.ClientException catch (e) {
