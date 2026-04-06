@@ -26,6 +26,7 @@ import '../Models/masterdata.dart';
 import '../Package/PackageScreen.dart';
 import '../otherenew/othernew.dart';
 import '../utils/image_utils.dart';
+import '../utils/privacy_utils.dart';
 import '../utils/time_utils.dart';
 
 class AdminChatScreen extends StatefulWidget {
@@ -693,6 +694,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
       'occupation': widget.initialProfileData!['occupation'] ?? 'N/A',
       'education': widget.initialProfileData!['education'] ?? 'N/A',
       'shouldBlurPhoto': widget.initialProfileData!['shouldBlurPhoto'] ?? true,
+      'privacy': widget.initialProfileData!['privacy'] ?? '',
+      'photo_request': widget.initialProfileData!['photo_request'] ?? '',
+      'galleryImages': widget.initialProfileData!['galleryImages'] ?? [],
       'timestamp': DateTime.now().toIso8601String(),
     };
 
@@ -1837,7 +1841,16 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           ));
     }
 
-    final bool shouldBlurPhoto = profileData['shouldBlurPhoto'] ?? true;
+    final bool shouldBlurPhotoFallback = profileData['shouldBlurPhoto'] ?? true;
+    final String privacy = profileData['privacy']?.toString() ?? '';
+    final String photoRequest = profileData['photo_request']?.toString() ?? '';
+    // Determine visibility: use PrivacyUtils if privacy/photo_request fields are
+    // present, otherwise fall back to the legacy shouldBlurPhoto flag.
+    final bool shouldShowClear = (privacy.isNotEmpty || photoRequest.isNotEmpty)
+        ? PrivacyUtils.shouldShowClearImage(
+            privacy: privacy, photoRequest: photoRequest)
+        : !shouldBlurPhotoFallback;
+
     final String userId = profileData['userId']?.toString() ?? '';
     final String firstName = profileData['firstName']?.toString() ?? '';
     final String lastName = profileData['lastName']?.toString() ?? '';
@@ -1846,6 +1859,21 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         fullName.isNotEmpty ? fullName : (profileData['name']?.toString() ?? 'Unknown');
     final String? photoUrl = profileData['profileImage']?.toString();
     final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+    // Gallery images: list of URL strings
+    final List<String> galleryImages = [];
+    final rawGallery = profileData['galleryImages'];
+    if (rawGallery is List) {
+      for (final item in rawGallery) {
+        final url = item?.toString() ?? '';
+        if (url.isNotEmpty) galleryImages.add(url);
+      }
+    }
+    // Build all viewable images (main photo first, then gallery)
+    final List<String> allImages = [
+      if (hasPhoto) photoUrl!,
+      ...galleryImages.where((u) => u != photoUrl),
+    ];
 
     return Container(
       width: 300,
@@ -1914,26 +1942,44 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     offset: const Offset(0, -30),
                     child: Column(
                       children: [
-                        // Profile photo - centered
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: shouldBlurPhoto
-                                ? ImageFiltered(
-                                    imageFilter: ImageFilter.blur(
-                                      sigmaX: 6.0,
-                                      sigmaY: 6.0,
-                                    ),
-                                    child: Container(
+                        // Profile photo - centered, tappable to open fullscreen viewer
+                        GestureDetector(
+                          onTap: allImages.isNotEmpty
+                              ? () => _openPhotoViewer(context, allImages, 0)
+                              : null,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: !shouldShowClear
+                                  ? ImageFiltered(
+                                      imageFilter: ImageFilter.blur(
+                                        sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                                        sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                                      ),
+                                      child: Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.grey.shade200,
+                                        child: hasPhoto
+                                            ? Image.network(
+                                                photoUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Icon(Icons.person, size: 40, color: Colors.grey.shade400),
+                                              )
+                                            : Icon(Icons.person, size: 40, color: Colors.grey.shade400),
+                                      ),
+                                    )
+                                  : Container(
                                       width: 80,
                                       height: 80,
                                       color: Colors.grey.shade200,
@@ -1946,20 +1992,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                                             )
                                           : Icon(Icons.person, size: 40, color: Colors.grey.shade400),
                                     ),
-                                  )
-                                : Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: Colors.grey.shade200,
-                                    child: hasPhoto
-                                        ? Image.network(
-                                            photoUrl!,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
-                                                Icon(Icons.person, size: 40, color: Colors.grey.shade400),
-                                          )
-                                        : Icon(Icons.person, size: 40, color: Colors.grey.shade400),
-                                  ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -1988,13 +2021,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                                 Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: shouldBlurPhoto ? Colors.orange.shade100 : Colors.green.shade100,
+                                    color: shouldShowClear ? Colors.green.shade100 : Colors.orange.shade100,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    shouldBlurPhoto ? Icons.lock_outline : Icons.lock_open_outlined,
+                                    shouldShowClear ? Icons.lock_open_outlined : Icons.lock_outline,
                                     size: 12,
-                                    color: shouldBlurPhoto ? Colors.orange.shade700 : Colors.green.shade700,
+                                    color: shouldShowClear ? Colors.green.shade700 : Colors.orange.shade700,
                                   ),
                                 ),
                               ],
@@ -2085,6 +2118,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    ),
+
+                  // ── Gallery strip (only when there are extra photos) ──
+                  if (allImages.length > 1)
+                    Transform.translate(
+                      offset: const Offset(0, -10),
+                      child: _buildGalleryStrip(allImages, shouldShowClear),
                     ),
                 ],
               ),
@@ -2203,6 +2243,167 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Horizontal thumbnail strip showing extra gallery images.
+  /// Tapping any thumbnail opens the fullscreen viewer at that index.
+  Widget _buildGalleryStrip(List<String> images, bool shouldShowClear) {
+    return SizedBox(
+      height: 56,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => _openPhotoViewer(context, images, index),
+            child: Container(
+              width: 50,
+              height: 50,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _primaryGradient.colors[0].withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: !shouldShowClear
+                    ? ImageFiltered(
+                        imageFilter: ImageFilter.blur(
+                          sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                          sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                        ),
+                        child: Image.network(
+                          images[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            child: Icon(Icons.image, size: 20, color: Colors.grey.shade400),
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        images[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.grey.shade200,
+                          child: Icon(Icons.image, size: 20, color: Colors.grey.shade400),
+                        ),
+                      ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Opens a fullscreen photo viewer with swipeable [PageView].
+  /// [images] is the ordered list of image URLs; [initialIndex] is the
+  /// starting page.
+  void _openPhotoViewer(
+      BuildContext context, List<String> images, int initialIndex) {
+    final PageController pageCtrl = PageController(initialPage: initialIndex);
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'close',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 200),
+      transitionBuilder: (ctx, anim, _, child) => FadeTransition(
+        opacity: anim,
+        child: child,
+      ),
+      pageBuilder: (ctx, _, __) {
+        int currentIndex = initialIndex;
+        return StatefulBuilder(builder: (ctx, setModalState) {
+          return GestureDetector(
+            onTap: () => Navigator.of(ctx).pop(),
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Stack(
+                children: [
+                  PageView.builder(
+                    controller: pageCtrl,
+                    itemCount: images.length,
+                    onPageChanged: (i) => setModalState(() => currentIndex = i),
+                    itemBuilder: (ctx, i) {
+                      return GestureDetector(
+                        // Prevent closing when tapping the image itself
+                        onTap: () {},
+                        child: Center(
+                          child: InteractiveViewer(
+                            child: Image.network(
+                              images[i],
+                              fit: BoxFit.contain,
+                              loadingBuilder: (_, child, progress) =>
+                                  progress == null
+                                      ? child
+                                      : const Center(
+                                          child: CircularProgressIndicator(
+                                              color: Colors.white)),
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.white54,
+                                  size: 64),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  // Close button
+                  Positioned(
+                    top: MediaQuery.of(ctx).padding.top + 8,
+                    right: 12,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                  // Page indicator
+                  if (images.length > 1)
+                    Positioned(
+                      bottom: MediaQuery.of(ctx).padding.bottom + 16,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          images.length,
+                          (i) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: i == currentIndex ? 18 : 7,
+                            height: 7,
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              color: i == currentIndex
+                                  ? Colors.white
+                                  : Colors.white38,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
     );
   }
 
