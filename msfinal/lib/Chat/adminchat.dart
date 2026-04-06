@@ -2257,6 +2257,7 @@ class _AdminChatScreenState extends State<AdminChatScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -2398,22 +2399,24 @@ class _AdminChatScreenState extends State<AdminChatScreen>
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_backgroundColor, _backgroundColor.withOpacity(0.9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildMessageList(),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_backgroundColor, _backgroundColor.withOpacity(0.9)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            if (_replyToMessage != null) _buildReplyBar(),
-            _buildInputBar(),
-          ],
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: _buildMessageList(),
+              ),
+              if (_replyToMessage != null) _buildReplyBar(),
+              _buildInputBar(),
+            ],
+          ),
         ),
       ),
     );
