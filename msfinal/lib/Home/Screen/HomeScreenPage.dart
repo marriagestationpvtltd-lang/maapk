@@ -483,6 +483,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
               'image': imageUrl,
               'isVerified': member['isVerified'] ?? '0',
               'id': member['id'],
+              'privacy': member['privacy']?.toString().toLowerCase() ?? '',
+              'photo_request': member['photo_request']?.toString().toLowerCase() ?? '',
             };
           }).toList();
 
@@ -1838,6 +1840,9 @@ String usertye = '';
               : '';
           final matchPercent = profile['matchPercent'];
           final isVerified = profile['isVerified'] == 1;
+          final matchedPrivacy = profile['privacy']?.toString().toLowerCase() ?? '';
+          final matchedPhotoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+          final matchedShowClear = matchedPrivacy == 'free' || matchedPhotoRequest == 'accepted';
 
           Color matchColor = AppColors.success;
           if (matchPercent != null) {
@@ -1846,6 +1851,36 @@ String usertye = '';
                 : matchPercent >= 50
                     ? AppColors.warning
                     : AppColors.primary;
+          }
+
+          Widget matchedProfileImg = imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: 155,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 155,
+                    color: AppColors.background,
+                    child: const Center(
+                      child: Icon(Icons.person_rounded,
+                          size: 60, color: AppColors.textHint),
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 155,
+                  color: AppColors.background,
+                  child: const Center(
+                    child: Icon(Icons.person_rounded,
+                        size: 60, color: AppColors.textHint),
+                  ),
+                );
+          if (imageUrl.isNotEmpty && !matchedShowClear) {
+            matchedProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: matchedProfileImg,
+            );
           }
 
           return GestureDetector(
@@ -1887,31 +1922,7 @@ String usertye = '';
                             top: Radius.circular(20)),
                         child: Stack(
                           children: [
-                            imageUrl.isNotEmpty
-                                ? Image.network(
-                                    imageUrl,
-                                    width: double.infinity,
-                                    height: 155,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        Container(
-                                          height: 155,
-                                          color: AppColors.background,
-                                          child: const Center(
-                                            child: Icon(Icons.person_rounded,
-                                                size: 60,
-                                                color: AppColors.textHint),
-                                          ),
-                                        ),
-                                  )
-                                : Container(
-                                    height: 155,
-                                    color: AppColors.background,
-                                    child: const Center(
-                                      child: Icon(Icons.person_rounded,
-                                          size: 60, color: AppColors.textHint),
-                                    ),
-                                  ),
+                            matchedProfileImg,
                             Positioned(
                               bottom: 0,
                               left: 0,
@@ -2158,6 +2169,35 @@ String usertye = '';
           final isVerified =
               person['isVerified'] == 1 || person['isVerified'] == '1';
           final receiverId = person['userid'];
+          final shortlistPrivacy = person['privacy']?.toString().toLowerCase() ?? '';
+          final shortlistPhotoRequest = person['photo_request']?.toString().toLowerCase() ?? '';
+          final shortlistShowClear = shortlistPrivacy == 'free' || shortlistPhotoRequest == 'accepted';
+
+          Widget shortlistProfileImg = imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                        child: Icon(Icons.person_rounded,
+                            size: 50, color: AppColors.textHint)),
+                  ),
+                )
+              : Container(
+                  color: AppColors.background,
+                  child: const Center(
+                      child: Icon(Icons.person_rounded,
+                          size: 50, color: AppColors.textHint)),
+                );
+          if (imageUrl.isNotEmpty && !shortlistShowClear) {
+            shortlistProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: shortlistProfileImg,
+            );
+          }
 
           return GestureDetector(
             onTap: () {
@@ -2194,25 +2234,7 @@ String usertye = '';
                 child: Stack(
                   children: [
                     // Full-height image
-                    imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.background,
-                              child: const Center(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 50, color: AppColors.textHint)),
-                            ),
-                          )
-                        : Container(
-                            color: AppColors.background,
-                            child: const Center(
-                                child: Icon(Icons.person_rounded,
-                                    size: 50, color: AppColors.textHint)),
-                          ),
+                    shortlistProfileImg,
                     // Bottom gradient overlay
                     Positioned(
                       bottom: 0,
@@ -2335,6 +2357,30 @@ String usertye = '';
             if (ageStr.isNotEmpty && ageStr != '0') '$ageStr yrs',
             if (location.isNotEmpty) location,
           ].join(' · ');
+          final premiumPrivacy = profile['privacy']?.toString().toLowerCase() ?? '';
+          final premiumPhotoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+          final premiumShowClear = premiumPrivacy == 'free' || premiumPhotoRequest == 'accepted';
+
+          Widget premiumProfileImg = Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: 160,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              height: 160,
+              color: AppColors.background,
+              child: const Center(
+                child: Icon(Icons.person_rounded,
+                    size: 60, color: AppColors.textHint),
+              ),
+            ),
+          );
+          if (!premiumShowClear) {
+            premiumProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: premiumProfileImg,
+            );
+          }
 
           return GestureDetector(
             onTap: () async {
@@ -2376,20 +2422,7 @@ String usertye = '';
                             top: Radius.circular(20)),
                         child: Stack(
                           children: [
-                            Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: 160,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 160,
-                                color: AppColors.background,
-                                child: const Center(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 60, color: AppColors.textHint),
-                                ),
-                              ),
-                            ),
+                            premiumProfileImg,
                             Positioned(
                               bottom: 0,
                               left: 0,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -503,6 +504,43 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
         widget.data.profilePicture ?? "https://via.placeholder.com/150";
     final type = widget.data.requestType ?? 'Request';
     final typeColor = _getTypeColor(type);
+    final privacy = widget.data.privacy?.toLowerCase() ?? '';
+    final photoRequest = widget.data.photoRequest?.toLowerCase() ?? '';
+    final shouldShowClear = privacy == 'free' || photoRequest == 'accepted';
+
+    Widget profileImg = Image.network(
+      imageUrl,
+      width: 67,
+      height: 67,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey.shade200,
+        child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
+      ),
+      loadingBuilder: (_, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Colors.grey.shade200,
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: typeColor,
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!shouldShowClear) {
+      profileImg = ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: profileImg,
+      );
+    }
 
     return Container(
       width: 72,
@@ -524,34 +562,7 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(2.5),
-        child: ClipOval(
-          child: Image.network(
-            imageUrl,
-            width: 67,
-            height: 67,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: Colors.grey.shade200,
-              child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
-            ),
-            loadingBuilder: (_, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: Colors.grey.shade200,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: typeColor,
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        child: ClipOval(child: profileImg),
       ),
     );
   }
