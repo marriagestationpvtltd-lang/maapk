@@ -2902,32 +2902,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_backgroundColor, _backgroundColor.withOpacity(0.92)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: _backgroundColor,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_backgroundColor, _backgroundColor.withOpacity(0.92)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                     ),
+                    child: _buildMessagesList(),
                   ),
-                  child: _buildMessagesList(),
                 ),
-              ),
-              _bottomSection(),
-            ],
-          ),
+                _bottomSection(),
+              ],
+            ),
 
-          if (showActionOverlay) _fullScreenActionOverlay(),
-          if (showDeletePopup) _deletePopupOverlay(),
-        ],
+            if (showActionOverlay) _fullScreenActionOverlay(),
+            if (showDeletePopup) _deletePopupOverlay(),
+          ],
+        ),
       ),
     );
   }
@@ -2936,7 +2944,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final String resolvedReceiverImage =
         resolveApiImageUrl(widget.receiverImage);
     return Container(
-      padding: const EdgeInsets.only(top: 45, left: 6, right: 6, bottom: 12),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8, left: 6, right: 6, bottom: 12),
       decoration: BoxDecoration(
         gradient: _primaryGradient,
         boxShadow: [
