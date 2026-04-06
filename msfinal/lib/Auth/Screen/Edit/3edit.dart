@@ -325,25 +325,23 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
 
     final sentences = <String>[];
 
-    // Intro sentence
+    // Intro sentence (without name for privacy)
     final introParts = <String>[];
-    if (name.isNotEmpty) introParts.add(name);
     if (age > 0) introParts.add('$age years old');
-    final locationStr = [city, country].where((s) => s.isNotEmpty).join(', ');
-    if (locationStr.isNotEmpty) introParts.add('based in $locationStr');
+    if (designation.isNotEmpty) introParts.add(designation);
     if (introParts.isNotEmpty) {
-      sentences.add('I am ${introParts.join(', ')}.');
+      sentences.add('A ${introParts.join(', ')} looking for a suitable match.');
+    } else {
+      sentences.add('Looking for a suitable match.');
     }
 
     if (marital.isNotEmpty) sentences.add('My marital status is $marital.');
 
-    // Work sentence — only build when it produces grammatical output
-    if (designation.isNotEmpty && company.isNotEmpty) {
-      sentences.add('I work as a $designation at $company.');
-    } else if (designation.isNotEmpty) {
-      sentences.add('I work as a $designation.');
-    } else if (company.isNotEmpty) {
+    // Work sentence — only add company if not already mentioned designation
+    if (company.isNotEmpty && designation.isEmpty) {
       sentences.add('I am employed at $company.');
+    } else if (company.isNotEmpty) {
+      sentences.add('Currently working at $company.');
     }
     if (degree.isNotEmpty) sentences.add('I hold a degree in $degree.');
 

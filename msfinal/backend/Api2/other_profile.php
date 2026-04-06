@@ -145,7 +145,7 @@ $data = [
     "personalDetail" => [
         "photo_request" => $photo_request, // ✅ INCLUDED
 
-        "firstName" => $row['id'] ?? $default,
+        "firstName" => $row['firstName'] ?? $default,
         "lastName" => $row['lastName'] ?? $default,
         "profile_picture" => $profile_picture,
         "usertype" => $row['usertype'] ?? $default,
