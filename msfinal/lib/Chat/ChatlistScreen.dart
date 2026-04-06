@@ -448,30 +448,33 @@ class _ChatListScreenState extends State<ChatListScreen>
           ),
           child: Row(
             children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    child: const Icon(Icons.support_agent,
-                        color: Colors.white, size: 24),
-                  ),
-                  Positioned(
-                    bottom: 1,
-                    right: 1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: _adminOnline
-                            ? const Color(0xFF22C55E)
-                            : Colors.grey.shade400,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+              GestureDetector(
+                onTap: () => _showSharedProfilesSheet(),
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      child: const Icon(Icons.support_agent,
+                          color: Colors.white, size: 24),
+                    ),
+                    Positioned(
+                      bottom: 1,
+                      right: 1,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _adminOnline
+                              ? const Color(0xFF22C55E)
+                              : Colors.grey.shade400,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -480,12 +483,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          _adminDisplayName,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                        GestureDetector(
+                          onTap: () => _showSharedProfilesSheet(),
+                          child: const Text(
+                            _adminDisplayName,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -564,6 +570,155 @@ class _ChatListScreenState extends State<ChatListScreen>
                       ],
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows a bottom sheet listing all profiles shared by Admin to this user.
+  void _showSharedProfilesSheet() {
+    if (userId.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.35,
+        maxChildSize: 0.9,
+        builder: (ctx, scrollCtrl) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.share, color: Color(0xFFF90E18)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Shared Profiles',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: FutureBuilder<QuerySnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('profile_shares')
+                      .where('shared_by', isEqualTo: '1')
+                      .where('shared_to', isEqualTo: userId)
+                      .orderBy('timestamp', descending: true)
+                      .get(),
+                  builder: (ctx, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snap.hasError) {
+                      return Center(
+                        child: Text(
+                          'Could not load shared profiles',
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      );
+                    }
+                    final docs = snap.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.person_search,
+                                size: 56, color: Colors.grey.shade300),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No profiles shared yet',
+                              style: TextStyle(
+                                  fontSize: 15, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1),
+                      itemBuilder: (ctx, i) {
+                        final data =
+                            docs[i].data() as Map<String, dynamic>;
+                        final profileName =
+                            data['profile_name']?.toString() ?? 'Unknown';
+                        final memberId =
+                            data['profile_member_id']?.toString() ?? '';
+                        final ts = data['timestamp'];
+                        String timeLabel = '';
+                        if (ts is Timestamp) {
+                          final dt = ts.toDate();
+                          timeLabel =
+                              DateFormat('MMM d, yyyy').format(dt);
+                        }
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                const Color(0xFFF90E18).withOpacity(0.12),
+                            child: const Icon(Icons.person,
+                                color: Color(0xFFF90E18)),
+                          ),
+                          title: Text(
+                            profileName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14),
+                          ),
+                          subtitle: memberId.isNotEmpty
+                              ? Text(
+                                  'MS-$memberId',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500),
+                                )
+                              : null,
+                          trailing: timeLabel.isNotEmpty
+                              ? Text(
+                                  timeLabel,
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade400),
+                                )
+                              : null,
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],
