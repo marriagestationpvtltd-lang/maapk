@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -48,6 +49,11 @@ const String generalChannelDescription = 'Channel for general app notifications'
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+
+  // Initialize local notifications plugin so we can show custom notifications
+  // (e.g. full-screen call intent) from this background isolate.
+  await initLocalNotifications();
+
   final data = message.data;
   final type = data['type']?.toString() ?? '';
 
@@ -532,6 +538,9 @@ Future<void> _handleNotificationAction(NotificationResponse response) async {
       Future.delayed(const Duration(milliseconds: 800), () {
         flutterLocalNotificationsPlugin.cancel(notificationId);
       });
+    } else {
+      // Regular notification tap (chat messages, requests, profile views, etc.)
+      _handleNotificationTap(payload);
     }
   } catch (e) {
     debugPrint('❌ Error handling notification action: $e');
@@ -646,7 +655,8 @@ void _navigateToChatFromMessageNotification(Map<String, dynamic> data) async {
 
     if (currentUserId.isEmpty) return;
 
-    final senderId = data['sender_id']?.toString() ??
+    final senderId = data['senderId']?.toString() ??
+        data['sender_id']?.toString() ??
         data['related_user_id']?.toString() ??
         '';
     if (senderId.isEmpty) return;
@@ -655,7 +665,8 @@ void _navigateToChatFromMessageNotification(Map<String, dynamic> data) async {
         ? '${currentUserId}_$senderId'
         : '${senderId}_$currentUserId';
 
-    final senderName = data['peer_name']?.toString() ??
+    final senderName = data['senderName']?.toString() ??
+        data['peer_name']?.toString() ??
         data['sender_name']?.toString() ??
         'User';
 
@@ -982,6 +993,16 @@ void main() async {
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   await Firebase.initializeApp();
+
+  // Sign in anonymously so Firestore security rules that require
+  // request.auth != null are satisfied for chat and presence operations.
+  // signInAnonymously() returns the existing anonymous user when already signed in.
+  try {
+    await FirebaseAuth.instance.signInAnonymously();
+  } catch (e) {
+    debugPrint('⚠️ Firebase anonymous sign-in failed: $e');
+  }
+
   await initLocalNotifications();
 
   // Initialize connectivity service
