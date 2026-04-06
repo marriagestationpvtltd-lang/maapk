@@ -12,9 +12,37 @@ function getAccessToken() {
     return $token['access_token'];
 }
 
-function sendFCM($fcm_token, $title, $body, $data = []) {
+/**
+ * Send an FCM v1 message.
+ *
+ * @param string $fcm_token   Recipient FCM token.
+ * @param string $title       Notification title.
+ * @param string $body        Notification body.
+ * @param array  $data        Extra data payload (all values must be strings).
+ * @param string $channel_id  Android notification channel ID (default: general_notifications).
+ * @param bool   $is_call     When true, sets max priority and visibility for call notifications.
+ */
+function sendFCM($fcm_token, $title, $body, $data = [], $channel_id = 'general_notifications', $is_call = false) {
     $projectId = "digitallami1";
     $url = "https://fcm.googleapis.com/v1/projects/$projectId/messages:send";
+
+    // Ensure all data values are strings (FCM v1 requirement)
+    $string_data = [];
+    foreach ($data as $k => $v) {
+        $string_data[$k] = is_string($v) ? $v : json_encode($v);
+    }
+
+    $android_notification = [
+        'channel_id' => $channel_id,
+        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+    ];
+
+    if ($is_call) {
+        $android_notification['notification_priority'] = 'PRIORITY_MAX';
+        $android_notification['visibility'] = 'PUBLIC';
+        $android_notification['default_sound'] = true;
+        $android_notification['default_vibrate_timings'] = true;
+    }
 
     $message = [
         "message" => [
@@ -23,11 +51,15 @@ function sendFCM($fcm_token, $title, $body, $data = []) {
                 "title" => $title,
                 "body" => $body
             ],
-            "data" => $data,
+            "data" => $string_data,
             "android" => [
-                "priority" => "HIGH"
+                "priority" => "HIGH",
+                "notification" => $android_notification
             ],
             "apns" => [
+                "headers" => [
+                    "apns-priority" => $is_call ? "10" : "5"
+                ],
                 "payload" => [
                     "aps" => [
                         "alert" => [
@@ -35,7 +67,8 @@ function sendFCM($fcm_token, $title, $body, $data = []) {
                             "body" => $body
                         ],
                         "sound" => "default",
-                        "badge" => 1
+                        "badge" => 1,
+                        "content-available" => 1
                     ]
                 ]
             ]

@@ -849,7 +849,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         // Send notification after message is saved
         await NotificationService.sendChatNotification(
           recipientUserId: widget.receiverId.toString(),
-          senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
+          senderName: widget.currentUserName,
           senderId: widget.currentUserId.toString(),
           message: messageText,
         );
@@ -937,7 +937,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!receiverViewingThisChat) {
         await NotificationService.sendChatNotification(
           recipientUserId: widget.receiverId.toString(),
-          senderName: "MS:${widget.currentUserId} ${widget.currentUserName}".trim(),
+          senderName: widget.currentUserName,
           senderId: widget.currentUserId.toString(),
           message: '📷 Photo',
         );

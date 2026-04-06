@@ -44,59 +44,27 @@ if (empty($fcm_token)) {
     exit;
 }
 
-// Prepare notification data
-// Prepare notification data
+// Determine notification type and pick the right channel
+$type = $data['type'] ?? '';
+$is_call = ($type === 'call' || $type === 'video_call');
+
+if ($is_call) {
+    $channel_id = 'calls_channel';
+} elseif ($type === 'chat_message' || $type === 'chat') {
+    $channel_id = 'messages_channel';
+} else {
+    $channel_id = 'general_notifications';
+}
+
+// Merge click_action and sound into data so Flutter can use them
 $notification_data = array_merge($data, [
     "click_action" => "FLUTTER_NOTIFICATION_CLICK",
     "sound" => "default",
 ]);
 
-// Send FCM with specific configuration for calls
+// Send FCM
 try {
-    // Custom FCM payload for calls
-    $payload = [
-        'to' => $fcm_token,
-        'priority' => 'high',
-        'content_available' => true,
-        'notification' => [
-            'title' => $title,
-            'body' => $body,
-            'sound' => 'default',
-            'badge' => '1',
-        ],
-        'data' => $notification_data, // keep data for foreground
-        'android' => [
-            'priority' => 'high',
-            'notification' => [
-                'channel_id' => 'calls_channel_high', // full-screen intent channel
-                'sound' => 'ringtone',
-                'priority' => 'max',
-                'visibility' => 'public',
-                'notification_count' => 1,
-                'fullScreenIntent' => true,  // ⚡ important for background/killed
-            ],
-        ],
-        'apns' => [
-            'payload' => [
-                'aps' => [
-                    'alert' => [
-                        'title' => $title,
-                        'body' => $body,
-                    ],
-                    'sound' => 'ringtone.aiff',
-                    'badge' => 1,
-                    'content-available' => 1,  // ⚡ important for background/killed
-                    'mutable-content' => 1,
-                ],
-            ],
-            'headers' => [
-                'apns-priority' => '10',
-            ],
-        ],
-    ];
-
-    // Send using your existing sendFCM function
-    $response = sendFCM($fcm_token, $title, $body, $notification_data);
+    $response = sendFCM($fcm_token, $title, $body, $notification_data, $channel_id, $is_call);
 
     echo json_encode([
         "status" => true,
