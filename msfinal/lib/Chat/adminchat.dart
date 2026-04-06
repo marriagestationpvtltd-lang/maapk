@@ -1946,9 +1946,17 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                     child: Column(
                       children: [
                         // Profile photo - centered, tappable to open fullscreen viewer
+                        // (shows privacy dialog instead if photo is private and viewer is a non-admin user)
                         GestureDetector(
                           onTap: allImages.isNotEmpty
-                              ? () => _openPhotoViewer(context, allImages, 0)
+                              ? () {
+                                  if (!shouldShowClear && !widget.isAdmin) {
+                                    _showPhotoPrivacyDialog(
+                                        context, userId, photoRequest);
+                                  } else {
+                                    _openPhotoViewer(context, allImages, 0);
+                                  }
+                                }
                               : null,
                           child: Container(
                             decoration: BoxDecoration(
@@ -2127,7 +2135,11 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                   if (allImages.length > 1)
                     Transform.translate(
                       offset: const Offset(0, -10),
-                      child: _buildGalleryStrip(allImages, shouldShowClear),
+                      child: _buildGalleryStrip(allImages, shouldShowClear,
+                          onPrivateTap: !widget.isAdmin
+                              ? () => _showPhotoPrivacyDialog(
+                                  context, userId, photoRequest)
+                              : null),
                     ),
                 ],
               ),
@@ -2251,7 +2263,9 @@ class _AdminChatScreenState extends State<AdminChatScreen>
 
   /// Horizontal thumbnail strip showing extra gallery images.
   /// Tapping any thumbnail opens the fullscreen viewer at that index.
-  Widget _buildGalleryStrip(List<String> images, bool shouldShowClear) {
+  /// If [onPrivateTap] is provided and the photo is private, it is called instead.
+  Widget _buildGalleryStrip(List<String> images, bool shouldShowClear,
+      {VoidCallback? onPrivateTap}) {
     return SizedBox(
       height: 56,
       child: ListView.builder(
@@ -2260,7 +2274,13 @@ class _AdminChatScreenState extends State<AdminChatScreen>
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemBuilder: (context, index) {
           return GestureDetector(
-            onTap: () => _openPhotoViewer(context, images, index),
+            onTap: () {
+              if (!shouldShowClear && onPrivateTap != null) {
+                onPrivateTap();
+              } else {
+                _openPhotoViewer(context, images, index);
+              }
+            },
             child: Container(
               width: 50,
               height: 50,
@@ -2299,6 +2319,193 @@ class _AdminChatScreenState extends State<AdminChatScreen>
                       ),
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Shows a privacy dialog when the user taps on a private (blurred) photo
+  /// in a profile card. Displays the current request status and allows sending
+  /// a new photo request if one has not been sent yet.
+  Future<void> _showPhotoPrivacyDialog(
+      BuildContext context, String targetUserId, String currentRequest) async {
+    String photoRequestStatus = currentRequest.toLowerCase().trim();
+    bool isSending = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final bool isPending = photoRequestStatus == 'pending';
+          final bool isRejected = photoRequestStatus == 'rejected';
+          final bool notSent =
+              !isPending && !isRejected && photoRequestStatus != 'accepted';
+
+          IconData statusIcon;
+          Color statusColor;
+          String nepaliTitle;
+          String englishTitle;
+          String nepaliMessage;
+          String englishMessage;
+
+          if (isPending) {
+            statusIcon = Icons.hourglass_bottom;
+            statusColor = Colors.orange;
+            nepaliTitle = 'रिक्वेस्ट पठाइएको छ';
+            englishTitle = 'Request Sent';
+            nepaliMessage = 'तपाईंको फोटो हेर्ने रिक्वेस्ट पेन्डिङ छ।';
+            englishMessage = 'Your photo request is pending approval.';
+          } else if (isRejected) {
+            statusIcon = Icons.cancel_outlined;
+            statusColor = Colors.grey.shade600;
+            nepaliTitle = 'रिक्वेस्ट अस्वीकार गरियो';
+            englishTitle = 'Request Rejected';
+            nepaliMessage =
+                'यो युजरले तपाईंको फोटो रिक्वेस्ट अस्वीकार गरेको छ।';
+            englishMessage = 'Your photo request was rejected by this user.';
+          } else {
+            statusIcon = Icons.lock_outline;
+            statusColor = Colors.red.shade600;
+            nepaliTitle = 'यो फोटो प्राइभेट छ';
+            englishTitle = 'Photo is Private';
+            nepaliMessage = 'यो फोटो हेर्नको लागि रिक्वेस्ट पठाउनुहोस्।';
+            englishMessage = 'Send a request to view this photo.';
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            contentPadding:
+                const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            actionsPadding:
+                const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 36),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  nepaliTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  englishTitle,
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  nepaliMessage,
+                  style:
+                      TextStyle(fontSize: 13, color: Colors.grey.shade800),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  englishMessage,
+                  style:
+                      TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('बन्द गर्नुहोस् / Close'),
+              ),
+              if (notSent)
+                ElevatedButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isSending = true;
+                          });
+                          try {
+                            final prefs =
+                                await SharedPreferences.getInstance();
+                            final userDataString =
+                                prefs.getString('user_data');
+                            if (userDataString == null) {
+                              setDialogState(() {
+                                isSending = false;
+                              });
+                              return;
+                            }
+                            final userData = jsonDecode(userDataString);
+                            final senderId =
+                                userData['id']?.toString() ?? '';
+                            if (senderId.isEmpty ||
+                                targetUserId.isEmpty) {
+                              setDialogState(() {
+                                isSending = false;
+                              });
+                              return;
+                            }
+                            final response = await http.post(
+                              Uri.parse(
+                                  'https://digitallami.com/Api2/send_request.php'),
+                              headers: {
+                                'Content-Type': 'application/json'
+                              },
+                              body: jsonEncode({
+                                'sender_id': senderId,
+                                'receiver_id': targetUserId,
+                                'request_type': 'Photo',
+                              }),
+                            );
+                            if (response.statusCode == 200) {
+                              final data = jsonDecode(response.body);
+                              if (data['success'] == true) {
+                                setDialogState(() {
+                                  photoRequestStatus = 'pending';
+                                  isSending = false;
+                                });
+                                return;
+                              }
+                            }
+                            setDialogState(() {
+                              isSending = false;
+                            });
+                          } catch (e) {
+                            debugPrint('Error sending photo request: $e');
+                            setDialogState(() {
+                              isSending = false;
+                            });
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryGradient.colors[0],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Photo Request पठाउनुहोस्'),
+                ),
+            ],
           );
         },
       ),
