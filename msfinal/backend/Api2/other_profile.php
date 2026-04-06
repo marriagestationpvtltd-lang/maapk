@@ -140,7 +140,21 @@ $profile_picture = !empty($row['profile_picture']) ? $base_url . $row['profile_p
 // Define a default value
 $default = "Not available"; // You can change this to any default value you like
 
-// Restructure JSON into sections with null coalescing
+// Privacy filtering: Determine what information to show based on privacy settings
+$privacy = $row['privacy'] ?? 'free';
+$showFullDetails = ($privacy === 'free') || ($photo_request === 'accepted');
+
+// Helper function to apply privacy filter
+function applyPrivacy($value, $showFull, $default = "Not available") {
+    return $showFull ? ($value ?? $default) : $default;
+}
+
+// For sensitive data, always hide unless access is granted
+function applySensitivePrivacy($value, $showFull, $default = "Hidden") {
+    return $showFull ? ($value ?? $default) : $default;
+}
+
+// Restructure JSON into sections with null coalescing and privacy filtering
 $data = [
     "personalDetail" => [
         "photo_request" => $photo_request, // ✅ INCLUDED
@@ -150,57 +164,69 @@ $data = [
         "profile_picture" => $profile_picture,
         "usertype" => $row['usertype'] ?? $default,
         "isVerified" => $row['isVerified'] ?? $default,
-        "privacy" => $row['privacy'] ?? $default, 
+        "privacy" => $privacy,
+
+        // Public info - always show
         "city" => $row['city'] ?? $default,
         "country" => $row['country'] ?? $default,
-        "educationmedium" => $row['ec_educationmedium'] ?? $default,
-        "educationtype" => $row['educationtype'] ?? $default,
-        "faculty" => $row['faculty'] ?? $default,
-        "degree" => $row['degree'] ?? $default,
-        "areyouworking" => $row['areyouworking'] ?? $default,
-        "occupationtype" => $row['occupationtype'] ?? $default,
-        "companyname" => $row['companyname'] ?? $default,
-        "designation" => $row['ec_designation'] ?? $default,
-        "workingwith" => $row['ec_workingwith'] ?? $default,
-        "annualincome" => $row['ec_annualincome'] ?? $default,
-        "businessname" => $row['businessname'] ?? $default,
-        "memberid" => $row['memberid'] ?? $default,
         "height_name" => $row['height_name'] ?? $default,
         "maritalStatusId" => $row['maritalStatusId'] ?? $default,
         "maritalStatusName" => $row['maritalStatusName'] ?? $default,
         "motherTongue" => $row['motherTongue'] ?? $default,
         "aboutMe" => $row['aboutMe'] ?? $default,
-        "birthDate" => $row['birthDate'] ?? $default,
-        "Disability" => $row['Disability'] ?? $default,
-        "bloodGroup" => $row['bloodGroup'] ?? $default,
         "religionName" => $row['religionName'] ?? $default,
         "communityName" => $row['communityName'] ?? $default,
         "subCommunityName" => $row['subCommunityName'] ?? $default,
-        "manglik" => $row['manglik'] ?? $default,
-        "birthtime" => $row['birthtime'] ?? $default,
-        "birthcity" => $row['birthcity'] ?? $default
+
+        // Education/Career - show based on privacy
+        "educationmedium" => applyPrivacy($row['ec_educationmedium'], $showFullDetails, $default),
+        "educationtype" => applyPrivacy($row['educationtype'], $showFullDetails, $default),
+        "faculty" => applyPrivacy($row['faculty'], $showFullDetails, $default),
+        "degree" => applyPrivacy($row['degree'], $showFullDetails, $default),
+        "areyouworking" => applyPrivacy($row['areyouworking'], $showFullDetails, $default),
+        "occupationtype" => applyPrivacy($row['occupationtype'], $showFullDetails, $default),
+        "companyname" => applyPrivacy($row['companyname'], $showFullDetails, $default),
+        "designation" => applyPrivacy($row['ec_designation'], $showFullDetails, $default),
+        "workingwith" => applyPrivacy($row['ec_workingwith'], $showFullDetails, $default),
+        "annualincome" => applyPrivacy($row['ec_annualincome'], $showFullDetails, $default),
+        "businessname" => applyPrivacy($row['businessname'], $showFullDetails, $default),
+
+        // Personal details - show based on privacy
+        "memberid" => $row['memberid'] ?? $default,
+        "Disability" => applyPrivacy($row['Disability'], $showFullDetails, $default),
+        "bloodGroup" => applyPrivacy($row['bloodGroup'], $showFullDetails, $default),
+
+        // Sensitive info - hide exact birthdate, show only age-related info with privacy
+        "birthDate" => applySensitivePrivacy($row['birthDate'], $showFullDetails, "Hidden"),
+
+        // Astrological - show based on privacy
+        "manglik" => applyPrivacy($row['manglik'], $showFullDetails, $default),
+        "birthtime" => applySensitivePrivacy($row['birthtime'], $showFullDetails, "Hidden"),
+        "birthcity" => applyPrivacy($row['birthcity'], $showFullDetails, $default)
     ],
     "familyDetail" => [
-        "familyId" => $row['familyId'] ?? $default,
-        "familytype" => $row['familytype'] ?? $default,
-        "familybackground" => $row['familybackground'] ?? $default,
-        "fatherstatus" => $row['fatherstatus'] ?? $default,
-        "fathername" => $row['fathername'] ?? $default,
-        "fathereducation" => $row['fathereducation'] ?? $default,
-        "fatheroccupation" => $row['fatheroccupation'] ?? $default,
-        "motherstatus" => $row['motherstatus'] ?? $default,
-        "mothercaste" => $row['mothercaste'] ?? $default,
-        "mothereducation" => $row['mothereducation'] ?? $default,
-        "motheroccupation" => $row['motheroccupation'] ?? $default,
-        "familyorigin" => $row['familyorigin'] ?? $default
+        "familyId" => applyPrivacy($row['familyId'], $showFullDetails, $default),
+        "familytype" => applyPrivacy($row['familytype'], $showFullDetails, $default),
+        "familybackground" => applyPrivacy($row['familybackground'], $showFullDetails, $default),
+
+        // Sensitive family info - hide names
+        "fatherstatus" => applyPrivacy($row['fatherstatus'], $showFullDetails, $default),
+        "fathername" => applySensitivePrivacy($row['fathername'], $showFullDetails, "Hidden"),
+        "fathereducation" => applyPrivacy($row['fathereducation'], $showFullDetails, $default),
+        "fatheroccupation" => applyPrivacy($row['fatheroccupation'], $showFullDetails, $default),
+        "motherstatus" => applyPrivacy($row['motherstatus'], $showFullDetails, $default),
+        "mothercaste" => applyPrivacy($row['mothercaste'], $showFullDetails, $default),
+        "mothereducation" => applyPrivacy($row['mothereducation'], $showFullDetails, $default),
+        "motheroccupation" => applyPrivacy($row['motheroccupation'], $showFullDetails, $default),
+        "familyorigin" => applyPrivacy($row['familyorigin'], $showFullDetails, $default)
     ],
     "lifestyle" => [
-        "lifestyleId" => $row['lifestyleId'] ?? $default,
-        "smoketype" => $row['smoketype'] ?? $default,
-        "diet" => $row['diet'] ?? $default,
-        "drinks" => $row['drinks'] ?? $default,
-        "drinktype" => $row['drinktype'] ?? $default,
-        "smoke" => $row['smoke'] ?? $default
+        "lifestyleId" => applyPrivacy($row['lifestyleId'], $showFullDetails, $default),
+        "smoketype" => applyPrivacy($row['smoketype'], $showFullDetails, $default),
+        "diet" => applyPrivacy($row['diet'], $showFullDetails, $default),
+        "drinks" => applyPrivacy($row['drinks'], $showFullDetails, $default),
+        "drinktype" => applyPrivacy($row['drinktype'], $showFullDetails, $default),
+        "smoke" => applyPrivacy($row['smoke'], $showFullDetails, $default)
     ],
     "partner" => [
         "minage" => $row['minage'] ?? $default,
