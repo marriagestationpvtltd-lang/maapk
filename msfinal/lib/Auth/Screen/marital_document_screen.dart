@@ -116,7 +116,7 @@ class _MaritalDocumentUploadScreenState
 
       final response = await http.post(
         Uri.parse(
-            'https://digitallami.com/Api2/check_marital_document_status.php'),
+            'https://digitallami.com/Api2/check_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -150,11 +150,12 @@ class _MaritalDocumentUploadScreenState
       final userId = int.tryParse(userData['id'].toString());
 
       final uri = Uri.parse(
-          'https://digitallami.com/Api2/upload_marital_document.php');
+          'https://digitallami.com/Api2/upload_document.php');
       final request = http.MultipartRequest('POST', uri);
       request.fields['userid'] = userId.toString();
       request.fields['documenttype'] = _selectedDocumentType!;
       request.fields['documentidnumber'] = _documentNumberController.text;
+      request.fields['title'] = 'Marital Status Document';
 
       final String imagePath = _scannedImagePath ?? _selectedImage!.path;
       final imageFile = await http.MultipartFile.fromPath('photo', imagePath);
