@@ -518,13 +518,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     final String userId = userData["id"].toString();
 
     try {
+      // Request notification permission. The result only affects whether the
+      // OS displays notification banners — the FCM token must always be
+      // registered with the backend so the server can reach this device.
       NotificationSettings settings =
-      await FirebaseMessaging.instance.requestPermission();
+          await FirebaseMessaging.instance.requestPermission();
 
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        print("Push permission not granted");
-        return;
-      }
+      final authorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      print(authorized
+          ? "Push permission granted"
+          : "Push permission not granted - banners won't show, but token will still be registered");
 
       await Future.delayed(const Duration(seconds: 1));
 
@@ -542,15 +547,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
       print("FCM TOKEN => $fcmToken");
 
-      String? savedToken = prefs.getString('fcm_token');
-
-      if (savedToken != fcmToken) {
-        await prefs.setString('fcm_token', fcmToken);
-        await updateFcmToken(userId, fcmToken);
-        print("FCM TOKEN saved & updated");
-      } else {
-        print("FCM TOKEN already up to date");
-      }
+      // Always update the token on the server. This ensures the backend stays
+      // in sync after a Firebase project key change, a DB reset, or a token
+      // that was previously blocked from reaching the server.
+      await prefs.setString('fcm_token', fcmToken);
+      await updateFcmToken(userId, fcmToken);
+      print("FCM TOKEN synced with server");
 
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
         await prefs.setString('fcm_token', newToken);
@@ -560,8 +562,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     } catch (e) {
       print("FCM ERROR => $e");
     }
-  OnlineStatusService().start();
-
+    OnlineStatusService().start();
   }
 
   Future<void> updateFcmToken(String userId, String token) async {
