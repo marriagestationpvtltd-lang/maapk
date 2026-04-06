@@ -1648,7 +1648,16 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
                         ),
                       ),
                     ],
-                    _buildSubLabel('Any Other Expectation'),
+                    _buildSubLabel('Any Other Expectation', isRequired: false),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Optional - Add any additional preferences',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       height: 120,
@@ -1838,14 +1847,29 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
   }
 
   // ── Sub-label ────────────────────────────────────────────────────────────────
-  Widget _buildSubLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF4A4A68),
-      ),
+  Widget _buildSubLabel(String label, {bool isRequired = true}) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF4A4A68),
+          ),
+        ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text(
+            '*',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFE64B37),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
