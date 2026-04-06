@@ -808,20 +808,20 @@ class _EducationCareerPageeState extends State<EducationCareerPagee> {
   }) {
     bool isSelected = groupValue == value;
 
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFF48A54C),
-          width: 1.2,
-        ),
-        color: isSelected ? const Color(0xFFE64B37).withOpacity(0.1) : Colors.transparent,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF48A54C),
+            width: 1.2,
+          ),
+          color: isSelected ? const Color(0xFFE64B37).withOpacity(0.1) : Colors.transparent,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(9),
           onTap: () {
             onChanged(value);
           },
