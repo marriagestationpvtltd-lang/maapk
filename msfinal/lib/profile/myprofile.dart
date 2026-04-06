@@ -2348,7 +2348,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'तपाईंको कागजात प्रमाणित भइसकेको छ',
+                        'Your document has been verified',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -2357,7 +2357,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'यी फिल्डहरू अब परिवर्तन गर्न सकिँदैन। यदि तपाईंलाई कुनै जानकारी परिवर्तन गर्न आवश्यक छ भने, कृपया सहयोगसँग सम्पर्क गर्नुहोस्।',
+                        'These fields cannot be changed. If you need to change any information, please contact support.',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.grey[700],
@@ -2920,7 +2920,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'तपाईंको कागजात प्रमाणित भइसकेको छ',
+                'Your document has been verified',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -2928,12 +2928,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               ),
               SizedBox(height: 12),
               Text(
-                'तपाईंको नाम, जन्म मिति, उमेर, र वैवाहिक स्थिति प्रमाणित भइसकेको हुनाले यी फिल्डहरू परिवर्तन गर्न सकिँदैन।',
+                'Your name, date of birth, age, and marital status are verified, so these fields cannot be changed.',
                 style: TextStyle(fontSize: 13),
               ),
               SizedBox(height: 8),
               Text(
-                'तर अन्य फिल्डहरू जस्तै उचाइ, तौल, रक्त समूह आदि अझै पनि परिवर्तन गर्न सकिन्छ।',
+                'However, other fields such as height, weight, blood group, etc. can still be changed.',
                 style: TextStyle(fontSize: 13),
               ),
             ],
@@ -3298,10 +3298,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
           _buildPreferenceRow('Caste', _displayValue(partner['caste'])),
           if (!_isMissing(partner['community']))
             _buildPreferenceRow('Community', _displayValue(partner['community'])),
-          if (!_isMissing(partner['mothertongue']))
+          if (!_isMissing(partner['mothertongue'])) // Corrected field name
             _buildPreferenceRow('Mother Tongue', _displayValue(partner['mothertongue'])),
           _buildPreferenceRow('Education', _displayValue(partner['qualification'])),
-          _buildPreferenceRow('Occupation', _displayValue(partner['proffession'])),
+          _buildPreferenceRow('Occupation', _displayValue(partner['profession'])), // Corrected field name
           _buildPreferenceRow('Income', _displayValue(partner['annualincome'])),
           if (!_isMissing(partner['country']))
             _buildPreferenceRow('Country', _displayValue(partner['country'])),
