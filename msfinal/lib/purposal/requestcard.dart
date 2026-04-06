@@ -508,6 +508,40 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
     final photoRequest = widget.data.photoRequest?.toLowerCase() ?? '';
     final shouldShowClear = privacy == 'free' || photoRequest == 'accepted';
 
+    Widget profileImg = Image.network(
+      imageUrl,
+      width: 67,
+      height: 67,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey.shade200,
+        child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
+      ),
+      loadingBuilder: (_, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Colors.grey.shade200,
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: typeColor,
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!shouldShowClear) {
+      profileImg = ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: profileImg,
+      );
+    }
+
     return Container(
       width: 72,
       height: 72,
@@ -528,73 +562,7 @@ class _RequestCardDynamicState extends State<RequestCardDynamic> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(2.5),
-        child: ClipOval(
-          child: shouldShowClear
-              ? Image.network(
-                  imageUrl,
-                  width: 67,
-                  height: 67,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.grey.shade200,
-                    child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
-                  ),
-                  loadingBuilder: (_, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey.shade200,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: typeColor,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                )
-              : Stack(
-                  children: [
-                    Image.network(
-                      imageUrl,
-                      width: 67,
-                      height: 67,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        child: Icon(Icons.person, color: Colors.grey.shade400, size: 32),
-                      ),
-                      loadingBuilder: (_, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey.shade200,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: typeColor,
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    Positioned.fill(
-                      child: BackdropFilter(
-                        filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          color: Colors.black.withOpacity(0.05),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+        child: ClipOval(child: profileImg),
       ),
     );
   }

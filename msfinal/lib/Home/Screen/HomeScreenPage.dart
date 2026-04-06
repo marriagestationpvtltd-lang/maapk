@@ -1853,6 +1853,36 @@ String usertye = '';
                     : AppColors.primary;
           }
 
+          Widget matchedProfileImg = imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: 155,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 155,
+                    color: AppColors.background,
+                    child: const Center(
+                      child: Icon(Icons.person_rounded,
+                          size: 60, color: AppColors.textHint),
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 155,
+                  color: AppColors.background,
+                  child: const Center(
+                    child: Icon(Icons.person_rounded,
+                        size: 60, color: AppColors.textHint),
+                  ),
+                );
+          if (imageUrl.isNotEmpty && !matchedShowClear) {
+            matchedProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: matchedProfileImg,
+            );
+          }
+
           return GestureDetector(
             onTap: () {
               final profileUserId = profile['userid'];
@@ -1892,66 +1922,7 @@ String usertye = '';
                             top: Radius.circular(20)),
                         child: Stack(
                           children: [
-                            imageUrl.isNotEmpty
-                                ? matchedShowClear
-                                    ? Image.network(
-                                        imageUrl,
-                                        width: double.infinity,
-                                        height: 155,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            Container(
-                                              height: 155,
-                                              color: AppColors.background,
-                                              child: const Center(
-                                                child: Icon(Icons.person_rounded,
-                                                    size: 60,
-                                                    color: AppColors.textHint),
-                                              ),
-                                            ),
-                                      )
-                                    : Stack(
-                                        children: [
-                                          Image.network(
-                                            imageUrl,
-                                            width: double.infinity,
-                                            height: 155,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
-                                                Container(
-                                                  height: 155,
-                                                  color: AppColors.background,
-                                                  child: const Center(
-                                                    child: Icon(Icons.person_rounded,
-                                                        size: 60,
-                                                        color: AppColors.textHint),
-                                                  ),
-                                                ),
-                                          ),
-                                          Container(
-                                            width: double.infinity,
-                                            height: 155,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.black.withOpacity(0.25),
-                                            ),
-                                            child: BackdropFilter(
-                                              filter: ui.ImageFilter.blur(
-                                                  sigmaX: 15, sigmaY: 15),
-                                              child: Container(
-                                                color: AppColors.black.withOpacity(0.05),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                : Container(
-                                    height: 155,
-                                    color: AppColors.background,
-                                    child: const Center(
-                                      child: Icon(Icons.person_rounded,
-                                          size: 60, color: AppColors.textHint),
-                                    ),
-                                  ),
+                            matchedProfileImg,
                             Positioned(
                               bottom: 0,
                               left: 0,
@@ -2202,6 +2173,32 @@ String usertye = '';
           final shortlistPhotoRequest = person['photo_request']?.toString().toLowerCase() ?? '';
           final shortlistShowClear = shortlistPrivacy == 'free' || shortlistPhotoRequest == 'accepted';
 
+          Widget shortlistProfileImg = imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                        child: Icon(Icons.person_rounded,
+                            size: 50, color: AppColors.textHint)),
+                  ),
+                )
+              : Container(
+                  color: AppColors.background,
+                  child: const Center(
+                      child: Icon(Icons.person_rounded,
+                          size: 50, color: AppColors.textHint)),
+                );
+          if (imageUrl.isNotEmpty && !shortlistShowClear) {
+            shortlistProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: shortlistProfileImg,
+            );
+          }
+
           return GestureDetector(
             onTap: () {
               if (receiverId != null) {
@@ -2237,51 +2234,7 @@ String usertye = '';
                 child: Stack(
                   children: [
                     // Full-height image
-                    imageUrl.isNotEmpty
-                        ? shortlistShowClear
-                            ? Image.network(
-                                imageUrl,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: AppColors.background,
-                                  child: const Center(
-                                      child: Icon(Icons.person_rounded,
-                                          size: 50, color: AppColors.textHint)),
-                                ),
-                              )
-                            : Stack(
-                                children: [
-                                  Image.network(
-                                    imageUrl,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      color: AppColors.background,
-                                      child: const Center(
-                                          child: Icon(Icons.person_rounded,
-                                              size: 50, color: AppColors.textHint)),
-                                    ),
-                                  ),
-                                  Positioned.fill(
-                                    child: BackdropFilter(
-                                      filter: ui.ImageFilter.blur(
-                                          sigmaX: 15, sigmaY: 15),
-                                      child: Container(
-                                        color: AppColors.black.withOpacity(0.05),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                        : Container(
-                            color: AppColors.background,
-                            child: const Center(
-                                child: Icon(Icons.person_rounded,
-                                    size: 50, color: AppColors.textHint)),
-                          ),
+                    shortlistProfileImg,
                     // Bottom gradient overlay
                     Positioned(
                       bottom: 0,
@@ -2408,6 +2361,27 @@ String usertye = '';
           final premiumPhotoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
           final premiumShowClear = premiumPrivacy == 'free' || premiumPhotoRequest == 'accepted';
 
+          Widget premiumProfileImg = Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: 160,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              height: 160,
+              color: AppColors.background,
+              child: const Center(
+                child: Icon(Icons.person_rounded,
+                    size: 60, color: AppColors.textHint),
+              ),
+            ),
+          );
+          if (!premiumShowClear) {
+            premiumProfileImg = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: premiumProfileImg,
+            );
+          }
+
           return GestureDetector(
             onTap: () async {
               final prefs = await SharedPreferences.getInstance();
@@ -2448,53 +2422,7 @@ String usertye = '';
                             top: Radius.circular(20)),
                         child: Stack(
                           children: [
-                            premiumShowClear
-                                ? Image.network(
-                                    imageUrl,
-                                    width: double.infinity,
-                                    height: 160,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      height: 160,
-                                      color: AppColors.background,
-                                      child: const Center(
-                                        child: Icon(Icons.person_rounded,
-                                            size: 60, color: AppColors.textHint),
-                                      ),
-                                    ),
-                                  )
-                                : Stack(
-                                    children: [
-                                      Image.network(
-                                        imageUrl,
-                                        width: double.infinity,
-                                        height: 160,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          height: 160,
-                                          color: AppColors.background,
-                                          child: const Center(
-                                            child: Icon(Icons.person_rounded,
-                                                size: 60, color: AppColors.textHint),
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: double.infinity,
-                                        height: 160,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.black.withOpacity(0.25),
-                                        ),
-                                        child: BackdropFilter(
-                                          filter: ui.ImageFilter.blur(
-                                              sigmaX: 15, sigmaY: 15),
-                                          child: Container(
-                                            color: AppColors.black.withOpacity(0.05),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                            premiumProfileImg,
                             Positioned(
                               bottom: 0,
                               left: 0,
