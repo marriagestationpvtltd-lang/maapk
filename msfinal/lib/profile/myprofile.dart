@@ -828,8 +828,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                   _buildDocumentStatusSection(personalDetail),
                   if (_docStatus == 'approved')
                     _buildVerifiedInformationSection(personalDetail, model),
-                  _buildMemberTypeSection(),
-                  _buildPackageDetailsSection(),
+                  _buildMembershipAndPackageSection(),
                   _buildProfileInfo(personalDetail),
                   _buildAboutMe(personalDetail, lifestyle, familyDetail),
                   _buildPersonalDetails(personalDetail),
@@ -1035,6 +1034,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         ),
                       if (!_isMissing(model.gender))
                         _buildInfoBadge(_stringValue(model.gender), Icons.wc),
+                      if (_userId != null && _userId!.isNotEmpty)
+                        _buildInfoBadge('ID: $_userId', Icons.badge_outlined),
                     ],
                  ),
                   const SizedBox(height: 16),
@@ -1096,6 +1097,256 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     } catch (e) {
       return 0;
     }
+  }
+
+  Widget _buildMembershipAndPackageSection() {
+    final hasPackage = !_isMissing(_activePackageName);
+
+    Color memberColor;
+    IconData memberIcon;
+
+    switch (memberType) {
+      case 'Premium':
+        memberColor = Colors.amber[700]!;
+        memberIcon = Icons.workspace_premium_rounded;
+        break;
+      case 'Gold':
+        memberColor = Colors.amber;
+        memberIcon = Icons.star_rounded;
+        break;
+      case 'Platinum':
+        memberColor = Colors.blueGrey;
+        memberIcon = Icons.diamond_rounded;
+        break;
+      default:
+        memberColor = Colors.grey;
+        memberIcon = Icons.person_rounded;
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gradient header with member type
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  memberColor.withOpacity(0.95),
+                  Color.lerp(memberColor, Colors.black, 0.2)!,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(memberIcon, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$memberType Member',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getMemberBenefits(memberType),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _getMemberBenefitList(memberType)
+                      .map(
+                        (benefit) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            benefit,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+
+          // Active package banner
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: hasPackage
+                ? Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E7D32).withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF2E7D32).withOpacity(0.25),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF2E7D32),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'You are currently active on "$_activePackageName" package.',
+                                style: const TextStyle(
+                                  color: Color(0xFF2E7D32),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (!_isMissing(_activePackageExpiry)) ...[
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 30),
+                            child: Text(
+                              'Valid until: $_activePackageExpiry',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SubscriptionPage(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.upgrade_rounded, size: 18),
+                            label: const Text(
+                              'Update Package',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'You are currently on the $memberType membership.',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: memberColor,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            child: Text(
+                              memberType == 'Free' ? 'Upgrade' : 'Change Plan',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMemberTypeSection() {
@@ -1969,7 +2220,6 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             child: Column(
               children: [
                 statRow('User ID', _userId, 'Profile ID', personalDetail['memberid']),
-                statRow('Email', _userEmail, 'Phone', _userPhone),
                 statRow('Privacy', personalDetail['privacy'], 'Location', location),
               ],
             ),
@@ -2493,6 +2743,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         ],
       ),
       onEdit: () => _editPersonalDetails(),
+      isLocked: _docStatus == 'approved',
     );
   }
 
@@ -3330,6 +3581,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     required IconData icon,
     required Widget content,
     required VoidCallback onEdit,
+    bool isLocked = false,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -3379,7 +3631,36 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     ),
                   ),
                 ),
-                _buildSectionAction(onTap: onEdit),
+                isLocked
+                    ? GestureDetector(
+                        onTap: onEdit,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E7D32).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFF2E7D32).withOpacity(0.3),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.lock, color: Color(0xFF2E7D32), size: 13),
+                              SizedBox(width: 4),
+                              Text(
+                                'Locked',
+                                style: TextStyle(
+                                  color: Color(0xFF2E7D32),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _buildSectionAction(onTap: onEdit),
               ],
             ),
           ),
