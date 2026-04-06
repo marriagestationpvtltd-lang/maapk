@@ -227,15 +227,15 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
       _selectedReligion = _asPreferenceList(data['religion']);
       _selectedCast = _asPreferenceList(data['caste']);
       _selectedsubCast = _asPreferenceList(data['subcaste'] ?? data['subcast']);
-      _selectedMotherTongue = _asPreferenceList(data['mothertoungue'] ?? data['mothertongue']);
-      _selectedHoroscopeBelief = data['herscopeblief']?.toString();
+      _selectedMotherTongue = _asPreferenceList(data['mothertongue']); // Corrected field name
+      _selectedHoroscopeBelief = data['horoscopebelief']?.toString(); // Corrected field name
       _selectedManglik = data['manglik']?.toString();
       _selectedCountry = _asPreferenceList(data['country']);
       _selectedState = _asPreferenceList(data['state']);
       _selectedCity = _asPreferenceList(data['city']);
       _selectedQualification = _asPreferenceList(data['qualification']);
       _selectedEducationMedium = _asPreferenceList(data['educationmedium']);
-      _selectedProfession = _asPreferenceList(data['proffession']);
+      _selectedProfession = _asPreferenceList(data['profession']); // Corrected field name
       _selectedWorkingWith = _asPreferenceList(data['workingwith']);
       _selectedAnnualIncome = _asPreferenceList(data['annualincome']);
       _selectedDiet = _asPreferenceList(data['diet']);
@@ -1648,7 +1648,16 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
                         ),
                       ),
                     ],
-                    _buildSubLabel('Any Other Expectation'),
+                    _buildSubLabel('Any Other Expectation', isRequired: false),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Optional - Add any additional preferences',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       height: 120,
@@ -1838,14 +1847,29 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
   }
 
   // ── Sub-label ────────────────────────────────────────────────────────────────
-  Widget _buildSubLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF4A4A68),
-      ),
+  Widget _buildSubLabel(String label, {bool isRequired = true}) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF4A4A68),
+          ),
+        ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text(
+            '*',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFE64B37),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -2311,20 +2335,31 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
         isLoading = true;
       });
 
-      if (widget.initialData != null && widget.initialData!.isNotEmpty) {
-        _applyPreferenceData(widget.initialData!);
-        return;
-      }
+      // Always fetch fresh data from API to ensure consistency
+      // This fixes the issue where editing multiple times causes data to disappear
+      try {
+        final response = await http.get(
+          Uri.parse("https://digitallami.com/Api2/get_partner_preferences.php?userid=$userId"),
+        ).timeout(const Duration(seconds: 30));
 
-      final response = await http.get(
-        Uri.parse("https://digitallami.com/Api2/get_partner_preferences.php?userid=$userId"),
-      ).timeout(const Duration(seconds: 30));
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-
-        if (result['status'] == 'success' && result['data'] != null) {
-          _applyPreferenceData(Map<String, dynamic>.from(result['data']));
+          if (result['status'] == 'success' && result['data'] != null) {
+            _applyPreferenceData(Map<String, dynamic>.from(result['data']));
+          } else if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+            // Fallback to initialData only if API fetch fails
+            _applyPreferenceData(widget.initialData!);
+          }
+        } else if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+          // Fallback to initialData if API returns non-200 status
+          _applyPreferenceData(widget.initialData!);
+        }
+      } catch (apiError) {
+        print("Error fetching from API: $apiError");
+        // Fallback to initialData if API call throws an exception
+        if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+          _applyPreferenceData(widget.initialData!);
         }
       }
     } catch (e) {
@@ -2370,15 +2405,15 @@ class _PartnerPreferencesPageeState extends State<PartnerPreferencesPagee> {
         "religion": _selectedReligion.join(","),
         "caste": _selectedCast.join(","),
         "subcaste": _selectedsubCast.join(","),
-        "mothertoungue": _selectedMotherTongue.join(","),
-        "herscopeblief": _selectedHoroscopeBelief ?? "",
+        "mothertongue": _selectedMotherTongue.join(","), // Corrected field name
+        "horoscopebelief": _selectedHoroscopeBelief ?? "", // Corrected field name
         "manglik": _selectedManglik ?? "",
         "country": _getCountryIds(_selectedCountry).join(","),
         "state": _getStateIds(_selectedState).join(","),
         "city": _getCityIds(_selectedCity).join(","),
         "qualification": _selectedQualification.join(","),
         "educationmedium": _selectedEducationMedium.join(","),
-        "proffession": _selectedProfession.join(","),
+        "profession": _selectedProfession.join(","), // Corrected field name
         "workingwith": _selectedWorkingWith.join(","),
         "annualincome": _selectedAnnualIncome.join(","),
         "diet": _selectedDiet.join(","),

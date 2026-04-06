@@ -133,8 +133,8 @@ if ($result && $result->num_rows > 0) {
             "religion" => explode(',', $row['religion']),
             "caste" => explode(',', $row['caste']),
             "subcaste" => explode(',', $row['subcaste']),
-            "mothertoungue" => explode(',', $row['mothertoungue']),
-            "herscopeblief" => $row['herscopeblief'],
+            "mothertongue" => explode(',', $row['mothertoungue']), // Corrected API key name
+            "horoscopebelief" => $row['herscopeblief'], // Corrected API key name
             "manglik" => $row['manglik'],
             "country" => $countryNames, // Returns country names
             "country_ids" => $countryIds, // Optional: keep IDs if needed
@@ -144,7 +144,7 @@ if ($result && $result->num_rows > 0) {
             "city_ids" => $districtIds, // Optional: keep district IDs if needed
             "qualification" => explode(',', $row['qualification']),
             "educationmedium" => explode(',', $row['educationmedium']),
-            "proffession" => explode(',', $row['proffession']),
+            "profession" => explode(',', $row['proffession']), // Corrected API key name
             "workingwith" => explode(',', $row['workingwith']),
             "annualincome" => explode(',', $row['annualincome']),
             "diet" => explode(',', $row['diet']),
