@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import 'package:ms2026/otherprofile/otherprofileview.dart'; // Add this import
 import '../main.dart';
 import '../pushnotification/pushservice.dart';
+import '../utils/privacy_utils.dart'; // Add privacy utils import
 import 'filterPage.dart';
 
 class SearchResultPage extends StatefulWidget {
@@ -205,11 +206,14 @@ class _SearchResultPageState extends State<SearchResultPage> {
 
   // Helper function to check if photo should be blurred
   bool _shouldShowClearImage(Map<String, dynamic> profile) {
-    // Check if privacy is free or photo request is accepted
-    final privacy = profile['privacy']?.toString().toLowerCase() ?? 'free';
-    final photoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+    // Use PrivacyUtils for consistent privacy enforcement
+    final privacy = profile['privacy']?.toString();
+    final photoRequest = profile['photo_request']?.toString();
 
-    return privacy == 'free' || photoRequest == 'accepted';
+    return PrivacyUtils.shouldShowClearImage(
+      privacy: privacy,
+      photoRequest: photoRequest,
+    );
   }
 
   // Helper function to get photo request status
@@ -1019,7 +1023,10 @@ class _SearchResultPageState extends State<SearchResultPage> {
                 child: Container(
                   color: Colors.black.withOpacity(0.3),
                   child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                    filter: ui.ImageFilter.blur(
+                      sigmaX: PrivacyUtils.kStandardBlurSigmaX,
+                      sigmaY: PrivacyUtils.kStandardBlurSigmaY,
+                    ),
                     child: Container(
                       color: Colors.black.withOpacity(0.1),
                     ),
