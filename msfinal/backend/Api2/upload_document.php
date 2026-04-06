@@ -23,6 +23,7 @@ if ($userid <= 0) {
 // ---------------- OPTIONAL PARAMS ----------------
 $documenttype     = $_POST['documenttype'] ?? null;
 $documentidnumber = $_POST['documentidnumber'] ?? null;
+$title            = $_POST['title'] ?? null;
 
 // ---------------- FILE UPLOAD ----------------
 $photoPath = null;
@@ -55,21 +56,22 @@ if ($check->num_rows > 0) {
     $sql = "UPDATE user_documents SET 
                 documenttype = ?, 
                 documentidnumber = ?, 
+                title = IFNULL(?, title),
                 photo = IFNULL(?, photo)
             WHERE userid = ?";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssi", $documenttype, $documentidnumber, $photoPath, $userid);
+    $stmt->bind_param("ssssi", $documenttype, $documentidnumber, $title, $photoPath, $userid);
 
 } else {
 
     // INSERT
     $sql = "INSERT INTO user_documents 
-            (userid, documenttype, documentidnumber, photo) 
-            VALUES (?, ?, ?, ?)";
+            (userid, documenttype, documentidnumber, title, photo) 
+            VALUES (?, ?, ?, ?, ?)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("isss", $userid, $documenttype, $documentidnumber, $photoPath);
+    $stmt->bind_param("issss", $userid, $documenttype, $documentidnumber, $title, $photoPath);
 }
 
 // ---------------- EXECUTE ----------------

@@ -55,6 +55,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   String? _activePackageName;
   String? _activePackageExpiry;
   String _docStatus = 'not_uploaded';
+  bool _docUploadSkipped = false;
   bool _isCheckingConnectivity = false;
   bool? _lastConnectivityState;
   ConnectivityService? _connectivityService;
@@ -184,7 +185,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Future<void> _fetchDocumentStatus(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('https://digitallami.com/Api2/check_marital_document_status.php'),
+        Uri.parse('https://digitallami.com/Api2/check_document_status.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': int.parse(userId)}),
       );
@@ -1461,6 +1462,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   // status, so keep them grouped here and avoid showing a false document prompt.
   static const Set<String> _maritalStatusesWithoutRequiredDocument = {
     '',
+    'married',
     'still unmarried',
     'unmarried',
     'not specified',
@@ -1484,6 +1486,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   Widget _buildDocumentStatusSection(Map<String, dynamic> personalDetail) {
     final maritalStatus = personalDetail['maritalStatusName']?.toString() ?? '';
     if (!_requiresMaritalStatusDocument(maritalStatus)) {
+      return const SizedBox.shrink();
+    }
+    // User chose to skip the suggestion for this session
+    if (_docUploadSkipped && _docStatus == 'not_uploaded') {
       return const SizedBox.shrink();
     }
 
@@ -1530,15 +1536,24 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         icon = Icons.upload_file_rounded;
         title = 'Document Required';
         subtitle = 'Since your marital status is "$maritalStatus", you must upload a supporting document (e.g. death certificate / divorce decree / court order) to get your profile verified.';
-        action = ElevatedButton.icon(
-          onPressed: () => _openEditPage(const MaritalDocumentUploadScreen()),
-          icon: const Icon(Icons.upload_rounded, size: 18, color: Colors.white),
-          label: const Text('Upload Document', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFD32F2F),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          ),
+        action = Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: () => _openEditPage(const MaritalDocumentUploadScreen()),
+              icon: const Icon(Icons.upload_rounded, size: 18, color: Colors.white),
+              label: const Text('Upload Document', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => setState(() => _docUploadSkipped = true),
+              child: Text('Skip', style: TextStyle(color: Colors.grey[600])),
+            ),
+          ],
         );
     }
 
