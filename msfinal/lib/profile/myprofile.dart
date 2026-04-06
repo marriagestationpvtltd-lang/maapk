@@ -1034,7 +1034,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         ),
                       if (!_isMissing(model.gender))
                         _buildInfoBadge(_stringValue(model.gender), Icons.wc),
-                      if (_userId != null && _userId!.isNotEmpty)
+                      if (!_isMissing(_userId))
                         _buildInfoBadge('ID: $_userId', Icons.badge_outlined),
                     ],
                  ),
@@ -1252,7 +1252,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'You are currently active on "$_activePackageName" package.',
+                                'You are currently active on $_activePackageName package.',
                                 style: const TextStyle(
                                   color: Color(0xFF2E7D32),
                                   fontSize: 13,
