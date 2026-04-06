@@ -1934,7 +1934,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                  child: const Icon(Icons.account_circle_outlined, color: AppColors.primary, size: 18),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -1942,7 +1942,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Basic Information',
+                        'Account Information',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -1950,13 +1950,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         ),
                       ),
                       Text(
-                        'Key profile snapshot',
+                        'Your account details',
                         style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11),
                       ),
                     ],
                   ),
                 ),
-                _buildSectionAction(onTap: _editBasicInfo),
               ],
             ),
           ),
@@ -1966,9 +1965,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               children: [
                 statRow('User ID', _userId, 'Profile ID', personalDetail['memberid']),
                 statRow('Email', _userEmail, 'Phone', _userPhone),
-                statRow('Height', personalDetail['height_name'], 'Marital Status', personalDetail['maritalStatusName']),
-                statRow('Mother Tongue', personalDetail['motherTongue'], 'Privacy', personalDetail['privacy']),
-                statRow('Location', location, '', ''),
+                statRow('Privacy', personalDetail['privacy'], 'Location', location),
               ],
             ),
           ),
@@ -2452,31 +2449,40 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
     return _buildSection(
       title: 'Personal Details',
-      icon: Icons.favorite_border,
+      icon: Icons.person_outline,
       content: Column(
         children: [
-          // Only show these fields if NOT verified (they're in the Verified section when verified)
+          // Basic Personal Information
           if (!isVerified) ...[
+            _buildDetailRow('Full Name', '${_displayValue(personalDetail['firstName'], fallback: '')} ${_displayValue(personalDetail['lastName'], fallback: '')}'),
             _buildDetailRow('Date of Birth', _formatDate(personalDetail['birthDate'])),
             _buildDetailRow('Age', '${_calculateAge(personalDetail['birthDate'])} Years'),
             _buildDetailRow('Gender', _displayValue(_firstFilled([personalDetail['gender'], model.gender]))),
             _buildDetailRow('Marital Status', _displayValue(personalDetail['maritalStatusName'])),
           ],
+
+          // Physical Attributes
           _buildDetailRow('Height', _displayValue(personalDetail['height_name'])),
           if (!_isMissing(personalDetail['weight_name']))
             _buildDetailRow('Weight', _displayValue(personalDetail['weight_name'])),
-          _buildDetailRow(
-            'Disability',
-            _displayValue(
-              _firstFilled([personalDetail['disability'], personalDetail['Disability']]),
-              fallback: 'Not specified',
-            ),
-          ),
           _buildDetailRow('Blood Group', _displayValue(personalDetail['bloodGroup'])),
           if (!_isMissing(personalDetail['complexion']))
             _buildDetailRow('Complexion', _displayValue(personalDetail['complexion'])),
           if (!_isMissing(personalDetail['bodyType']))
             _buildDetailRow('Body Type', _displayValue(personalDetail['bodyType'])),
+
+          // Health Information
+          _buildDetailRow(
+            'Disability',
+            _displayValue(
+              _firstFilled([personalDetail['disability'], personalDetail['Disability']]),
+              fallback: 'None',
+            ),
+          ),
+          if (!_isMissing(personalDetail['specs']))
+            _buildDetailRow('Specs/Lenses', _displayValue(personalDetail['specs'])),
+
+          // Birth Details
           _buildDetailRow('Birth Time', _displayValue(personalDetail['birthtime'])),
           _buildDetailRow('Birth Place', _displayValue(personalDetail['birthcity'])),
         ],
@@ -2523,9 +2529,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       icon: Icons.work_outline,
       content: Column(
         children: [
+          // Education Information
           _buildDetailRow('Education', _displayValue(personalDetail['degree'])),
           _buildDetailRow('Faculty', _displayValue(personalDetail['faculty'])),
           _buildDetailRow('Education Type', _displayValue(personalDetail['educationtype'])),
+          if (!_isMissing(personalDetail['educationmedium']))
+            _buildDetailRow('Education Medium', _displayValue(personalDetail['educationmedium'])),
+
+          // Career Information
           _buildDetailRow('Occupation', _displayValue(personalDetail['designation'])),
           _buildDetailRow('Employer', _displayValue(personalDetail['companyname'])),
           _buildDetailRow('Working With', _displayValue(personalDetail['workingwith'])),
@@ -2543,14 +2554,21 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
       icon: Icons.family_restroom,
       content: Column(
         children: [
+          // Family Type & Background
           _buildDetailRow('Family Type', _displayValue(familyDetail['familytype'])),
           _buildDetailRow('Family Status', _displayValue(familyDetail['familybackground'])),
-          _buildDetailRow('Father Name', _displayValue(familyDetail['fathername'])),
-          _buildDetailRow('Father\'s Occupation', _displayValue(familyDetail['fatheroccupation'])),
-          _buildDetailRow('Mother\'s Occupation', _displayValue(familyDetail['motheroccupation'])),
           _buildDetailRow('Family Origin', _displayValue(familyDetail['familyorigin'])),
-          _buildDetailRow('Mother Education', _displayValue(familyDetail['mothereducation'])),
+
+          // Father Information
+          _buildDetailRow('Father Name', _displayValue(familyDetail['fathername'])),
           _buildDetailRow('Father Education', _displayValue(familyDetail['fathereducation'])),
+          _buildDetailRow('Father\'s Occupation', _displayValue(familyDetail['fatheroccupation'])),
+
+          // Mother Information
+          if (!_isMissing(familyDetail['mothercaste']))
+            _buildDetailRow('Mother Caste', _displayValue(familyDetail['mothercaste'])),
+          _buildDetailRow('Mother Education', _displayValue(familyDetail['mothereducation'])),
+          _buildDetailRow('Mother\'s Occupation', _displayValue(familyDetail['motheroccupation'])),
         ],
       ),
       onEdit: () => _editFamilyDetails(),
