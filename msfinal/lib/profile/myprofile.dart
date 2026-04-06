@@ -1003,6 +1003,33 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
                         const Icon(Icons.verified, color: Colors.white, size: 20),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  // User ID Display
+                  if (_userId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.perm_identity, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            'ID: ${_userId}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 6),
                   if (profileSubtitle.isNotEmpty)
                     Text(
                       profileSubtitle,
@@ -1788,18 +1815,9 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
-                  'Purchased package details',
+                  'Package Information',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                 ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SubscriptionPage()),
-                  );
-                },
-                child: const Text('Change'),
               ),
             ],
           ),
@@ -1831,6 +1849,90 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               Icons.event_available_rounded,
             ),
           ],
+          const SizedBox(height: 14),
+          // Active package status and update button
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFF90E18).withOpacity(0.08),
+                  const Color(0xFFF90E18).withOpacity(0.04),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFF90E18).withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: hasPackage ? const Color(0xFF4CAF50) : Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    hasPackage ? Icons.check_circle : Icons.info,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasPackage
+                          ? 'You are currently active on this package'
+                          : 'You are on a free plan',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasPackage
+                          ? 'Click the button to update or change your package'
+                          : 'Upgrade to unlock premium features',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SubscriptionPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF90E18),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    hasPackage ? 'Update' : 'Upgrade',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1889,6 +1991,7 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
         _firstFilled([personalDetail['country']]),
       ]),
     );
+    final isVerified = _docStatus == 'approved';
 
     Widget statRow(String l1, dynamic v1, String l2, dynamic v2) {
       return Padding(
@@ -1969,8 +2072,10 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             child: Column(
               children: [
                 statRow('User ID', _userId, 'Profile ID', personalDetail['memberid']),
-                statRow('Email', _userEmail, 'Phone', _userPhone),
-                statRow('Privacy', personalDetail['privacy'], 'Location', location),
+                // Hide Email and Phone if profile is verified (they're shown in Verified Information section)
+                if (!isVerified)
+                  statRow('Email', _userEmail, 'Phone', _userPhone),
+                statRow('Privacy', personalDetail['privacy'], 'Member Type', memberType),
               ],
             ),
           ),
@@ -2905,74 +3010,14 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   }
 
   void _editPersonalDetails() {
-    // Check if document is verified - show warning but still allow editing non-verified fields
-    if (_docStatus == 'approved') {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.info_outline, color: Color(0xFF2E7D32), size: 24),
-              SizedBox(width: 10),
-              Text(
-                'Information',
-                style: TextStyle(color: Color(0xFF2E7D32)),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your document has been verified',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 12),
-              Text(
-                'Your name, date of birth, age, and marital status are verified, so these fields cannot be changed.',
-                style: TextStyle(fontSize: 13),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'However, other fields such as height, weight, blood group, etc. can still be changed.',
-                style: TextStyle(fontSize: 13),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _openEditPage(
-                  PersonalDetailsPagee(
-                    initialData: _asMap(profileData?['personalDetail']),
-                    isVerified: true, // Pass verification status to edit screen
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF2E7D32),
-              ),
-              child: Text('Continue', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
-    } else {
-      _openEditPage(
-        PersonalDetailsPagee(
-          initialData: _asMap(profileData?['personalDetail']),
-        ),
-      );
-    }
+    // Pass verification status directly to edit screen - no confirmation dialog
+    // The edit screen will handle locking verified fields with visual indicators
+    _openEditPage(
+      PersonalDetailsPagee(
+        initialData: _asMap(profileData?['personalDetail']),
+        isVerified: _docStatus == 'approved', // Pass verification status to edit screen
+      ),
+    );
   }
 
   void _editCommunityDetails() {
