@@ -29,6 +29,16 @@ try {
     $maxHeight = isset($_GET['maxheight']) ? (int)$_GET['maxheight'] : null;
     $religion = isset($_GET['religion']) ? (int)$_GET['religion'] : null;
 
+    // New filter parameters
+    $hasPhoto = isset($_GET['has_photo']) && $_GET['has_photo'] == '1';
+    $userType = isset($_GET['usertype']) ? strtolower(trim($_GET['usertype'])) : null;
+    $isVerified = isset($_GET['is_verified']) && $_GET['is_verified'] == '1';
+    $daysSinceRegistration = isset($_GET['days_since_registration']) ? (int)$_GET['days_since_registration'] : null;
+
+    // Quick search parameters
+    $searchType = isset($_GET['search_type']) ? strtolower(trim($_GET['search_type'])) : null;
+    $searchValue = isset($_GET['search_value']) ? trim($_GET['search_value']) : null;
+
     // === GET USER GENDER ===
     $stmt = $pdo->prepare("SELECT gender FROM users WHERE id = ?");
     $stmt->execute([$userId]);
@@ -44,7 +54,7 @@ try {
 
     // === FETCH OPPOSITE GENDER USERS ===
     $sql = "
-        SELECT 
+        SELECT
             u.id,
             u.firstName,
             u.lastName,
@@ -54,6 +64,7 @@ try {
             u.isVerified,
             u.profile_picture,
             u.privacy,
+            u.created_at,
             ud.birthDate,
             TIMESTAMPDIFF(YEAR, ud.birthDate, CURDATE()) AS age,
             pa.city,
@@ -69,7 +80,6 @@ try {
         LEFT JOIN educationcareer ec ON ec.userId = u.id
         LEFT JOIN user_lifestyle ul ON ul.userId = u.id
         WHERE TRIM(LOWER(u.gender)) = :opp_gender
-          AND TRIM(LOWER(u.usertype)) = 'paid'
           AND u.id != :me
     ";
 
@@ -79,6 +89,7 @@ try {
     ];
 
     // === APPLY FILTERS ===
+    // Age filters
     if ($minAge !== null) {
         $sql .= " AND TIMESTAMPDIFF(YEAR, ud.birthDate, CURDATE()) >= :minAge";
         $params[':minAge'] = $minAge;
@@ -87,6 +98,8 @@ try {
         $sql .= " AND TIMESTAMPDIFF(YEAR, ud.birthDate, CURDATE()) <= :maxAge";
         $params[':maxAge'] = $maxAge;
     }
+
+    // Height filters
     if ($minHeight !== null) {
         $sql .= " AND CAST(SUBSTRING_INDEX(ud.height_name, ' ', 1) AS UNSIGNED) >= :minHeight";
         $params[':minHeight'] = $minHeight;
@@ -95,9 +108,58 @@ try {
         $sql .= " AND CAST(SUBSTRING_INDEX(ud.height_name, ' ', 1) AS UNSIGNED) <= :maxHeight";
         $params[':maxHeight'] = $maxHeight;
     }
+
+    // Religion filter
     if ($religion !== null) {
         $sql .= " AND ud.religionId = :religion";
         $params[':religion'] = $religion;
+    }
+
+    // === NEW FILTERS ===
+    // Has photo filter
+    if ($hasPhoto) {
+        $sql .= " AND u.profile_picture IS NOT NULL AND u.profile_picture != ''";
+    }
+
+    // User type filter (paid/free)
+    if ($userType !== null && in_array($userType, ['paid', 'free'])) {
+        $sql .= " AND TRIM(LOWER(u.usertype)) = :usertype";
+        $params[':usertype'] = $userType;
+    }
+
+    // Verified filter
+    if ($isVerified) {
+        $sql .= " AND u.isVerified = 1";
+    }
+
+    // Days since registration filter
+    if ($daysSinceRegistration !== null) {
+        $sql .= " AND DATEDIFF(CURDATE(), u.created_at) <= :days_since_reg";
+        $params[':days_since_reg'] = $daysSinceRegistration;
+    }
+
+    // === QUICK SEARCH FILTERS ===
+    if ($searchType !== null && $searchValue !== null && $searchValue !== '') {
+        switch ($searchType) {
+            case 'phone':
+                $sql .= " AND u.phone LIKE :search_value";
+                $params[':search_value'] = '%' . $searchValue . '%';
+                break;
+            case 'id':
+                if (is_numeric($searchValue)) {
+                    $sql .= " AND u.id = :search_value";
+                    $params[':search_value'] = (int)$searchValue;
+                }
+                break;
+            case 'email':
+                $sql .= " AND u.email LIKE :search_value";
+                $params[':search_value'] = '%' . $searchValue . '%';
+                break;
+            case 'name':
+                $sql .= " AND (u.firstName LIKE :search_value OR u.lastName LIKE :search_value)";
+                $params[':search_value'] = '%' . $searchValue . '%';
+                break;
+        }
     }
 
     $sql .= " ORDER BY u.id DESC";
