@@ -1485,11 +1485,8 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
 
   Widget _buildDocumentStatusSection(Map<String, dynamic> personalDetail) {
     final maritalStatus = personalDetail['maritalStatusName']?.toString() ?? '';
-    if (!_requiresMaritalStatusDocument(maritalStatus)) {
-      return const SizedBox.shrink();
-    }
-    // User chose to skip the suggestion for this session
-    if (_docUploadSkipped && _docStatus == 'not_uploaded') {
+    if (!_requiresMaritalStatusDocument(maritalStatus) ||
+        (_docUploadSkipped && _docStatus == 'not_uploaded')) {
       return const SizedBox.shrink();
     }
 
@@ -1549,9 +1546,12 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
               ),
             ),
             const SizedBox(width: 8),
-            TextButton(
-              onPressed: () => setState(() => _docUploadSkipped = true),
-              child: Text('Skip', style: TextStyle(color: Colors.grey[600])),
+            Semantics(
+              label: 'Skip document upload for this session',
+              child: TextButton(
+                onPressed: () => setState(() => _docUploadSkipped = true),
+                child: Text('Skip', style: TextStyle(color: Colors.grey[600])),
+              ),
             ),
           ],
         );
