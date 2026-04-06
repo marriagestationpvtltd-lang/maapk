@@ -926,26 +926,29 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     required String label,
     required Function(bool?) onChanged,
   }) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFF48A54C),
-          width: 1.2,
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF48A54C),
+            width: 1.2,
+          ),
         ),
-      ),
-      child: RadioListTile<bool>(
-        value: value,
-        groupValue: groupValue,
-        onChanged: onChanged,
-        title: Text(
-          label,
-          style: const TextStyle(fontSize: 16),
+        child: RadioListTile<bool>(
+          value: value,
+          groupValue: groupValue,
+          onChanged: onChanged,
+          title: Text(
+            label,
+            style: const TextStyle(fontSize: 16),
+          ),
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          activeColor: const Color(0xFFE64B37),
         ),
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        activeColor: const Color(0xFFE64B37),
       ),
     );
   }
@@ -956,30 +959,32 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
     required String label,
     required Function(String?) onChanged,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => onChanged(value),
-      child: Container(
-        height: 50,
-        width: 200,
-        padding: EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: const Color(0xFF48A54C),
-            width: 1.2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Radio<String>(
-              value: value,
-              groupValue: groupValue,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              onChanged: onChanged,
-              activeColor: const Color(0xFFE64B37),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => onChanged(value),
+        child: Container(
+          height: 50,
+          width: 200,
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFF48A54C),
+              width: 1.2,
             ),
+          ),
+          child: Row(
+            children: [
+              Radio<String>(
+                value: value,
+                groupValue: groupValue,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: onChanged,
+                activeColor: const Color(0xFFE64B37),
+              ),
             Expanded(
               child: Text(
                 label,

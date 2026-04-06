@@ -129,7 +129,6 @@ class _TypingDropdownState<T> extends State<TypingDropdown<T>> {
         // Dropdown Field
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: hasError
@@ -344,8 +343,13 @@ class _BottomSheetContentState<T>
                  decoration: InputDecoration(
                    hintText: "Search...",
                    prefixIcon: const Icon(Icons.search),
-                   border: OutlineInputBorder(
+                   enabledBorder: OutlineInputBorder(
                      borderRadius: BorderRadius.circular(30),
+                     borderSide: BorderSide(color: AppColors.border, width: 1),
+                   ),
+                   focusedBorder: OutlineInputBorder(
+                     borderRadius: BorderRadius.circular(30),
+                     borderSide: BorderSide(color: AppColors.primary, width: 1.5),
                    ),
                    contentPadding:
                    const EdgeInsets.symmetric(

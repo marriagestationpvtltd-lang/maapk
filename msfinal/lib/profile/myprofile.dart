@@ -60,6 +60,11 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
   bool? _lastConnectivityState;
   ConnectivityService? _connectivityService;
 
+  // User contact information
+  String? _userEmail;
+  String? _userPhone;
+  String? _userId;
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +101,13 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
     final userDataString = prefs.getString('user_data');
     final userData = jsonDecode(userDataString!);
     final userId = int.tryParse(userData["id"].toString());
+
+    // Store user contact information from SharedPreferences
+    setState(() {
+      _userId = userData["id"]?.toString();
+      _userEmail = userData["email"]?.toString();
+      _userPhone = userData["contactNo"]?.toString();
+    });
 
     try {
       final response = await http.get(
@@ -1949,9 +1961,11 @@ class _MatrimonyProfilePageState extends State<MatrimonyProfilePage> {
             padding: const EdgeInsets.all(14),
             child: Column(
               children: [
-                statRow('Profile ID', personalDetail['memberid'], 'Height', personalDetail['height_name']),
-                statRow('Marital Status', personalDetail['maritalStatusName'], 'Mother Tongue', personalDetail['motherTongue']),
-                statRow('Location', location, 'Privacy', personalDetail['privacy']),
+                statRow('User ID', _userId, 'Profile ID', personalDetail['memberid']),
+                statRow('Email', _userEmail, 'Phone', _userPhone),
+                statRow('Height', personalDetail['height_name'], 'Marital Status', personalDetail['maritalStatusName']),
+                statRow('Mother Tongue', personalDetail['motherTongue'], 'Privacy', personalDetail['privacy']),
+                statRow('Location', location, '', ''),
               ],
             ),
           ),
