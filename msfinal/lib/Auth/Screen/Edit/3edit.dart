@@ -1028,8 +1028,8 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
                 onChanged: onChanged,
                 activeColor: const Color(0xFFE64B37),
               ),
-            Expanded(
-              child: Text(
+              Expanded(
+                child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
