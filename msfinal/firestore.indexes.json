@@ -1,0 +1,39 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "adminchat",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "senderid", "order": "ASCENDING" },
+        { "fieldPath": "receiverid", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "profile_shares",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shared_by", "order": "ASCENDING" },
+        { "fieldPath": "shared_to", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "adminchat",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "receiverid", "order": "ASCENDING" },
+        { "fieldPath": "seen", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "conversations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "lastTimestamp", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
