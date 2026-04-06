@@ -344,7 +344,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     // Create a header instance to access the privacy banner
     final profileHeader = ProfileHeader(
       personalDetail: _profileData!.personalDetail,
-      showBlurredImage: _showBlurredImage,
       hasRequestedPhoto: _hasRequestedPhoto,
       onRequestPhotoAccess: _requestPhotoAccess,
       id: widget.userId.toString(),
