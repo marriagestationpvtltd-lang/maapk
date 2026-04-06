@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../constant/app_colors.dart';
 import '../../service/ocr_service.dart';
 import '../../service/document_scanner_service.dart';
+import '../../Startup/MainControllere.dart';
 
 /// Screen for uploading a marital-status supporting document (additional
 /// details verification). Completely separate from [IDVerificationScreen]
@@ -979,7 +980,7 @@ class _MaritalDocumentUploadScreenState
               Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: _goToHome,
                   child: const Icon(Icons.arrow_back_ios_new,
                       color: Colors.white, size: 20),
                 ),
@@ -1247,7 +1248,7 @@ class _MaritalDocumentUploadScreenState
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () => Navigator.pop(context),
+        onPressed: _goToHome,
         icon: const Icon(Icons.close_rounded, size: 20),
         label: const Text('Close'),
         style: ElevatedButton.styleFrom(
@@ -1286,7 +1287,7 @@ class _MaritalDocumentUploadScreenState
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _goToHome,
                     icon: const Icon(Icons.check_rounded, size: 20),
                     label: const Text('Done'),
                     style: ElevatedButton.styleFrom(
@@ -1515,6 +1516,15 @@ class _MaritalDocumentUploadScreenState
   }
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────
+
+  void _goToHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const MainControllerScreen()),
+      (route) => false,
+    );
+  }
 
   void _showImageSourceSelector() {
     showModalBottomSheet(
