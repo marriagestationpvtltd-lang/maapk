@@ -322,18 +322,24 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Widget _buildProfileContent() {
+    // Create a header instance to access the privacy banner
+    final profileHeader = ProfileHeader(
+      personalDetail: _profileData!.personalDetail,
+      showBlurredImage: _showBlurredImage,
+      hasRequestedPhoto: _hasRequestedPhoto,
+      onRequestPhotoAccess: _requestPhotoAccess,
+      id: widget.userId.toString(),
+      isOnline: _isOtherUserOnline,
+      lastSeen: _otherUserLastSeen,
+    );
+
     return SingleChildScrollView(
       child: Column(
         children: [
-          ProfileHeader(
-            personalDetail: _profileData!.personalDetail,
-            showBlurredImage: _showBlurredImage,
-            hasRequestedPhoto: _hasRequestedPhoto,
-            onRequestPhotoAccess: _requestPhotoAccess,
-            id: widget.userId.toString(),
-            isOnline: _isOtherUserOnline,
-            lastSeen: _otherUserLastSeen,
-          ),
+          profileHeader,
+
+          // Add privacy notice banner below the profile header
+          profileHeader.buildPrivacyNoticeBanner(),
 
           GallerySection(
             galleryImages: _galleryImages,

@@ -252,6 +252,140 @@ class ProfileHeader extends StatelessWidget {
     return _buildRequestPhotoAccessUI();
   }
 
+  /// Build a privacy notice banner that appears below the profile header
+  Widget buildPrivacyNoticeBanner() {
+    // Get values from API
+    final privacy = personalDetail['privacy']?.toString().toLowerCase();
+    final photoRequest = personalDetail['photo_request']?.toString().toLowerCase();
+
+    final isFreePrivacy = privacy == 'free';
+    final isPhotoAccepted = photoRequest == 'accepted';
+    final isPhotoPending = photoRequest == 'pending';
+    final isPhotoRejected = photoRequest == 'rejected';
+
+    // Check if photo_request has been sent
+    final hasPhotoRequest = photoRequest != null &&
+        photoRequest.isNotEmpty &&
+        photoRequest != 'null';
+
+    // Don't show banner if privacy is free or photo is accepted
+    if (isFreePrivacy || isPhotoAccepted) {
+      return const SizedBox.shrink();
+    }
+
+    // Build appropriate banner based on status
+    if (isPhotoPending) {
+      return _buildInfoBanner(
+        icon: Icons.hourglass_bottom,
+        color: Colors.orange,
+        titleNepali: 'तपाईंको अनुरोध पेन्डिङ छ',
+        titleEnglish: 'Photo Request Pending',
+        messageNepali: 'यो युजरले तपाईंको फोटो हेर्ने अनुरोध स्वीकार गर्न बाँकी छ।',
+        messageEnglish: 'This user has not yet responded to your photo access request.',
+      );
+    } else if (isPhotoRejected) {
+      return _buildInfoBanner(
+        icon: Icons.cancel,
+        color: Colors.grey.shade600,
+        titleNepali: 'तपाईंको अनुरोध अस्वीकार गरिएको छ',
+        titleEnglish: 'Photo Request Rejected',
+        messageNepali: 'यो युजरले तपाईंको फोटो हेर्ने अनुरोध अस्वीकार गरेको छ।',
+        messageEnglish: 'This user has rejected your photo access request.',
+      );
+    } else {
+      // No request sent yet
+      return _buildInfoBanner(
+        icon: Icons.lock,
+        color: Colors.red.shade600,
+        titleNepali: 'यो युजरले फोटो लक गरेको छ',
+        titleEnglish: 'Photo is Locked',
+        messageNepali: 'यो युजरको फोटो हेर्नको लागि तपाईंले रिक्वेस्ट पठाउनुपर्छ।',
+        messageEnglish: 'You need to send a request to view this user\'s photo.',
+      );
+    }
+  }
+
+  /// Helper method to build info banner
+  Widget _buildInfoBanner({
+    required IconData icon,
+    required Color color,
+    required String titleNepali,
+    required String titleEnglish,
+    required String messageNepali,
+    required String messageEnglish,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titleNepali,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  titleEnglish,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  messageNepali,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  messageEnglish,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRequestPhotoAccessUI() {
     return Column(
       mainAxisSize: MainAxisSize.min,
