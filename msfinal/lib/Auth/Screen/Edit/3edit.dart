@@ -8,9 +8,11 @@ class PersonalDetailsPagee extends StatefulWidget {
   const PersonalDetailsPagee({
     super.key,
     this.initialData,
+    this.isVerified = false,
   });
 
   final Map<String, dynamic>? initialData;
+  final bool isVerified;
 
   @override
   State<PersonalDetailsPagee> createState() => _PersonalDetailsPageeState();
@@ -450,21 +452,62 @@ class _PersonalDetailsPageeState extends State<PersonalDetailsPagee> {
                     // Marital Status
                     _buildSectionTitle("Marital Status*"),
 
-                    Container(
-                      child: TypingDropdown<String>(
-                        items: _maritalStatusOptions,
-                        selectedItem: _selectedMaritalStatus,
-                        itemLabel: (item) => item,
-                        hint: "Select Marital",
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedMaritalStatus = value!;
-                          });
-                        },
-                        title: 'Marital Status',
-                        showError: submitted,
+                    // Show locked message if verified
+                    if (widget.isVerified) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lock, color: Color(0xFF2E7D32), size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedMaritalStatus ?? 'Not specified',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Color(0xFF1A1A2E),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Verified - Cannot be changed',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      Container(
+                        child: TypingDropdown<String>(
+                          items: _maritalStatusOptions,
+                          selectedItem: _selectedMaritalStatus,
+                          itemLabel: (item) => item,
+                          hint: "Select Marital",
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedMaritalStatus = value!;
+                            });
+                          },
+                          title: 'Marital Status',
+                          showError: submitted,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 10),
                     if (_selectedMaritalStatus == 'Divorced' ||
