@@ -1226,7 +1226,16 @@ class _ChatListScreenState extends State<ChatListScreen>
               child: CircularProgressIndicator(color: Color(0xFFF90E18)));
         }
 
-        final chatRooms = snapshot.data!.docs;
+        // Sort client-side by lastMessageTime descending (avoids composite index).
+        final chatRooms = List<QueryDocumentSnapshot>.from(snapshot.data!.docs)
+          ..sort((a, b) {
+            final aTs = (a.data() as Map<String, dynamic>)['lastMessageTime'] as Timestamp?;
+            final bTs = (b.data() as Map<String, dynamic>)['lastMessageTime'] as Timestamp?;
+            if (aTs == null && bTs == null) return 0;
+            if (aTs == null) return 1;
+            if (bTs == null) return -1;
+            return bTs.compareTo(aTs);
+          });
 
         // Cache rooms and start/refresh online-status listener.
         WidgetsBinding.instance.addPostFrameCallback((_) {
