@@ -483,6 +483,8 @@ class _MatrimonyHomeScreenState extends State<MatrimonyHomeScreen> {
               'image': imageUrl,
               'isVerified': member['isVerified'] ?? '0',
               'id': member['id'],
+              'privacy': member['privacy']?.toString().toLowerCase() ?? '',
+              'photo_request': member['photo_request']?.toString().toLowerCase() ?? '',
             };
           }).toList();
 
@@ -1838,6 +1840,9 @@ String usertye = '';
               : '';
           final matchPercent = profile['matchPercent'];
           final isVerified = profile['isVerified'] == 1;
+          final matchedPrivacy = profile['privacy']?.toString().toLowerCase() ?? '';
+          final matchedPhotoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+          final matchedShowClear = matchedPrivacy == 'free' || matchedPhotoRequest == 'accepted';
 
           Color matchColor = AppColors.success;
           if (matchPercent != null) {
@@ -1888,22 +1893,57 @@ String usertye = '';
                         child: Stack(
                           children: [
                             imageUrl.isNotEmpty
-                                ? Image.network(
-                                    imageUrl,
-                                    width: double.infinity,
-                                    height: 155,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        Container(
-                                          height: 155,
-                                          color: AppColors.background,
-                                          child: const Center(
-                                            child: Icon(Icons.person_rounded,
-                                                size: 60,
-                                                color: AppColors.textHint),
+                                ? matchedShowClear
+                                    ? Image.network(
+                                        imageUrl,
+                                        width: double.infinity,
+                                        height: 155,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            Container(
+                                              height: 155,
+                                              color: AppColors.background,
+                                              child: const Center(
+                                                child: Icon(Icons.person_rounded,
+                                                    size: 60,
+                                                    color: AppColors.textHint),
+                                              ),
+                                            ),
+                                      )
+                                    : Stack(
+                                        children: [
+                                          Image.network(
+                                            imageUrl,
+                                            width: double.infinity,
+                                            height: 155,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(
+                                                  height: 155,
+                                                  color: AppColors.background,
+                                                  child: const Center(
+                                                    child: Icon(Icons.person_rounded,
+                                                        size: 60,
+                                                        color: AppColors.textHint),
+                                                  ),
+                                                ),
                                           ),
-                                        ),
-                                  )
+                                          Container(
+                                            width: double.infinity,
+                                            height: 155,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.black.withOpacity(0.25),
+                                            ),
+                                            child: BackdropFilter(
+                                              filter: ui.ImageFilter.blur(
+                                                  sigmaX: 15, sigmaY: 15),
+                                              child: Container(
+                                                color: AppColors.black.withOpacity(0.05),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
                                 : Container(
                                     height: 155,
                                     color: AppColors.background,
@@ -2158,6 +2198,9 @@ String usertye = '';
           final isVerified =
               person['isVerified'] == 1 || person['isVerified'] == '1';
           final receiverId = person['userid'];
+          final shortlistPrivacy = person['privacy']?.toString().toLowerCase() ?? '';
+          final shortlistPhotoRequest = person['photo_request']?.toString().toLowerCase() ?? '';
+          final shortlistShowClear = shortlistPrivacy == 'free' || shortlistPhotoRequest == 'accepted';
 
           return GestureDetector(
             onTap: () {
@@ -2195,18 +2238,44 @@ String usertye = '';
                   children: [
                     // Full-height image
                     imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.background,
-                              child: const Center(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 50, color: AppColors.textHint)),
-                            ),
-                          )
+                        ? shortlistShowClear
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: AppColors.background,
+                                  child: const Center(
+                                      child: Icon(Icons.person_rounded,
+                                          size: 50, color: AppColors.textHint)),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: AppColors.background,
+                                      child: const Center(
+                                          child: Icon(Icons.person_rounded,
+                                              size: 50, color: AppColors.textHint)),
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: BackdropFilter(
+                                      filter: ui.ImageFilter.blur(
+                                          sigmaX: 15, sigmaY: 15),
+                                      child: Container(
+                                        color: AppColors.black.withOpacity(0.05),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
                         : Container(
                             color: AppColors.background,
                             child: const Center(
@@ -2335,6 +2404,9 @@ String usertye = '';
             if (ageStr.isNotEmpty && ageStr != '0') '$ageStr yrs',
             if (location.isNotEmpty) location,
           ].join(' · ');
+          final premiumPrivacy = profile['privacy']?.toString().toLowerCase() ?? '';
+          final premiumPhotoRequest = profile['photo_request']?.toString().toLowerCase() ?? '';
+          final premiumShowClear = premiumPrivacy == 'free' || premiumPhotoRequest == 'accepted';
 
           return GestureDetector(
             onTap: () async {
@@ -2376,20 +2448,53 @@ String usertye = '';
                             top: Radius.circular(20)),
                         child: Stack(
                           children: [
-                            Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: 160,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 160,
-                                color: AppColors.background,
-                                child: const Center(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 60, color: AppColors.textHint),
-                                ),
-                              ),
-                            ),
+                            premiumShowClear
+                                ? Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: 160,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      height: 160,
+                                      color: AppColors.background,
+                                      child: const Center(
+                                        child: Icon(Icons.person_rounded,
+                                            size: 60, color: AppColors.textHint),
+                                      ),
+                                    ),
+                                  )
+                                : Stack(
+                                    children: [
+                                      Image.network(
+                                        imageUrl,
+                                        width: double.infinity,
+                                        height: 160,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          height: 160,
+                                          color: AppColors.background,
+                                          child: const Center(
+                                            child: Icon(Icons.person_rounded,
+                                                size: 60, color: AppColors.textHint),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: double.infinity,
+                                        height: 160,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.black.withOpacity(0.25),
+                                        ),
+                                        child: BackdropFilter(
+                                          filter: ui.ImageFilter.blur(
+                                              sigmaX: 15, sigmaY: 15),
+                                          child: Container(
+                                            color: AppColors.black.withOpacity(0.05),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                             Positioned(
                               bottom: 0,
                               left: 0,
