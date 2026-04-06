@@ -278,7 +278,8 @@ class FirebaseService {
     return _firestore
         .collection('chatRooms')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
+        // orderBy omitted intentionally — avoids composite index requirement;
+        // results are sorted client-side by lastMessageTime in ChatListScreen.
         .snapshots();
   }
   // Mark messages as read
