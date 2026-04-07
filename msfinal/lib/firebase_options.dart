@@ -50,22 +50,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAtajZVIzbj6hPmHI75FQnpLV2AoAkDVIA',
-    appId: '1:257951661233:android:d2224f58389ceacc407690',
-    messagingSenderId: '257951661233',
-    projectId: 'digitallami1',
-    databaseURL: 'https://digitallami1-default-rtdb.firebaseio.com',
-    storageBucket: 'digitallami1.firebasestorage.app',
+    apiKey: 'AIzaSyDtihED7bReUPkjkhAOBFDp3zw3chUTmgU',
+    appId: '1:477405059891:android:d38bc46dcbeb60b54d7c46',
+    messagingSenderId: '477405059891',
+    projectId: 'digitallamicomnp',
+    storageBucket: 'digitallamicomnp.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAA27QMOyAiHwWdPuulIb3zpw9h-tJV2ks',
-    appId: '1:257951661233:ios:f9616517fc11b209407690',
-    messagingSenderId: '257951661233',
-    projectId: 'digitallami1',
-    databaseURL: 'https://digitallami1-default-rtdb.firebaseio.com',
-    storageBucket: 'digitallami1.firebasestorage.app',
-    iosClientId: '257951661233-tvlkpb5g89j3grbl9n2ocu1refuffvij.apps.googleusercontent.com',
+    apiKey: 'AIzaSyBOygWduFPB-XheH1EnquxMLdhSE0kEyLc',
+    appId: '1:477405059891:ios:bfc486eb584d03ed4d7c46',
+    messagingSenderId: '477405059891',
+    projectId: 'digitallamicomnp',
+    storageBucket: 'digitallamicomnp.firebasestorage.app',
     iosBundleId: 'com.digitallami.appz',
   );
 
