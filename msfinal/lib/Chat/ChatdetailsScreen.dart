@@ -464,6 +464,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
       if (data['userId']?.toString() != widget.receiverId) return;
       if (!_isReceiverTyping) setState(() => _isReceiverTyping = true);
+      // Reset auto-clear timeout
+      _typingDebounce?.cancel();
+      _typingDebounce = Timer(Duration(seconds: _kTypingTimeoutSeconds), () {
+        if (mounted && _isReceiverTyping) setState(() => _isReceiverTyping = false);
+      });
     });
 
     // Stop typing
@@ -471,15 +476,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!mounted) return;
       if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
       if (data['userId']?.toString() != widget.receiverId) return;
-      if (_isReceiverTyping) setState(() => _isReceiverTyping = false);
-    });
-
-    // Auto-clear typing after timeout
-    _socketService.onTypingStart.listen((_) {
       _typingDebounce?.cancel();
-      _typingDebounce = Timer(Duration(seconds: _kTypingTimeoutSeconds), () {
-        if (mounted && _isReceiverTyping) setState(() => _isReceiverTyping = false);
-      });
+      if (_isReceiverTyping) setState(() => _isReceiverTyping = false);
     });
   }
 
@@ -566,6 +564,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   void _syncVisibleIncomingMessagesAsRead(List<Map<String, dynamic>> messages) {
+    if (_isMarkingMessagesAsRead) return;
+    final hasUnreadIncoming = messages.any((message) =>
+        message['receiverId'] == widget.currentUserId &&
+        message['isRead'] != true);
+    if (!hasUnreadIncoming) return;
     _markMessagesAsRead();
   }
 
