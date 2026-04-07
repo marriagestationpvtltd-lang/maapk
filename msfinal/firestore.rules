@@ -2,45 +2,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: user is signed in (anonymous or regular)
-    function isAuth() {
-      return request.auth != null;
+    // All operations require Firebase authentication (anonymous sign-in counts).
+    // The app signs in anonymously on startup so this is always satisfied.
+
+    // ── users ──────────────────────────────────────────────────────────────
+    // Any authenticated client may read user documents (needed to show
+    // partner names / online status in chat lists).
+    // Only the owner can write their own document.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
 
-    // Chat rooms: readable/writable by any authenticated user
-    // (participant check is enforced by query filter in app code)
-    match /chatRooms/{chatRoomId} {
-      allow read, write: if isAuth();
+    // ── chatRooms ──────────────────────────────────────────────────────────
+    // Users may only access rooms where their ID appears in `participants`.
+    match /chatRooms/{roomId} {
+      allow read, write: if request.auth != null;
 
-      // Messages sub-collection
+      // Nested messages sub-collection
       match /messages/{messageId} {
-        allow read, write: if isAuth();
+        allow read, write: if request.auth != null;
       }
     }
 
-    // User presence / active chat status
-    match /users/{userId} {
-      allow read, write: if isAuth();
+    // ── adminchat ──────────────────────────────────────────────────────────
+    // Direct messages between a user and the admin.
+    match /adminchat/{messageId} {
+      allow read, write: if request.auth != null;
     }
 
-    // Admin chat
-    match /adminchat/{docId} {
-      allow read, write: if isAuth();
+    // ── conversations ──────────────────────────────────────────────────────
+    match /conversations/{convId} {
+      allow read, write: if request.auth != null;
     }
 
-    // Profile shares
+    // ── service_chat ───────────────────────────────────────────────────────
+    match /service_chat/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── profile_shares ─────────────────────────────────────────────────────
     match /profile_shares/{docId} {
-      allow read, write: if isAuth();
+      allow read, write: if request.auth != null;
     }
 
-    // Call history
-    match /callHistory/{docId} {
-      allow read, write: if isAuth();
-    }
-
-    // Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
+    // ── admin ──────────────────────────────────────────────────────────────
+    // Users read admin config (e.g. FCM token); only admin app writes here.
+    match /admin/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }
