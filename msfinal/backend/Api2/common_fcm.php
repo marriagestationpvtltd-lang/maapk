@@ -23,7 +23,7 @@ function getAccessToken() {
  * @param bool   $is_call     When true, sets max priority and visibility for call notifications.
  */
 function sendFCM($fcm_token, $title, $body, $data = [], $channel_id = 'general_notifications', $is_call = false) {
-    $projectId = "digitallami1";
+    $projectId = "digitallamicomnp";
     $url = "https://fcm.googleapis.com/v1/projects/$projectId/messages:send";
 
     // Ensure all data values are strings (FCM v1 requirement).
