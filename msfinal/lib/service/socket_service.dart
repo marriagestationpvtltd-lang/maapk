@@ -34,6 +34,7 @@ class SocketService {
   final _newMessageCtrl      = StreamController<Map<String, dynamic>>.broadcast();
   final _messageEditedCtrl   = StreamController<Map<String, dynamic>>.broadcast();
   final _messageDeletedCtrl  = StreamController<Map<String, dynamic>>.broadcast();
+  final _messageLikedCtrl    = StreamController<Map<String, dynamic>>.broadcast();
   final _typingStartCtrl     = StreamController<Map<String, dynamic>>.broadcast();
   final _typingStopCtrl      = StreamController<Map<String, dynamic>>.broadcast();
   final _messagesReadCtrl    = StreamController<Map<String, dynamic>>.broadcast();
@@ -46,6 +47,7 @@ class SocketService {
   Stream<Map<String, dynamic>> get onNewMessage      => _newMessageCtrl.stream;
   Stream<Map<String, dynamic>> get onMessageEdited   => _messageEditedCtrl.stream;
   Stream<Map<String, dynamic>> get onMessageDeleted  => _messageDeletedCtrl.stream;
+  Stream<Map<String, dynamic>> get onMessageLiked    => _messageLikedCtrl.stream;
   Stream<Map<String, dynamic>> get onTypingStart     => _typingStartCtrl.stream;
   Stream<Map<String, dynamic>> get onTypingStop      => _typingStopCtrl.stream;
   Stream<Map<String, dynamic>> get onMessagesRead    => _messagesReadCtrl.stream;
@@ -102,6 +104,10 @@ class SocketService {
 
     _socket!.on('message_deleted', (data) {
       _messageDeletedCtrl.add(_toMap(data));
+    });
+
+    _socket!.on('message_liked', (data) {
+      _messageLikedCtrl.add(_toMap(data));
     });
 
     _socket!.on('typing_start', (data) {
@@ -201,6 +207,10 @@ class SocketService {
 
   void markRead(String chatRoomId, String userId) {
     _socket?.emit('mark_read', {'chatRoomId': chatRoomId, 'userId': userId});
+  }
+
+  void toggleLike(String chatRoomId, String messageId) {
+    _socket?.emit('toggle_like', {'chatRoomId': chatRoomId, 'messageId': messageId});
   }
 
   void editMessage(String chatRoomId, String messageId, String newMessage) {
@@ -351,6 +361,7 @@ class SocketService {
     _newMessageCtrl.close();
     _messageEditedCtrl.close();
     _messageDeletedCtrl.close();
+    _messageLikedCtrl.close();
     _typingStartCtrl.close();
     _typingStopCtrl.close();
     _messagesReadCtrl.close();

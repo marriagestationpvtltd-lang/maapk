@@ -50,7 +50,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   bool _isLoadingMore = false;
   int _cachedTotalRooms = 0;
   final ScrollController _scrollController = ScrollController();
-  StreamSubscription<QuerySnapshot>? _adminChatSubscription;
+  StreamSubscription? _adminChatSubscription;
   String _adminLastMessage = '';
   DateTime? _adminLastMessageTime;
   int _adminUnreadCount = 0;
@@ -70,7 +70,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   // Admin online status
   bool _adminOnline = false;
-  StreamSubscription<DocumentSnapshot>? _adminStatusSubscription;
+  StreamSubscription? _adminStatusSubscription;
 
   @override
   void initState() {
@@ -204,104 +204,81 @@ class _ChatListScreenState extends State<ChatListScreen>
     }
   }
 
-  Future<void> _startAdminChatListener(String uid) async {
+  /// Start admin chat summary listener via Socket.IO chat_rooms_update.
+  /// The admin chat room appears in the user's room list since both users
+  /// are participants in the same chat_rooms MySQL table entry.
+  void _startAdminChatListener(String uid) {
     _adminChatSubscription?.cancel();
+    if (mounted) setState(() => _adminLoading = true);
 
-    if (mounted) {
-      setState(() {
-        _adminLoading = true;
-      });
+    // Fetch once to show initial state
+    SocketService().getChatRooms(uid).then((rooms) {
+      if (!mounted) return;
+      _updateAdminRoomInfo(uid, rooms);
+    }).catchError((_) {
+      if (mounted) setState(() => _adminLoading = false);
+    });
+
+    // Subscribe to real-time updates — already done via _startChatRoomsUpdateListener()
+    // Re-use the same stream: filter for admin room in onChatRoomsUpdate.
+    _adminChatSubscription = SocketService().onChatRoomsUpdate.listen((rooms) {
+      if (!mounted) return;
+      _updateAdminRoomInfo(uid, rooms);
+    });
+  }
+
+  void _updateAdminRoomInfo(String uid, List<dynamic> rooms) {
+    // Admin chat room id = sorted join of uid and _adminUserId
+    final ids = [uid, _adminUserId]..sort();
+    final adminRoomId = ids.join('_');
+
+    final adminRoom = rooms.cast<Map<String, dynamic>>().where(
+      (r) => r['chatRoomId'] == adminRoomId
+    ).firstOrNull;
+
+    if (adminRoom == null) {
+      if (mounted) setState(() { _adminLoading = false; });
+      return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final lastSeenString = prefs.getString('admin_chat_last_seen_$uid');
-    final DateTime? lastSeen = lastSeenString != null
-        ? DateTime.tryParse(lastSeenString)
-        : null;
+    final String msgType = adminRoom['lastMessageType']?.toString() ?? 'text';
+    String preview;
+    if (msgType == 'image') {
+      preview = '📷 Image';
+    } else if (msgType == 'voice') {
+      preview = '🎤 Voice note';
+    } else if (msgType == 'doc') {
+      preview = '📄 Document';
+    } else if (msgType == 'profile_card') {
+      preview = '👤 Profile Card';
+    } else if (msgType == 'report') {
+      preview = '🚩 Profile Report';
+    } else {
+      preview = adminRoom['lastMessage']?.toString() ?? '';
+    }
 
-    _adminChatSubscription = FirebaseFirestore.instance
-        .collection('adminchat')
-        .where('senderid', whereIn: [uid, _adminUserId])
-        .where('receiverid', whereIn: [uid, _adminUserId])
-        // orderBy omitted intentionally — avoids composite index requirement;
-        // we find the latest message by sorting client-side below.
-        .snapshots()
-        .listen((snapshot) {
-      if (!mounted) return;
+    final dynamic lastMsgTime = adminRoom['lastMessageTime'];
+    DateTime? latestTime;
+    if (lastMsgTime is String) latestTime = DateTime.tryParse(lastMsgTime);
 
-      if (snapshot.docs.isEmpty) {
-        setState(() {
-          _adminLastMessage = '';
-          _adminLastMessageTime = null;
-          _adminUnreadCount = 0;
-          _adminLoading = false;
-        });
-        return;
-      }
+    final int unread = (adminRoom['unreadCount'] as num?)?.toInt() ?? 0;
 
-      // Sort client-side to find the most-recent message.
-      final sortedDocs = List.from(snapshot.docs)
-        ..sort((a, b) {
-          final aTs = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
-          final bTs = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
-          if (aTs == null && bTs == null) return 0;
-          if (aTs == null) return 1;
-          if (bTs == null) return -1;
-          return bTs.compareTo(aTs); // descending
-        });
-
-      final Map<String, dynamic> latestData =
-          sortedDocs.first.data() as Map<String, dynamic>;
-      final Timestamp? ts = latestData['timestamp'] as Timestamp?;
-      final DateTime? latestTime = ts?.toDate();
-      final String type = latestData['type']?.toString() ?? 'text';
-
-      String preview;
-      if (type == 'image') {
-        preview = '📷 Image';
-      } else if (type == 'voice') {
-        preview = '🎤 Voice note';
-      } else if (type == 'doc') {
-        preview = '📄 Document';
-      } else {
-        preview = latestData['message']?.toString() ?? '';
-      }
-
-      int unread = 0;
-      if (lastSeen != null) {
-        unread = snapshot.docs.where((doc) {
-          final Map<String, dynamic> data =
-              doc.data() as Map<String, dynamic>;
-          final Timestamp? timestamp = data['timestamp'] as Timestamp?;
-          final DateTime? time = timestamp?.toDate();
-          final String receiverId = data['receiverid']?.toString() ?? '';
-          return receiverId == uid &&
-              time != null &&
-              time.isAfter(lastSeen);
-        }).length;
-      } else {
-        unread = snapshot.docs
-            .where((doc) =>
-                (doc.data() as Map<String, dynamic>)['receiverid']
-                    ?.toString() ==
-                uid)
-            .length;
-      }
-
+    if (mounted) {
       setState(() {
         _adminLastMessage = preview;
         _adminLastMessageTime = latestTime;
         _adminUnreadCount = unread;
         _adminLoading = false;
       });
-    });
+    }
   }
 
   Future<void> _markAdminChatSeen() async {
     if (userId.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        'admin_chat_last_seen_$userId', DateTime.now().toIso8601String());
+    // Mark via Socket.IO
+    final ids = [userId, _adminUserId]..sort();
+    final adminRoomId = ids.join('_');
+    SocketService().markRead(adminRoomId, userId);
     if (mounted) {
       setState(() {
         _adminUnreadCount = 0;
@@ -361,25 +338,16 @@ class _ChatListScreenState extends State<ChatListScreen>
     });
   }
 
-  /// Listen to admin's Firestore users document for real-time online status.
+  /// Listen to Socket.IO user_status_change for admin's online status.
   void _startAdminStatusListener() {
     _adminStatusSubscription?.cancel();
-    _adminStatusSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .doc(_adminUserId)
-        .snapshots()
-        .listen((doc) {
+    _adminStatusSubscription =
+        SocketService().onUserStatusChange.listen((data) {
       if (!mounted) return;
-      if (!doc.exists) return;
-      final data = doc.data() as Map<String, dynamic>;
+      final uid = data['userId']?.toString() ?? '';
+      if (uid != _adminUserId) return;
       final bool online = data['isOnline'] == true;
-      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-      final DateTime? lastSeen = lastSeenTs?.toDate();
-      final bool recentlySeen = lastSeen != null &&
-          DateTime.now().difference(lastSeen).inMinutes < 5;
-      setState(() {
-        _adminOnline = online || recentlySeen;
-      });
+      setState(() { _adminOnline = online; });
     });
   }
 

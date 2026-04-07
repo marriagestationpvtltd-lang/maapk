@@ -3079,27 +3079,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       final adminUserId = AppConstants.adminUserId;
       final reportMessage =
           'I have reported this profile.\n\nReason: $reason\n\nReported Profile ID: ${widget.receiverId}';
-
-      await _firestore.collection('adminchat').add({
-        'message': reportMessage,
-        'type': 'report',
-        'senderid': widget.currentUserId,
-        'receiverid': adminUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'liked': false,
-        'replyto': '',
+      final reportPayload = jsonEncode({
+        'reportMessage': reportMessage,
         'reportedUserId': widget.receiverId,
         'reportedUserName': widget.receiverName,
         'reportReason': reason,
       });
 
-      final conversationId =
-          AppConstants.conversationId(widget.currentUserId, adminUserId);
-      await _firestore.collection('conversations').doc(conversationId).set({
-        'participants': [widget.currentUserId, adminUserId],
-        'lastMessage': 'Profile Report: $reason',
-        'lastTimestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final List<String> ids = [widget.currentUserId, adminUserId]..sort();
+      final adminChatRoomId = ids.join('_');
+      _socketService.sendMessage(
+        chatRoomId: adminChatRoomId,
+        senderId: widget.currentUserId,
+        receiverId: adminUserId,
+        message: reportPayload,
+        messageType: 'report',
+        messageId: _uuid.v4(),
+        user1Name: widget.currentUserName,
+        user2Name: 'Admin',
+        user1Image: widget.currentUserImage,
+        user2Image: '',
+      );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -38,9 +38,16 @@ const pool = mysql.createPool({
   charset:            'utf8mb4',
 });
 
-// Test DB connection on startup
+// Test DB connection on startup and run safe schema migrations
 pool.getConnection()
-  .then(conn => { console.log('✅ MySQL connected'); conn.release(); })
+  .then(async conn => {
+    console.log('✅ MySQL connected');
+    // Add `liked` column to chat_messages if not present (idempotent migration)
+    await conn.query(
+      `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS liked TINYINT(1) NOT NULL DEFAULT 0`
+    ).catch(() => {/* MySQL <8 / MariaDB fallback - ignore if column exists */});
+    conn.release();
+  })
   .catch(err => { console.error('❌ MySQL connection failed:', err.message); });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -124,8 +131,8 @@ async function saveMessage(msg) {
   await pool.query(
     `INSERT INTO chat_messages
        (message_id, chat_room_id, sender_id, receiver_id, message, message_type,
-        is_read, is_delivered, replied_to, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        is_read, is_delivered, replied_to, created_at, liked)
+     VALUES (?,?,?,?,?,?,?,?,?,?,0)`,
     [
       msg.messageId,
       msg.chatRoomId,
@@ -287,6 +294,7 @@ function toMessageMap(row) {
     editedAt:              row.edited_at ? row.edited_at.toISOString() : null,
     repliedTo:             row.replied_to ? JSON.parse(row.replied_to) : null,
     timestamp:             row.created_at ? row.created_at.toISOString() : null,
+    liked:                 row.liked === 1,
   };
 }
 
@@ -477,6 +485,32 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('delete_message error:', err.message);
       socket.emit('error', { message: 'Failed to delete message' });
+    }
+  });
+
+  // ── toggle_like ───────────────────────────────────────────────────────────
+  socket.on('toggle_like', async ({ chatRoomId, messageId }) => {
+    try {
+      if (!chatRoomId || !messageId) return;
+      // Flip the liked flag atomically
+      await pool.query(
+        `UPDATE chat_messages SET liked = IF(liked = 1, 0, 1)
+          WHERE message_id = ? AND chat_room_id = ?`,
+        [messageId, chatRoomId],
+      );
+      const [[row]] = await pool.query(
+        'SELECT liked FROM chat_messages WHERE message_id = ?',
+        [messageId],
+      );
+      if (row) {
+        io.to(chatRoomId).emit('message_liked', {
+          chatRoomId,
+          messageId,
+          liked: row.liked === 1,
+        });
+      }
+    } catch (err) {
+      console.error('toggle_like error:', err.message);
     }
   });
 
