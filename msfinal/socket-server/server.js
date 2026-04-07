@@ -244,8 +244,13 @@ async function deleteMessage({ chatRoomId, messageId, userId, deleteForEveryone 
       [messageId],
     );
     if (!rows.length) return;
-    const isSender = rows[0].sender_id.toString() === userId.toString();
+    const senderIdStr = rows[0].sender_id != null ? rows[0].sender_id.toString() : '';
+    const userIdStr   = userId != null ? userId.toString() : '';
+    const isSender    = senderIdStr === userIdStr;
+    // Use a strict whitelist to avoid any SQL injection risk from the field name.
     const field = isSender ? 'is_deleted_for_sender' : 'is_deleted_for_receiver';
+    const allowedFields = ['is_deleted_for_sender', 'is_deleted_for_receiver'];
+    if (!allowedFields.includes(field)) return; // should never happen, but guard anyway
     await pool.query(
       `UPDATE chat_messages SET ${field} = 1 WHERE message_id = ? AND chat_room_id = ?`,
       [messageId, chatRoomId],

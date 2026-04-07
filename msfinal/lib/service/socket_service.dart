@@ -7,7 +7,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 /// URL of the Node.js Socket.IO server.
-/// Change this to your deployed server's URL before building for production.
+/// ⚠️  IMPORTANT: Replace this with your actual deployed server URL before
+/// building for production. Example: 'https://socket.yourserver.com:3001'
 const String kSocketServerUrl = 'https://your-socket-server.com';
 
 /// REST endpoint for uploading chat media (images / voice).
@@ -24,6 +25,9 @@ class SocketService {
 
   IO.Socket? _socket;
   String? _connectedUserId;
+
+  /// Default timeout for Socket.IO request-response (ack) calls.
+  static const Duration kRequestTimeout = Duration(seconds: 15);
 
   // ── Stream controllers ────────────────────────────────────────────────────
 
@@ -235,7 +239,7 @@ class SocketService {
       },
     );
     // Timeout fallback
-    Future.delayed(const Duration(seconds: 15), () {
+    Future.delayed(kRequestTimeout, () {
       if (!completer.isCompleted) {
         completer.completeError(TimeoutException('get_messages timed out'));
       }
@@ -257,7 +261,7 @@ class SocketService {
         }
       },
     );
-    Future.delayed(const Duration(seconds: 15), () {
+    Future.delayed(kRequestTimeout, () {
       if (!completer.isCompleted) completer.complete([]);
     });
     return completer.future;

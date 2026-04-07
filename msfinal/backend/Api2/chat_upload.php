@@ -49,6 +49,16 @@ $allowedMimeTypes = [
     'voice' => ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/wav', 'audio/x-m4a'],
 ];
 
+// Validate file extension FIRST before inspecting content
+$ext      = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
+$safeExts = ['image' => ['jpg','jpeg','png','gif','webp'], 'voice' => ['mp3','mp4','ogg','webm','aac','wav','m4a']];
+if (!in_array($ext, $safeExts[$type])) {
+    http_response_code(400);
+    echo json_encode(['error' => 'File extension not allowed: ' . $ext]);
+    exit;
+}
+
+// Validate MIME type by inspecting actual file content
 $finfo    = new finfo(FILEINFO_MIME_TYPE);
 $mimeType = $finfo->file($_FILES['file']['tmp_name']);
 
@@ -74,13 +84,7 @@ if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
 
-// Generate unique filename
-$ext      = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
-$safeExts = ['image' => ['jpg','jpeg','png','gif','webp'], 'voice' => ['mp3','mp4','ogg','webm','aac','wav','m4a']];
-if (!in_array($ext, $safeExts[$type])) {
-    $ext = ($type === 'image') ? 'jpg' : 'mp3';
-}
-
+// Generate unique filename (extension already validated above)
 $filename    = sprintf('%s_%s.%s', $userId, bin2hex(random_bytes(8)), $ext);
 $destination = $uploadDir . $filename;
 
