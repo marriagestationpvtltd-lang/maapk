@@ -9,6 +9,7 @@ import 'package:ms2026/Notification/notification_inbox_service.dart';
 import 'package:ms2026/pushnotification/pushservice.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../Auth/Screen/signupscreen10.dart';
 import '../Chat/adminchat.dart';
@@ -17,6 +18,7 @@ import '../Package/PackageScreen.dart';
 import '../constant/constant.dart';
 import '../main.dart';
 import '../otherenew/service.dart';
+import '../service/socket_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/time_utils.dart';
 import 'modelfile.dart';
@@ -346,29 +348,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final reportMessage =
           'I have reported this profile.\n\nReason: $reason\n\nReported Profile ID: ${widget.userId}';
-
-      await FirebaseFirestore.instance.collection('adminchat').add({
-        'message': reportMessage,
-        'type': 'report',
-        'senderid': currentUserId,
-        'receiverid': adminUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'liked': false,
-        'replyto': '',
+      final reportPayload = jsonEncode({
+        'reportMessage': reportMessage,
         'reportedUserId': widget.userId,
         'reportedUserName': reportedUserName,
         'reportReason': reason,
       });
 
-      final conversationId = AppConstants.conversationId(currentUserId, adminUserId);
-      await FirebaseFirestore.instance
-          .collection('conversations')
-          .doc(conversationId)
-          .set({
-        'participants': [currentUserId, adminUserId],
-        'lastMessage': 'Profile Report: $reason',
-        'lastTimestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final List<String> ids = [currentUserId, adminUserId]..sort();
+      final adminChatRoomId = ids.join('_');
+      SocketService().sendMessage(
+        chatRoomId: adminChatRoomId,
+        senderId: currentUserId,
+        receiverId: adminUserId,
+        message: reportPayload,
+        messageType: 'report',
+        messageId: const Uuid().v4(),
+        user1Name: userData['firstName']?.toString() ?? '',
+        user2Name: 'Admin',
+        user1Image: userData['image']?.toString() ?? '',
+        user2Image: '',
+      );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

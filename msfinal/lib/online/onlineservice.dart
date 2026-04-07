@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show unawaited;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../service/socket_service.dart';
 
 class OnlineStatusService {
   static final OnlineStatusService _instance = OnlineStatusService._internal();
@@ -11,7 +12,7 @@ class OnlineStatusService {
   OnlineStatusService._internal();
 
   Timer? _timer;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String? _currentUserId;
 
   final String _apiUrl =
       "https://digitallami.com/request/update_last_login.php";
@@ -31,12 +32,12 @@ class OnlineStatusService {
   /// Restart the periodic timer (also used after errors).
   void _restartTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       _updateNow();
     });
   }
 
-  /// 🔄 Update lastLogin API and Firestore online status
+  /// 🔄 Update online status via Socket.IO and HTTP API
   Future<void> _updateNow() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -48,11 +49,13 @@ class OnlineStatusService {
       final userId = userData["id"].toString();
       if (userId.isEmpty || userId == 'null') return;
 
-      // Update Firestore online status first (lower latency, drives UI)
-      await _firestore.collection('users').doc(userId).set({
-        'isOnline': true,
-        'lastSeen': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      _currentUserId = userId;
+
+      // Connect to Socket.IO if not already connected
+      final socketService = SocketService();
+      if (!socketService.isConnected) {
+        socketService.connect(userId);
+      }
 
       // Update HTTP API (best-effort, non-blocking for UI)
       unawaited(http.post(
@@ -69,7 +72,7 @@ class OnlineStatusService {
     }
   }
 
-  /// Set user offline in Firestore (call when app goes to background)
+  /// Set user offline (call when app goes to background)
   Future<void> setOffline() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -81,10 +84,9 @@ class OnlineStatusService {
       final userId = userData["id"].toString();
       if (userId.isEmpty || userId == 'null') return;
 
-      await _firestore.collection('users').doc(userId).set({
-        'isOnline': false,
-        'lastSeen': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      // Disconnect socket so server registers the offline state
+      SocketService().disconnect();
+
     } catch (e) {
       print("❌ Set offline error: $e");
     }

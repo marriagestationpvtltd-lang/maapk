@@ -22,6 +22,7 @@ import '../pushnotification/pushservice.dart';
 import '../Calling/call_history_screen.dart';
 import 'ChatdetailsScreen.dart';
 import 'adminchat.dart';
+import '../service/socket_service.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -49,7 +50,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   bool _isLoadingMore = false;
   int _cachedTotalRooms = 0;
   final ScrollController _scrollController = ScrollController();
-  StreamSubscription<QuerySnapshot>? _adminChatSubscription;
+  StreamSubscription? _adminChatSubscription;
   String _adminLastMessage = '';
   DateTime? _adminLastMessageTime;
   int _adminUnreadCount = 0;
@@ -57,18 +58,19 @@ class _ChatListScreenState extends State<ChatListScreen>
   static const String _adminUserId = '1';
   static const String _adminDisplayName = 'Admin Support';
 
-  // Chat rooms stream stored once to prevent blinking on rebuilds
-  Stream<QuerySnapshot>? _chatRoomsStream;
-  List<QueryDocumentSnapshot> _cachedRooms = [];
+  // Chat rooms list driven by Socket.IO
+  List<Map<String, dynamic>> _socketChatRooms = [];
+  bool _chatRoomsInitialized = false;
+  StreamSubscription? _chatRoomsUpdateSubscription;
 
   // Online status for chat participants
   final Map<String, bool> _onlineStatuses = {};
   final Map<String, DateTime?> _lastSeenTimes = {};
-  _CompositeSubscription? _onlineStatusSubscription;
+  StreamSubscription? _onlineStatusSubscription;
 
   // Admin online status
   bool _adminOnline = false;
-  StreamSubscription<DocumentSnapshot>? _adminStatusSubscription;
+  StreamSubscription? _adminStatusSubscription;
 
   @override
   void initState() {
@@ -84,6 +86,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     WidgetsBinding.instance.removeObserver(this);
     _adminChatSubscription?.cancel();
     _onlineStatusSubscription?.cancel();
+    _chatRoomsUpdateSubscription?.cancel();
     _adminStatusSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -96,22 +99,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       OnlineStatusService().setOffline();
     } else if (state == AppLifecycleState.resumed) {
       OnlineStatusService().start();
-      // Restart online status listeners so they are fresh after resume
       _startAdminStatusListener();
-      if (_cachedRooms.isNotEmpty) {
-        final participantIds = <String>{};
-        for (final doc in _cachedRooms) {
-          final data = doc.data() as Map<String, dynamic>;
-          final participants =
-              List<String>.from(data['participants'] ?? []);
-          for (final p in participants) {
-            if (p.trim() != userId.trim()) participantIds.add(p.trim());
-          }
-        }
-        if (participantIds.isNotEmpty) {
-          _startOnlineStatusListeners(participantIds.toList());
-        }
-      }
+      _startOnlineStatusListeners();
     }
   }
 
@@ -215,104 +204,82 @@ class _ChatListScreenState extends State<ChatListScreen>
     }
   }
 
-  Future<void> _startAdminChatListener(String uid) async {
+  /// Start admin chat summary listener via Socket.IO chat_rooms_update.
+  /// The admin chat room appears in the user's room list since both users
+  /// are participants in the same chat_rooms MySQL table entry.
+  void _startAdminChatListener(String uid) {
     _adminChatSubscription?.cancel();
+    if (mounted) setState(() => _adminLoading = true);
 
-    if (mounted) {
-      setState(() {
-        _adminLoading = true;
-      });
+    // Fetch once to show initial state
+    SocketService().getChatRooms(uid).then((rooms) {
+      if (!mounted) return;
+      _updateAdminRoomInfo(uid, rooms);
+    }).catchError((_) {
+      if (mounted) setState(() => _adminLoading = false);
+    });
+
+    // Subscribe to real-time updates — already done via _startChatRoomsUpdateListener()
+    // Re-use the same stream: filter for admin room in onChatRoomsUpdate.
+    _adminChatSubscription = SocketService().onChatRoomsUpdate.listen((rooms) {
+      if (!mounted) return;
+      _updateAdminRoomInfo(uid, rooms);
+    });
+  }
+
+  void _updateAdminRoomInfo(String uid, List<dynamic> rooms) {
+    // Admin chat room id = sorted join of uid and _adminUserId
+    final ids = [uid, _adminUserId]..sort();
+    final adminRoomId = ids.join('_');
+
+    final adminRoomList = rooms.cast<Map<String, dynamic>>().where(
+      (r) => r['chatRoomId'] == adminRoomId
+    ).toList();
+
+    if (adminRoomList.isEmpty) {
+      if (mounted) setState(() { _adminLoading = false; });
+      return;
+    }
+    final adminRoom = adminRoomList.first;
+
+    final String msgType = adminRoom['lastMessageType']?.toString() ?? 'text';
+    String preview;
+    if (msgType == 'image') {
+      preview = '📷 Image';
+    } else if (msgType == 'voice') {
+      preview = '🎤 Voice note';
+    } else if (msgType == 'doc') {
+      preview = '📄 Document';
+    } else if (msgType == 'profile_card') {
+      preview = '👤 Profile Card';
+    } else if (msgType == 'report') {
+      preview = '🚩 Profile Report';
+    } else {
+      preview = adminRoom['lastMessage']?.toString() ?? '';
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final lastSeenString = prefs.getString('admin_chat_last_seen_$uid');
-    final DateTime? lastSeen = lastSeenString != null
-        ? DateTime.tryParse(lastSeenString)
-        : null;
+    final dynamic lastMsgTime = adminRoom['lastMessageTime'];
+    DateTime? latestTime;
+    if (lastMsgTime is String) latestTime = DateTime.tryParse(lastMsgTime);
 
-    _adminChatSubscription = FirebaseFirestore.instance
-        .collection('adminchat')
-        .where('senderid', whereIn: [uid, _adminUserId])
-        .where('receiverid', whereIn: [uid, _adminUserId])
-        // orderBy omitted intentionally — avoids composite index requirement;
-        // we find the latest message by sorting client-side below.
-        .snapshots()
-        .listen((snapshot) {
-      if (!mounted) return;
+    final int unread = (adminRoom['unreadCount'] as num?)?.toInt() ?? 0;
 
-      if (snapshot.docs.isEmpty) {
-        setState(() {
-          _adminLastMessage = '';
-          _adminLastMessageTime = null;
-          _adminUnreadCount = 0;
-          _adminLoading = false;
-        });
-        return;
-      }
-
-      // Sort client-side to find the most-recent message.
-      final sortedDocs = List.from(snapshot.docs)
-        ..sort((a, b) {
-          final aTs = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
-          final bTs = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
-          if (aTs == null && bTs == null) return 0;
-          if (aTs == null) return 1;
-          if (bTs == null) return -1;
-          return bTs.compareTo(aTs); // descending
-        });
-
-      final Map<String, dynamic> latestData =
-          sortedDocs.first.data() as Map<String, dynamic>;
-      final Timestamp? ts = latestData['timestamp'] as Timestamp?;
-      final DateTime? latestTime = ts?.toDate();
-      final String type = latestData['type']?.toString() ?? 'text';
-
-      String preview;
-      if (type == 'image') {
-        preview = '📷 Image';
-      } else if (type == 'voice') {
-        preview = '🎤 Voice note';
-      } else if (type == 'doc') {
-        preview = '📄 Document';
-      } else {
-        preview = latestData['message']?.toString() ?? '';
-      }
-
-      int unread = 0;
-      if (lastSeen != null) {
-        unread = snapshot.docs.where((doc) {
-          final Map<String, dynamic> data =
-              doc.data() as Map<String, dynamic>;
-          final Timestamp? timestamp = data['timestamp'] as Timestamp?;
-          final DateTime? time = timestamp?.toDate();
-          final String receiverId = data['receiverid']?.toString() ?? '';
-          return receiverId == uid &&
-              time != null &&
-              time.isAfter(lastSeen);
-        }).length;
-      } else {
-        unread = snapshot.docs
-            .where((doc) =>
-                (doc.data() as Map<String, dynamic>)['receiverid']
-                    ?.toString() ==
-                uid)
-            .length;
-      }
-
+    if (mounted) {
       setState(() {
         _adminLastMessage = preview;
         _adminLastMessageTime = latestTime;
         _adminUnreadCount = unread;
         _adminLoading = false;
       });
-    });
+    }
   }
 
   Future<void> _markAdminChatSeen() async {
     if (userId.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        'admin_chat_last_seen_$userId', DateTime.now().toIso8601String());
+    // Mark via Socket.IO
+    final ids = [userId, _adminUserId]..sort();
+    final adminRoomId = ids.join('_');
+    SocketService().markRead(adminRoomId, userId);
     if (mounted) {
       setState(() {
         _adminUnreadCount = 0;
@@ -320,90 +287,86 @@ class _ChatListScreenState extends State<ChatListScreen>
     }
   }
 
-  /// Initialise the chat rooms stream once so rebuilds don't create a new
-  /// stream (which causes a brief CircularProgressIndicator blink).
+  /// Initialise chat rooms via Socket.IO and subscribe to real-time updates.
   void _initChatRoomsStream() {
     if (userId.isEmpty) return;
-    final FirebaseService firebaseService = FirebaseService();
-    setState(() {
-      _chatRoomsStream = firebaseService.getUserChatRooms(userId);
+    final socketService = SocketService();
+    if (!socketService.isConnected) socketService.connect(userId);
+    socketService.getChatRooms(userId).then((rooms) {
+      if (!mounted) return;
+      final parsedRooms =
+          rooms.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+      int totalUnread = 0;
+      int unreadConvs = 0;
+      for (final room in parsedRooms) {
+        final int unread = (room['unreadCount'] as num?)?.toInt() ?? 0;
+        totalUnread += unread;
+        if (unread > 0) unreadConvs++;
+      }
+      setState(() {
+        _socketChatRooms = parsedRooms;
+        _cachedTotalRooms = _socketChatRooms.length;
+        _chatRoomsInitialized = true;
+        _totalUnreadCount = totalUnread;
+        _totalUnreadConversations = unreadConvs;
+      });
+      _startChatRoomsUpdateListener();
+      _startOnlineStatusListeners();
     });
   }
 
-  /// Listen to admin's Firestore users document for real-time online status.
+  /// Subscribe to real-time chat room list updates from Socket.IO.
+  void _startChatRoomsUpdateListener() {
+    _chatRoomsUpdateSubscription?.cancel();
+    _chatRoomsUpdateSubscription =
+        SocketService().onChatRoomsUpdate.listen((rooms) {
+      if (!mounted) return;
+      final parsedRooms =
+          rooms.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+      int totalUnread = 0;
+      int unreadConvs = 0;
+      for (final room in parsedRooms) {
+        final int unread = (room['unreadCount'] as num?)?.toInt() ?? 0;
+        totalUnread += unread;
+        if (unread > 0) unreadConvs++;
+      }
+      setState(() {
+        _socketChatRooms = parsedRooms;
+        _cachedTotalRooms = _socketChatRooms.length;
+        _totalUnreadCount = totalUnread;
+        _totalUnreadConversations = unreadConvs;
+      });
+    });
+  }
+
+  /// Listen to Socket.IO user_status_change for admin's online status.
   void _startAdminStatusListener() {
     _adminStatusSubscription?.cancel();
-    _adminStatusSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .doc(_adminUserId)
-        .snapshots()
-        .listen((doc) {
+    _adminStatusSubscription =
+        SocketService().onUserStatusChange.listen((data) {
       if (!mounted) return;
-      if (!doc.exists) return;
-      final data = doc.data() as Map<String, dynamic>;
+      final uid = data['userId']?.toString() ?? '';
+      if (uid != _adminUserId) return;
       final bool online = data['isOnline'] == true;
-      final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-      final DateTime? lastSeen = lastSeenTs?.toDate();
-      final bool recentlySeen = lastSeen != null &&
-          DateTime.now().difference(lastSeen).inMinutes < 5;
-      setState(() {
-        _adminOnline = online || recentlySeen;
-      });
+      setState(() { _adminOnline = online; });
     });
   }
 
-  /// Listen to Firestore for online status of all chat participants.
-  /// Handles batching for participants exceeding Firestore's 30-item whereIn limit.
-  void _startOnlineStatusListeners(List<String> participantIds) {
-    if (participantIds.isEmpty) return;
+  /// Listen to Socket.IO user-status events and update per-participant maps.
+  void _startOnlineStatusListeners() {
     _onlineStatusSubscription?.cancel();
-
-    // Split into batches of 30 (Firestore whereIn limit).
-    const int batchSize = 30;
-    final batches = <List<String>>[];
-    for (int i = 0; i < participantIds.length; i += batchSize) {
-      batches.add(participantIds.sublist(
-          i, (i + batchSize).clamp(0, participantIds.length)));
-    }
-
-    // Merge results from all batches using a StreamGroup-like approach with
-    // manual merge into _onlineStatuses.
-    final merged = <String, bool>{};
-    final mergedLastSeen = <String, DateTime?>{};
-    int pendingBatches = batches.length;
-    final subscriptions = <StreamSubscription<QuerySnapshot>>[];
-
-    for (final batch in batches) {
-      final sub = FirebaseFirestore.instance
-          .collection('users')
-          .where(FieldPath.documentId, whereIn: batch)
-          .snapshots()
-          .listen((snapshot) {
-        if (!mounted) return;
-        for (final doc in snapshot.docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          final bool online = data['isOnline'] == true;
-          final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-          final DateTime? lastSeen = lastSeenTs?.toDate();
-          final bool recentlySeen = lastSeen != null &&
-              DateTime.now().difference(lastSeen).inMinutes < 5;
-          merged[doc.id] = online || recentlySeen;
-          mergedLastSeen[doc.id] = lastSeen;
-        }
-        setState(() {
-          _onlineStatuses
-            ..clear()
-            ..addAll(merged);
-          _lastSeenTimes
-            ..clear()
-            ..addAll(mergedLastSeen);
-        });
+    _onlineStatusSubscription =
+        SocketService().onUserStatusChange.listen((data) {
+      if (!mounted) return;
+      final uid = data['userId']?.toString() ?? '';
+      if (uid.isEmpty) return;
+      final bool online = data['isOnline'] == true;
+      final DateTime? lastSeen = SocketService.parseTimestamp(data['lastSeen']);
+      setState(() {
+        _onlineStatuses[uid] = online;
+        _lastSeenTimes[uid] = lastSeen;
       });
-      subscriptions.add(sub);
-    }
-
-    // Replace the single subscription with a composite cancel.
-    _onlineStatusSubscription = _CompositeSubscription(subscriptions);
+    });
   }
 
   String _formatTime(DateTime? time) {
@@ -1193,112 +1156,42 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildChatListWithDebug() {
-    // Use the pre-initialised stream so rebuilds don't create a new connection.
-    if (_chatRoomsStream == null) {
-      return _cachedRooms.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFF90E18)))
-          : _buildRoomsList(_cachedRooms);
+    if (!_chatRoomsInitialized) {
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFFF90E18)));
     }
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: _chatRoomsStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error, color: Colors.red, size: 48),
-                const SizedBox(height: 16),
-                Text('Error: ${snapshot.error}'),
-              ],
+    // Sort client-side by lastMessageTime descending.
+    final chatRooms = List<Map<String, dynamic>>.from(_socketChatRooms)
+      ..sort((a, b) {
+        final aTime = SocketService.parseTimestamp(a['lastMessageTime']);
+        final bTime = SocketService.parseTimestamp(b['lastMessageTime']);
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
+
+    if (chatRooms.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No conversations yet',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        // While waiting: show cached rooms if available to avoid blinking.
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          if (_cachedRooms.isNotEmpty) {
-            return _buildRoomsList(_cachedRooms);
-          }
-          return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFF90E18)));
-        }
-
-        // Sort client-side by lastMessageTime descending (avoids composite index).
-        final chatRooms = List<QueryDocumentSnapshot>.from(snapshot.data!.docs)
-          ..sort((a, b) {
-            final aTs = (a.data() as Map<String, dynamic>)['lastMessageTime'] as Timestamp?;
-            final bTs = (b.data() as Map<String, dynamic>)['lastMessageTime'] as Timestamp?;
-            if (aTs == null && bTs == null) return 0;
-            if (aTs == null) return 1;
-            if (bTs == null) return -1;
-            return bTs.compareTo(aTs);
-          });
-
-        // Cache rooms and start/refresh online-status listener.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          final participantIds = <String>{};
-          for (final doc in chatRooms) {
-            final data = doc.data() as Map<String, dynamic>;
-            final participants =
-                List<String>.from(data['participants'] ?? []);
-            for (final p in participants) {
-              if (p.trim() != userId.trim()) participantIds.add(p.trim());
-            }
-          }
-          // Calculate unread counts
-          int totalUnread = 0;
-          int unreadConversations = 0;
-          for (final doc in chatRooms) {
-            final data = doc.data() as Map<String, dynamic>;
-            final unreadCount =
-                Map<String, int>.from(data['unreadCount'] ?? {});
-            final myUnread = unreadCount[userId] ?? 0;
-            totalUnread += myUnread;
-            if (myUnread > 0) unreadConversations++;
-          }
-          if (_totalUnreadCount != totalUnread ||
-              _totalUnreadConversations != unreadConversations ||
-              _cachedTotalRooms != chatRooms.length ||
-              _cachedRooms.length != chatRooms.length) {
-            setState(() {
-              _cachedRooms = chatRooms;
-              _totalUnreadCount = totalUnread;
-              _totalUnreadConversations = unreadConversations;
-              _cachedTotalRooms = chatRooms.length;
-            });
-            if (participantIds.isNotEmpty) {
-              _startOnlineStatusListeners(participantIds.toList());
-            }
-          }
-        });
-
-        if (chatRooms.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.chat_bubble_outline,
-                    size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'No conversations yet',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return _buildRoomsList(chatRooms);
-      },
-    );
+    return _buildRoomsList(chatRooms);
   }
 
-  Widget _buildRoomsList(List<QueryDocumentSnapshot> chatRooms) {
+  Widget _buildRoomsList(List<Map<String, dynamic>> chatRooms) {
     final displayedRooms =
         chatRooms.sublist(0, _displayCount.clamp(0, chatRooms.length));
 
@@ -1320,8 +1213,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             );
           }
 
-          final chatRoom = displayedRooms[index];
-          final data = chatRoom.data() as Map<String, dynamic>;
+          final data = displayedRooms[index];
 
           final participants =
               List<String>.from(data['participants'] ?? []);
@@ -1333,16 +1225,14 @@ class _ChatListScreenState extends State<ChatListScreen>
               Map<String, String>.from(data['participantPrivacy'] ?? {});
           final participantPhotoRequests =
               Map<String, String>.from(data['participantPhotoRequests'] ?? {});
-          final unreadCount =
-              Map<String, int>.from(data['unreadCount'] ?? {});
+          final int unreadForMe =
+              (data['unreadCount'] as num?)?.toInt() ?? 0;
           final lastMessage = data['lastMessage'] ?? '';
-          final Timestamp? lastMessageTimestamp =
-              data['lastMessageTime'] as Timestamp?;
-          final DateTime? lastMessageTime = lastMessageTimestamp?.toDate();
+          final DateTime? lastMessageTime =
+              SocketService.parseTimestamp(data['lastMessageTime']);
           final lastMessageType = data['lastMessageType'] ?? 'text';
           final lastMessageSenderId =
               data['lastMessageSenderId'] ?? '';
-          final int unreadForMe = unreadCount[userId] ?? 0;
 
           // Find the OTHER participant (not me)
           String otherParticipantId = '';
@@ -1408,7 +1298,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatDetailScreen(
-                      chatRoomId: data['chatRoomId'] ?? chatRoom.id,
+                      chatRoomId: data['chatRoomId']?.toString() ?? '',
                       receiverId: otherParticipantId,
                       receiverName: otherPersonName,
                       receiverImage: resolvedOtherImage,
@@ -1735,16 +1625,3 @@ class _ChatListScreenState extends State<ChatListScreen>
 
 }
 
-/// Helper to group multiple [StreamSubscription]s and cancel them all at once.
-class _CompositeSubscription {
-  final List<StreamSubscription> _subscriptions;
-
-  _CompositeSubscription(this._subscriptions);
-
-  void cancel() {
-    for (final sub in _subscriptions) {
-      sub.cancel();
-    }
-    _subscriptions.clear();
-  }
-}

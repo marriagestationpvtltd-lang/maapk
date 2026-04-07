@@ -6,8 +6,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
@@ -17,7 +15,7 @@ import 'package:uuid/uuid.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 
-import '../Calling/OutgoingCall.dart';
+import '../service/socket_service.dart';
 import '../Calling/videocall.dart';
 import '../Calling/call_history_model.dart';
 import '../Calling/call_history_service.dart';
@@ -66,9 +64,8 @@ class ChatDetailScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatDetailScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  final SocketService _socketService = SocketService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final Uuid _uuid = Uuid();
 
   final TextEditingController _messageController = TextEditingController();
@@ -130,7 +127,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   bool _hasMoreMessages = true;
   static const int _messagesPerPage = 20;
   // Pagination cursor – only updated on first load and during loadMore (never on stream updates)
-  DocumentSnapshot? _lastDocument;
+  int _currentMessagePage = 1;
 
   // Call history variables
   List<CallHistory> _callHistory = [];
@@ -153,7 +150,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   // Receiver online status
   bool _isOtherUserOnline = false;
   DateTime? _otherUserLastSeen;
-  StreamSubscription<DocumentSnapshot>? _otherUserStatusSub;
+  StreamSubscription? _otherUserStatusSub;
   StreamSubscription? _audioPlayerStateSubscription;
   StreamSubscription? _audioPlayerPositionSubscription;
   StreamSubscription? _audioPlayerDurationSubscription;
@@ -290,97 +287,101 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
-  /// Subscribe to the messages stream. Only runs merge logic when Firestore
-  /// emits new data – not on every unrelated setState call.
   void _listenToMessages() {
-    _messagesSubscription = _firestore
-        .collection('chatRooms')
-        .doc(widget.chatRoomId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .limit(_messagesPerPage)
-        .snapshots()
-        .listen((snapshot) {
+    // Load initial page via Socket.IO request-response
+    _socketService.joinRoom(widget.chatRoomId);
+    _socketService.getMessages(widget.chatRoomId, page: 1, limit: _messagesPerPage).then((result) {
       if (!mounted) return;
+      final messages = List<Map<String, dynamic>>.from(
+        (result['messages'] as List? ?? []).map((m) => Map<String, dynamic>.from(m as Map)),
+      );
+      setState(() {
+        _isFirstLoad = false;
+        _cachedMessages = messages;
+        _hasMoreMessages = result['hasMore'] == true;
+        _currentMessagePage = 1;
+        _messagesCacheVersion++;
+      });
+      _scrollToBottom(jump: true);
+    }).catchError((e) {
+      debugPrint('Error loading messages: $e');
+      if (mounted) setState(() => _isFirstLoad = false);
+    });
 
-      final messages = snapshot.docs;
+    // Real-time new messages
+    _messagesSubscription = _socketService.onNewMessage.listen((data) {
+      if (!mounted) return;
+      if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
 
-      if (_isFirstLoad) {
-        final lastDoc = messages.isNotEmpty ? messages.last : null;
-        final newMessages = messages
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList()
-            .reversed
-            .toList();
+      final newMsg = Map<String, dynamic>.from(data);
+      // Normalise timestamp to DateTime for UI consistency
+      final ts = SocketService.parseTimestamp(newMsg['timestamp']);
+      if (ts != null) newMsg['timestamp'] = ts;
 
-        setState(() {
-          if (lastDoc != null) _lastDocument = lastDoc;
-          _isFirstLoad = false;
-          _cachedMessages = newMessages;
-          _messagesCacheVersion++;
-        });
+      final existingIdx = _cachedMessages.indexWhere(
+        (m) => m['messageId']?.toString() == newMsg['messageId']?.toString(),
+      );
+      final shouldScroll = _forceScrollToBottom || _isNearBottom();
 
-        // Jump instantly to the last message on first load (no animation).
-        _scrollToBottom(jump: true);
-      } else {
-        // Build a set of message IDs currently in the stream window.
-        final streamMsgIds = <String>{};
-        for (final doc in messages) {
-          final data = doc.data() as Map<String, dynamic>;
-          final id = data['messageId'] as String?;
-          if (id != null) streamMsgIds.add(id);
+      setState(() {
+        if (existingIdx >= 0) {
+          _cachedMessages[existingIdx] = newMsg;
+        } else {
+          _cachedMessages.add(newMsg);
         }
+        _messagesCacheVersion++;
+        if (_forceScrollToBottom) _forceScrollToBottom = false;
+      });
 
-        // Keep messages that are NOT in the stream (older paginated messages).
-        final olderMessages = _cachedMessages.where((m) {
-          final id = m['messageId'] as String?;
-          return id != null && !streamMsgIds.contains(id);
-        }).toList();
+      _syncVisibleIncomingMessagesAsRead(_cachedMessages);
+      if (shouldScroll) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
 
-        // Latest window from Firestore (reversed to ascending).
-        final streamMessages = messages
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList()
-            .reversed
-            .toList();
-
-        final newCache = [...olderMessages, ...streamMessages];
-
-        // Sort entire list chronologically (oldest first).
-        newCache.sort((a, b) {
-          final tsA = a['timestamp'];
-          final tsB = b['timestamp'];
-          if (tsA == null || tsB == null) return 0;
-          final dateA = tsA is Timestamp
-              ? tsA.toDate()
-              : tsA is DateTime
-                  ? tsA
-                  : DateTime.now();
-          final dateB = tsB is Timestamp
-              ? tsB.toDate()
-              : tsB is DateTime
-                  ? tsB
-                  : DateTime.now();
-          return dateA.compareTo(dateB);
-        });
-
-        final shouldScroll = _forceScrollToBottom || _isNearBottom();
-
+    // Listen for edits and deletes
+    _socketService.onMessageEdited.listen((data) {
+      if (!mounted) return;
+      if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
+      final idx = _cachedMessages.indexWhere(
+        (m) => m['messageId']?.toString() == data['messageId']?.toString(),
+      );
+      if (idx >= 0) {
         setState(() {
-          _cachedMessages = newCache;
+          _cachedMessages[idx] = {
+            ..._cachedMessages[idx],
+            'message':  data['newMessage'],
+            'isEdited': true,
+            'editedAt': data['editedAt'],
+          };
           _messagesCacheVersion++;
-          if (_forceScrollToBottom) _forceScrollToBottom = false;
         });
-        _syncVisibleIncomingMessagesAsRead(newCache);
+      }
+    });
 
-        if (shouldScroll) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
+    _socketService.onMessageDeleted.listen((data) {
+      if (!mounted) return;
+      if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
+      final msgId = data['messageId']?.toString();
+      if (data['deleteForEveryone'] == true) {
+        setState(() {
+          _cachedMessages.removeWhere((m) => m['messageId']?.toString() == msgId);
+          _messagesCacheVersion++;
+        });
+      } else {
+        final idx = _cachedMessages.indexWhere((m) => m['messageId']?.toString() == msgId);
+        if (idx >= 0) {
+          final isMine = data['userId']?.toString() == widget.currentUserId;
+          setState(() {
+            _cachedMessages[idx] = {
+              ..._cachedMessages[idx],
+              if (isMine) 'isDeletedForSender':   true,
+              if (!isMine) 'isDeletedForReceiver': true,
+            };
+            _messagesCacheVersion++;
           });
         }
       }
-    }, onError: (e) {
-      debugPrint('Error listening to messages: $e');
     });
   }
 
@@ -457,68 +458,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // ───────── TYPING INDICATOR ─────────
 
-  /// Listen to the `typing` map on the chatRoom document and update
-  /// [_isReceiverTyping] when the receiver's entry changes.
   void _listenToTypingStatus() {
-    _typingSubscription = _firestore
-        .collection('chatRooms')
-        .doc(widget.chatRoomId)
-        .snapshots()
-        .listen((snap) {
-      if (!snap.exists || !mounted) return;
-      final data = snap.data() as Map<String, dynamic>? ?? {};
-      final typingMap = data['typing'] as Map<String, dynamic>? ?? {};
+    _typingSubscription = _socketService.onTypingStart.listen((data) {
+      if (!mounted) return;
+      if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
+      if (data['userId']?.toString() != widget.receiverId) return;
+      if (!_isReceiverTyping) setState(() => _isReceiverTyping = true);
+      // Reset auto-clear timeout
+      _typingDebounce?.cancel();
+      _typingDebounce = Timer(Duration(seconds: _kTypingTimeoutSeconds), () {
+        if (mounted && _isReceiverTyping) setState(() => _isReceiverTyping = false);
+      });
+    });
 
-      // Consider receiver typing only if their timestamp is within last 5 seconds
-      final receiverTypingTs = typingMap[widget.receiverId];
-      bool typing = false;
-      if (receiverTypingTs is Timestamp) {
-        final diff = DateTime.now().difference(receiverTypingTs.toDate());
-        typing = diff.inSeconds < _kTypingTimeoutSeconds;
-      }
-      if (mounted && _isReceiverTyping != typing) {
-        setState(() => _isReceiverTyping = typing);
-      }
+    // Stop typing
+    _socketService.onTypingStop.listen((data) {
+      if (!mounted) return;
+      if (data['chatRoomId']?.toString() != widget.chatRoomId) return;
+      if (data['userId']?.toString() != widget.receiverId) return;
+      _typingDebounce?.cancel();
+      if (_isReceiverTyping) setState(() => _isReceiverTyping = false);
     });
   }
 
-  /// Listen to the receiver's online status in Firestore `users/{receiverId}`.
   void _startReceiverStatusListener() {
     _otherUserStatusSub?.cancel();
-    _otherUserStatusSub = _firestore
-        .collection('users')
-        .doc(widget.receiverId)
-        .snapshots()
-        .listen((doc) {
+    _otherUserStatusSub = _socketService.onUserStatusChange.listen((data) {
       if (!mounted) return;
-      bool online = false;
-      DateTime? lastSeen;
-      bool receiverViewingThisChat = false;
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        final bool isOnline = data['isOnline'] == true;
-        final Timestamp? lastSeenTs = data['lastSeen'] as Timestamp?;
-        final String activeChatRoomId =
-            data['activeChatRoomId']?.toString() ?? '';
-        lastSeen = lastSeenTs?.toDate();
-        final bool recentlySeen = lastSeen != null &&
-            DateTime.now().difference(lastSeen).inMinutes < 5;
-        online = isOnline || recentlySeen;
-        final bool activeChatRecentlyUpdated = lastSeen != null &&
-            DateTime.now().difference(lastSeen) <= _kActiveChatPresenceWindow;
-        receiverViewingThisChat = isOnline &&
-            activeChatRecentlyUpdated &&
-            activeChatRoomId == widget.chatRoomId;
-      }
-      if (_isOtherUserOnline != online ||
-          _otherUserLastSeen != lastSeen ||
-          _isReceiverViewingThisChat != receiverViewingThisChat) {
-        setState(() {
-          _isOtherUserOnline = online;
-          _otherUserLastSeen = lastSeen;
-          _isReceiverViewingThisChat = receiverViewingThisChat;
-        });
-      }
+      if (data['userId']?.toString() != widget.receiverId) return;
+      final bool online = data['isOnline'] == true;
+      final DateTime? lastSeen = SocketService.parseTimestamp(data['lastSeen']);
+      setState(() {
+        _isOtherUserOnline = online;
+        _otherUserLastSeen  = lastSeen;
+      });
     });
   }
 
@@ -528,17 +501,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   void _onTypingChanged() {
     _typingDebounce?.cancel();
-    _firestore.collection('chatRooms').doc(widget.chatRoomId).set(
-      {'typing': {widget.currentUserId: FieldValue.serverTimestamp()}},
-      SetOptions(merge: true),
-    );
+    _socketService.startTyping(widget.chatRoomId, widget.currentUserId);
     _typingDebounce = Timer(_kTypingDebounceDelay, _clearTyping);
   }
 
   void _clearTyping() {
-    _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-      'typing.${widget.currentUserId}': FieldValue.delete(),
-    }).catchError((_) {}); // ignore if doc doesn't exist yet
+    _socketService.stopTyping(widget.chatRoomId, widget.currentUserId);
   }
 
   // Backup incoming call listener so calls ring while the user is typing on
@@ -584,31 +552,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   Future<void> _setActiveChatPresence({required bool isActive}) async {
-    try {
-      final userRef = _firestore.collection('users').doc(widget.currentUserId);
-      if (isActive) {
-        await userRef.set({
-          'activeChatRoomId': widget.chatRoomId,
-          'activeChatPartnerId': widget.receiverId,
-        }, SetOptions(merge: true));
-        return;
-      }
-
-      await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(userRef);
-        final data = snapshot.data() as Map<String, dynamic>? ?? {};
-        if (data['activeChatRoomId']?.toString() != widget.chatRoomId) {
-          return;
-        }
-
-        transaction.set(userRef, {
-          'activeChatRoomId': FieldValue.delete(),
-          'activeChatPartnerId': FieldValue.delete(),
-        }, SetOptions(merge: true));
-      });
-    } catch (e) {
-      debugPrint('Error updating active chat presence: $e');
-    }
+    _socketService.setActiveChat(widget.currentUserId, widget.chatRoomId, isActive: isActive);
   }
 
   void _updateActiveChatPresence(bool isActive) {
@@ -621,17 +565,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   void _syncVisibleIncomingMessagesAsRead(List<Map<String, dynamic>> messages) {
     if (_isMarkingMessagesAsRead) return;
-
     final hasUnreadIncoming = messages.any((message) =>
         message['receiverId'] == widget.currentUserId &&
         message['isRead'] != true);
-
     if (!hasUnreadIncoming) return;
-
-    _isMarkingMessagesAsRead = true;
-    unawaited(_markMessagesAsReadInternal().whenComplete(() {
-      _isMarkingMessagesAsRead = false;
-    }));
+    _markMessagesAsRead();
   }
 
   // ───────── SCROLL TO REPLIED MESSAGE ─────────
@@ -684,6 +622,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _callHistorySubscription?.cancel();
     _callListenerSubscription?.cancel();
     _messagesSubscription?.cancel();
+    _socketService.leaveRoom(widget.chatRoomId);
     _clearTyping(); // Remove our typing entry on exit
     super.dispose();
   }
@@ -736,40 +675,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _markMessagesAsReadInternal() async {
     try {
-      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'unreadCount.${widget.currentUserId}': 0,
-      });
-
-      final unreadMessages = await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .where('receiverId', isEqualTo: widget.currentUserId)
-          .where('isRead', isEqualTo: false)
-          .get();
-
-      final batch = _firestore.batch();
-      for (final doc in unreadMessages.docs) {
-        batch.update(doc.reference, {'isRead': true, 'isDelivered': true});
-      }
-      await batch.commit();
-
-      // Also mark undelivered messages as delivered
-      final undeliveredMessages = await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .where('receiverId', isEqualTo: widget.currentUserId)
-          .where('isDelivered', isEqualTo: false)
-          .get();
-
-      if (undeliveredMessages.docs.isNotEmpty) {
-        final deliveredBatch = _firestore.batch();
-        for (final doc in undeliveredMessages.docs) {
-          deliveredBatch.update(doc.reference, {'isDelivered': true});
-        }
-        await deliveredBatch.commit();
-      }
+      _socketService.markRead(widget.chatRoomId, widget.currentUserId);
     } catch (e) {
       print('Error marking messages as read: $e');
     }
@@ -826,24 +732,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       _forceScrollToBottom = true;
       _scrollToBottom();
 
-      // Create message document first, then send notification
-      await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .doc(messageId)
-          .set(messageData);
-
-      // Update chat room last message
-      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'lastMessage': messageText,
-        'lastMessageType': 'text',
-        'lastMessageTime': timestamp,
-        'lastMessageSenderId': widget.currentUserId,
-        'unreadCount.${widget.receiverId}': receiverViewingThisChat
-            ? 0
-            : FieldValue.increment(1),
-      });
+      // Send via Socket.IO
+      _socketService.sendMessage(
+        chatRoomId:        widget.chatRoomId,
+        senderId:          widget.currentUserId,
+        receiverId:        widget.receiverId,
+        message:           messageText,
+        messageType:       'text',
+        messageId:         messageId,
+        repliedTo:         messageData['repliedTo'] as Map<String, dynamic>?,
+        isReceiverViewing: receiverViewingThisChat,
+        user1Name:         widget.currentUserName,
+        user2Name:         widget.receiverName,
+        user1Image:        widget.currentUserImage,
+        user2Image:        widget.receiverImage,
+      );
 
       if (!receiverViewingThisChat) {
         // Send notification after message is saved
@@ -895,44 +798,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     try {
       final messageId = _uuid.v4();
       final file = File(picked.path);
-      final ext = picked.name.contains('.') ? picked.name.split('.').last : 'jpg';
-      final ref = _storage.ref().child('chat_images/${widget.chatRoomId}/$messageId.$ext');
-      await ref.putFile(file);
-      final imageUrl = await ref.getDownloadURL();
-
-      final timestamp = DateTime.now();
       final bool receiverViewingThisChat = _isReceiverViewingThisChat;
-      final messageData = {
-        'messageId': messageId,
-        'senderId': widget.currentUserId,
-        'receiverId': widget.receiverId,
-        'message': imageUrl,
-        'messageType': 'image',
-        'timestamp': timestamp,
-        'isRead': receiverViewingThisChat,
-        'isDelivered': receiverViewingThisChat,
-        'isDeletedForSender': false,
-        'isDeletedForReceiver': false,
-      };
+
+      final imageUrl = await _socketService.uploadChatImage(
+        imageFile: file,
+        userId:    widget.currentUserId,
+        chatRoomId: widget.chatRoomId,
+      );
 
       _forceScrollToBottom = true;
       _scrollToBottom();
 
-      await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .doc(messageId)
-          .set(messageData);
-
-      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'lastMessage': '📷 Photo',
-        'lastMessageType': 'image',
-        'lastMessageTime': timestamp,
-        'lastMessageSenderId': widget.currentUserId,
-        'unreadCount.${widget.receiverId}':
-            receiverViewingThisChat ? 0 : FieldValue.increment(1),
-      });
+      _socketService.sendMessage(
+        chatRoomId:        widget.chatRoomId,
+        senderId:          widget.currentUserId,
+        receiverId:        widget.receiverId,
+        message:           imageUrl,
+        messageType:       'image',
+        messageId:         messageId,
+        isReceiverViewing: receiverViewingThisChat,
+        user1Name:         widget.currentUserName,
+        user2Name:         widget.receiverName,
+        user1Image:        widget.currentUserImage,
+        user2Image:        widget.receiverImage,
+      );
 
       if (!receiverViewingThisChat) {
         await NotificationService.sendChatNotification(
@@ -963,22 +852,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       final messageId = editingMessage!['messageId'];
       final newMessage = _editController.text.trim();
 
-      // Update message in Firestore
-      await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .doc(messageId)
-          .update({
-        'message': newMessage,
-        'isEdited': true,
-        'editedAt': DateTime.now(),
-      });
-
-      // Update chat room last message if this was the last message
-      await _firestore.collection('chatRooms').doc(widget.chatRoomId).update({
-        'lastMessage': newMessage,
-      });
+      _socketService.editMessage(widget.chatRoomId, messageId, newMessage);
 
       _cancelEdit();
       _scrollToBottom();
@@ -1007,26 +881,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     try {
       final messageId = selectedMessage!['messageId'];
 
-      if (deleteForEveryone) {
-        await _firestore
-            .collection('chatRooms')
-            .doc(widget.chatRoomId)
-            .collection('messages')
-            .doc(messageId)
-            .delete();
-      } else {
-        final isMine = selectedMessage!['senderId'] == widget.currentUserId;
-        final updateData = isMine
-            ? {'isDeletedForSender': true}
-            : {'isDeletedForReceiver': true};
-
-        await _firestore
-            .collection('chatRooms')
-            .doc(widget.chatRoomId)
-            .collection('messages')
-            .doc(messageId)
-            .update(updateData);
-      }
+      _socketService.deleteMessage(
+        chatRoomId:        widget.chatRoomId,
+        messageId:         messageId,
+        userId:            widget.currentUserId,
+        deleteForEveryone: deleteForEveryone,
+      );
 
       if (mounted) {
         setState(() {
@@ -2208,67 +2068,47 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   }
 
   Future<void> _loadMoreMessages() async {
-    if (_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
-
+    if (_isLoadingMore || !_hasMoreMessages) return;
     setState(() => _isLoadingMore = true);
 
-    // Capture scroll metrics before inserting older messages
     final double scrollExtentBefore = _scrollController.hasClients
-        ? _scrollController.position.maxScrollExtent
-        : 0.0;
+        ? _scrollController.position.maxScrollExtent : 0.0;
     final double currentPixels = _scrollController.hasClients
-        ? _scrollController.position.pixels
-        : 0.0;
+        ? _scrollController.position.pixels : 0.0;
 
     try {
-      final moreMessages = await _firestore
-          .collection('chatRooms')
-          .doc(widget.chatRoomId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .startAfterDocument(_lastDocument!)
-          .limit(_messagesPerPage)
-          .get();
-
+      final nextPage = _currentMessagePage + 1;
+      final result = await _socketService.getMessages(
+        widget.chatRoomId, page: nextPage, limit: _messagesPerPage,
+      );
       if (!mounted) return;
 
-      if (moreMessages.docs.isEmpty) {
-        setState(() {
-          _hasMoreMessages = false;
-          _isLoadingMore = false;
-        });
+      final newMessages = List<Map<String, dynamic>>.from(
+        (result['messages'] as List? ?? []).map((m) => Map<String, dynamic>.from(m as Map)),
+      );
+
+      if (newMessages.isEmpty) {
+        setState(() { _hasMoreMessages = false; _isLoadingMore = false; });
         return;
       }
 
-      // Advance the pagination cursor to the oldest document in this batch
-      _lastDocument = moreMessages.docs.last;
-
-      final newMessages = moreMessages.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList()
-          .reversed
-          .toList(); // oldest first
-
       setState(() {
-        // Prepend older messages
         _cachedMessages.insertAll(0, newMessages);
+        _hasMoreMessages = result['hasMore'] == true;
+        _currentMessagePage = nextPage;
         _isLoadingMore = false;
         _messagesCacheVersion++;
       });
 
-      // Restore scroll position using the actual change in maxScrollExtent
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          final double scrollExtentAfter =
-              _scrollController.position.maxScrollExtent;
-          final double addedHeight = scrollExtentAfter - scrollExtentBefore;
-          _scrollController.jumpTo(currentPixels + addedHeight);
+          final double scrollExtentAfter = _scrollController.position.maxScrollExtent;
+          _scrollController.jumpTo(currentPixels + (scrollExtentAfter - scrollExtentBefore));
         }
       });
     } catch (e) {
-      print('Error loading more messages: $e');
-      if (!mounted) return;
-      setState(() => _isLoadingMore = false);
+      debugPrint('Error loading more messages: $e');
+      if (mounted) setState(() => _isLoadingMore = false);
     }
   }
 
@@ -3239,27 +3079,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       final adminUserId = AppConstants.adminUserId;
       final reportMessage =
           'I have reported this profile.\n\nReason: $reason\n\nReported Profile ID: ${widget.receiverId}';
-
-      await _firestore.collection('adminchat').add({
-        'message': reportMessage,
-        'type': 'report',
-        'senderid': widget.currentUserId,
-        'receiverid': adminUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'liked': false,
-        'replyto': '',
+      final reportPayload = jsonEncode({
+        'reportMessage': reportMessage,
         'reportedUserId': widget.receiverId,
         'reportedUserName': widget.receiverName,
         'reportReason': reason,
       });
 
-      final conversationId =
-          AppConstants.conversationId(widget.currentUserId, adminUserId);
-      await _firestore.collection('conversations').doc(conversationId).set({
-        'participants': [widget.currentUserId, adminUserId],
-        'lastMessage': 'Profile Report: $reason',
-        'lastTimestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final List<String> ids = [widget.currentUserId, adminUserId]..sort();
+      final adminChatRoomId = ids.join('_');
+      _socketService.sendMessage(
+        chatRoomId: adminChatRoomId,
+        senderId: widget.currentUserId,
+        receiverId: adminUserId,
+        message: reportPayload,
+        messageType: 'report',
+        messageId: _uuid.v4(),
+        user1Name: widget.currentUserName,
+        user2Name: 'Admin',
+        user1Image: widget.currentUserImage,
+        user2Image: '',
+      );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
