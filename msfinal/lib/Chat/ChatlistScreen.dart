@@ -232,14 +232,15 @@ class _ChatListScreenState extends State<ChatListScreen>
     final ids = [uid, _adminUserId]..sort();
     final adminRoomId = ids.join('_');
 
-    final adminRoom = rooms.cast<Map<String, dynamic>>().where(
+    final adminRoomList = rooms.cast<Map<String, dynamic>>().where(
       (r) => r['chatRoomId'] == adminRoomId
-    ).firstOrNull;
+    ).toList();
 
-    if (adminRoom == null) {
+    if (adminRoomList.isEmpty) {
       if (mounted) setState(() { _adminLoading = false; });
       return;
     }
+    final adminRoom = adminRoomList.first;
 
     final String msgType = adminRoom['lastMessageType']?.toString() ?? 'text';
     String preview;

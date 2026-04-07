@@ -42,10 +42,21 @@ const pool = mysql.createPool({
 pool.getConnection()
   .then(async conn => {
     console.log('✅ MySQL connected');
-    // Add `liked` column to chat_messages if not present (idempotent migration)
-    await conn.query(
-      `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS liked TINYINT(1) NOT NULL DEFAULT 0`
-    ).catch(() => {/* MySQL <8 / MariaDB fallback - ignore if column exists */});
+    // Add `liked` column to chat_messages if not present (idempotent migration).
+    // Check INFORMATION_SCHEMA for compatibility with MySQL 5.7, MariaDB, and MySQL 8+.
+    const dbName = process.env.DB_NAME || 'marriagestation';
+    const [[col]] = await conn.query(
+      `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'chat_messages' AND COLUMN_NAME = 'liked'
+        LIMIT 1`,
+      [dbName],
+    );
+    if (!col) {
+      await conn.query(
+        `ALTER TABLE chat_messages ADD COLUMN liked TINYINT(1) NOT NULL DEFAULT 0`
+      );
+      console.log('✅ Added liked column to chat_messages');
+    }
     conn.release();
   })
   .catch(err => { console.error('❌ MySQL connection failed:', err.message); });
@@ -492,6 +503,18 @@ io.on('connection', (socket) => {
   socket.on('toggle_like', async ({ chatRoomId, messageId }) => {
     try {
       if (!chatRoomId || !messageId) return;
+      if (!authenticatedUserId) return; // Require authentication
+
+      // Verify the authenticated user is a participant in the chat room
+      const [[room]] = await pool.query(
+        `SELECT 1 FROM chat_rooms
+          WHERE chat_room_id = ?
+            AND (user1_id = ? OR user2_id = ?)
+          LIMIT 1`,
+        [chatRoomId, authenticatedUserId, authenticatedUserId],
+      );
+      if (!room) return; // Not a participant — silently ignore
+
       // Flip the liked flag atomically
       await pool.query(
         `UPDATE chat_messages SET liked = IF(liked = 1, 0, 1)

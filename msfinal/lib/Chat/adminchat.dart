@@ -156,11 +156,20 @@ class _AdminChatScreenState extends State<AdminChatScreen>
     if (!_socketService.isConnected) {
       _socketService.connect(_mySenderId);
       // Load messages once the socket successfully connects
-      _socketService.onConnectionChange.first.then((connected) {
+      StreamSubscription<bool>? connSub;
+      connSub = _socketService.onConnectionChange.listen((connected) {
         if (connected && mounted) {
+          connSub?.cancel();
           _socketService.joinRoom(_chatRoomId);
           _socketService.setActiveChat(_mySenderId, _chatRoomId);
           _loadMessages(reset: true);
+        }
+      });
+      // Timeout fallback: if socket doesn't connect within 15s, show error
+      Future.delayed(const Duration(seconds: 15), () {
+        if (mounted && _streamLoading) {
+          connSub?.cancel();
+          setState(() { _streamHasError = true; _streamLoading = false; });
         }
       });
     } else {
