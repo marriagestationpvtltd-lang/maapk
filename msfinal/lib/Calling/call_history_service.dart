@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_history_model.dart';
+import '../service/socket_service.dart';
+import 'package:uuid/uuid.dart';
 
 class CallHistoryService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -204,19 +207,30 @@ class CallHistoryService {
   }) async {
     try {
       if (isAdminChat) {
-        await _firestore.collection('adminchat').add({
-          'message': '',
-          'senderid': adminChatSenderId ?? callerId,
-          'receiverid': adminChatReceiverId ?? '',
-          'timestamp': FieldValue.serverTimestamp(),
-          'type': 'call',
-          'callType': callType,
-          'callStatus': callStatus,
-          'duration': duration,
-          'callerId': callerId,
-          'liked': false,
-          'replyto': '',
-        });
+        final senderId = adminChatSenderId ?? callerId;
+        final receiverId = adminChatReceiverId ?? '';
+        if (receiverId.isNotEmpty) {
+          final List<String> ids = [senderId, receiverId]..sort();
+          final adminChatRoomId = ids.join('_');
+          final payload = jsonEncode({
+            'callType': callType,
+            'callStatus': callStatus,
+            'duration': duration,
+            'callerId': callerId,
+          });
+          SocketService().sendMessage(
+            chatRoomId: adminChatRoomId,
+            senderId: senderId,
+            receiverId: receiverId,
+            message: payload,
+            messageType: 'call',
+            messageId: const Uuid().v4(),
+            user1Name: '',
+            user2Name: '',
+            user1Image: '',
+            user2Image: '',
+          );
+        }
       } else if (chatRoomId != null && chatRoomId.isNotEmpty) {
         final docId = messageDocId ?? _firestore.collection('chatRooms').doc().id;
         final msgRef = _firestore
