@@ -68,5 +68,4 @@ class DefaultFirebaseOptions {
     iosClientId: 'REPLACE_WITH_NEW_IOS_CLIENT_ID',
     iosBundleId: 'com.digitallami.appz',
   );
-
 }

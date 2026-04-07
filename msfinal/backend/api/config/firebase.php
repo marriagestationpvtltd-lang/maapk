@@ -12,7 +12,7 @@ class FirebaseConfig {
             $serviceAccount = ServiceAccount::fromJsonFile(__DIR__ . '/../../firebase-credentials.json');
             self::$firebase = (new Factory)
                 ->withServiceAccount($serviceAccount)
-                ->withDatabaseUri('https://digitallami1-default-rtdb.firebaseio.com/')
+                ->withDatabaseUri('https://digitallamicomnp-default-rtdb.firebaseio.com/')
                 ->create();
         }
         return self::$firebase;
