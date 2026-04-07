@@ -53,12 +53,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA0gLfmN2OC8rhCH4Viv1bDJfJVMZIxWlU',
-    appId: '1:257951661233:web:50e95814bbcf7b16407690',
-    messagingSenderId: '257951661233',
-    projectId: 'digitallami1',
-    authDomain: 'digitallami1.firebaseapp.com',
-    databaseURL: 'https://digitallami1-default-rtdb.firebaseio.com',
-    storageBucket: 'digitallami1.firebasestorage.app',
+    apiKey: 'AIzaSyDtihED7bReUPkjkhAOBFDp3zw3chUTmgU',
+    appId: '1:477405059891:web:PLACEHOLDER',
+    messagingSenderId: '477405059891',
+    projectId: 'digitallamicomnp',
+    authDomain: 'digitallamicomnp.firebaseapp.com',
+    databaseURL: 'https://digitallamicomnp-default-rtdb.firebaseio.com',
+    storageBucket: 'digitallamicomnp.firebasestorage.app',
   );
 }
